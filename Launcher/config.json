@@ -8,8 +8,11 @@
 
   "environment": "backtesting", // "live-paper", "backtesting", "live-interactive", "live-interactive-iqfeed"
 
+  "desktop-http-port": 0,
+
   // algorithm class selector
-  "algorithm-type-name": "BasicTemplateFrameworkAlgorithm",
+  //"algorithm-type-name": "BasicTemplateFrameworkAlgorithm",
+  "algorithm-type-name": "SingleStockSwingV13_JNJ_Final",
 
   // Algorithm language selector - options CSharp, Python
   "algorithm-language": "CSharp",
@@ -98,7 +101,7 @@
   "ib-user-name": "",
   "ib-password": "",
   "ib-host": "127.0.0.1",
-  "ib-port": "4002",
+  "ib-port": "7497",
   "ib-agent-description": "Individual",
   "ib-tws-dir": "C:\\Jts",
   "ib-trading-mode": "paper",
@@ -313,6 +316,15 @@
 
     "ema-fast": 10,
     "ema-slow": 20
+
+    //"ticker": "CVX",
+    //"initialCash": "5000",
+    //"monthlyContribution": "500",
+    //"smaLength": "120",
+    //"buyThreshold": "0.02",
+    //"minBuyAmount": "2500",
+    //"trailingDrop": "0.05",
+    //"stopLossPct": "0.07"
   },
 
   // specify supported languages when running regression tests
@@ -337,17 +349,36 @@
 
     // defines the 'live-paper' environment
     "live-paper": {
-      "live-mode": true,
+      "live-mode": false, // 关键：开启实时模式
 
-      // the paper brokerage requires the BacktestingTransactionHandler
-      "live-mode-brokerage": "PaperBrokerage",
+      // 1. 设置模拟资金账户 (Paper Brokerage)
+      "live-mode-brokerage": "QuantConnect.Brokerages.InteractiveBrokers.InteractiveBrokersBrokerage",
+      "data-queue-handler": [ "QuantConnect.Brokerages.InteractiveBrokers.InteractiveBrokersBrokerage" ],
 
       "setup-handler": "QuantConnect.Lean.Engine.Setup.BrokerageSetupHandler",
       "result-handler": "QuantConnect.Lean.Engine.Results.LiveTradingResultHandler",
       "data-feed-handler": "QuantConnect.Lean.Engine.DataFeeds.LiveTradingDataFeed",
-      "data-queue-handler": [ "QuantConnect.Lean.Engine.DataFeeds.Queues.LiveDataQueue" ],
       "real-time-handler": "QuantConnect.Lean.Engine.RealTime.LiveTradingRealTimeHandler",
-      "transaction-handler": "QuantConnect.Lean.Engine.TransactionHandlers.BacktestingTransactionHandler"
+      "transaction-handler": "QuantConnect.Lean.Engine.TransactionHandlers.BrokerageTransactionHandler",
+      "history-provider": [ "BrokerageHistoryProvider", "SubscriptionDataReaderHistoryProvider" ],
+
+      // 设置结果处理 (输出到控制台或文件)
+      //"messaging-handler": "QuantConnect.Messaging.StreamingMessageHandler",
+
+      // IB 的特定配置
+      "ib-account": "U23366765", // 您的 IB 模拟账户 ID
+      "ib-user-name": "douyangyang", // 只有使用 IB Gateway 才需要
+      "ib-password": "Xieyanli0527", // 只有使用 IB Gateway 才需要
+      "ib-host": "127.0.0.1",
+      "ib-port": "7497",
+      "ib-agent-description": "Individual",
+      "ib-trading-mode": "paper",
+      "ib-version": "1041",
+
+      // 算法位置
+      "algorithm-type-name": "SingleStockSwingV13_JNJ_Final",
+      "algorithm-language": "CSharp",
+      "algorithm-location": "QuantConnect.Algorithm.CSharp.dll"
     },
 
     // defines 'live-zerodha' environment
