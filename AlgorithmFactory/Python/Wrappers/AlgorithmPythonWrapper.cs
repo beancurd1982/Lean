@@ -40,6 +40,7 @@ using QuantConnect.Algorithm.Framework.Alphas.Analysis;
 using QuantConnect.Commands;
 using QuantConnect.Algorithm.Framework.Portfolio.SignalExports;
 using QuantConnect.Algorithm.Framework.Execution;
+using Common.Util;
 
 namespace QuantConnect.AlgorithmFactory.Python.Wrappers
 {
@@ -681,7 +682,7 @@ namespace QuantConnect.AlgorithmFactory.Python.Wrappers
         /// <summary>
         /// Gets a read-only dictionary with all current parameters
         /// </summary>
-        public IReadOnlyDictionary<string, string> GetParameters() => _baseAlgorithm.GetParameters();
+        public ReadOnlyExtendedDictionary<string, string> GetParameters() => _baseAlgorithm.GetParameters();
 
         /// <summary>
         /// Gets the parameter with the specified name. If a parameter with the specified name does not exist,
@@ -1103,7 +1104,7 @@ namespace QuantConnect.AlgorithmFactory.Python.Wrappers
         /// </summary>
         /// <param name="symbols">The symbols we want to get seed data for</param>
         /// <returns>Securities historical data</returns>
-        public Dictionary<Symbol, IEnumerable<BaseData>> GetLastKnownPrices(IEnumerable<Symbol> symbols) => _baseAlgorithm.GetLastKnownPrices(symbols);
+        public DataDictionary<IEnumerable<BaseData>> GetLastKnownPrices(IEnumerable<Symbol> symbols) => _baseAlgorithm.GetLastKnownPrices(symbols);
 
         /// <summary>
         /// Set the runtime error

@@ -33,6 +33,7 @@ using QuantConnect.Data.UniverseSelection;
 using QuantConnect.Algorithm.Framework.Alphas;
 using QuantConnect.Algorithm.Framework.Alphas.Analysis;
 using QuantConnect.Commands;
+using Common.Util;
 
 namespace QuantConnect.Interfaces
 {
@@ -429,7 +430,7 @@ namespace QuantConnect.Interfaces
         /// <summary>
         /// Gets a read-only dictionary with all current parameters
         /// </summary>
-        IReadOnlyDictionary<string, string> GetParameters();
+        ReadOnlyExtendedDictionary<string, string> GetParameters();
 
         /// <summary>
         /// Gets the parameter with the specified name. If a parameter with the specified name does not exist,
@@ -855,7 +856,7 @@ namespace QuantConnect.Interfaces
         /// </summary>
         /// <param name="symbols">The symbols we want to get seed data for</param>
         /// <returns>Securities historical data</returns>
-        Dictionary<Symbol, IEnumerable<BaseData>> GetLastKnownPrices(IEnumerable<Symbol> symbols);
+        DataDictionary<IEnumerable<BaseData>> GetLastKnownPrices(IEnumerable<Symbol> symbols);
 
         /// <summary>
         /// Set the runtime error
