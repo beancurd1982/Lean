@@ -82,7 +82,7 @@ namespace QuantConnect.Algorithm.CSharp
             foreach (var ticker in _config.Keys)
             {
                 var symbol = AddEquity(ticker, Resolution.Daily).Symbol;
-                Securities[symbol].SetDataNormalizationMode(DataNormalizationMode.Raw);
+                Securities[symbol].SetDataNormalizationMode(DataNormalizationMode.Adjusted);
                 var sd = new SymbolData
                 {
                     Symbol = symbol,

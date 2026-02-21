@@ -67,3 +67,10 @@ Decision: pending user confirmation.
 ## Review Summary (2026-02-21)
 - No new critical issues found in the MaxWeight cap logic.
 - Note: `totalValue` is still used in weight calculations; early return on `maxAdditionalValue <= 0` avoids division when portfolio value is zero.
+## Update Log
+- 2026-02-21: Started priority issue #4 fix (switch data normalization to Adjusted for indicator stability).
+## Update Log
+- 2026-02-21: Completed priority issue #4 by switching `DataNormalizationMode` to `Adjusted` for all symbols.
+
+## Review Summary (2026-02-21)
+- No code issues found. Behavior change is intentional: indicators and thresholds now use adjusted price series, reducing split/dividend artifacts.
