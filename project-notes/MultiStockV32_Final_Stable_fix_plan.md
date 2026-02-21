@@ -81,3 +81,11 @@ Decision: pending user confirmation.
 
 ## Review Summary (2026-02-21)
 - No new functional issues found. The guard prevents division by zero and avoids buys when portfolio value is not valid.
+## Review Summary (2026-02-21)
+- Full strict review completed.
+- Finding: Unmatched sell fills or order-resolution events with multiple pending lots are logged but not reconciled, leaving state inconsistent until manual intervention.
+- No other critical issues identified.
+## Discussion Log
+- 2026-02-21: Discussed live-trading handling for unmatched sell events. Options: (A) strict/manual resolution (current behavior), (B) auto-reconcile lots from portfolio or force liquidation to reset state. Recommendation: keep strict/manual for safety unless you explicitly want auto-reconcile; decision pending.
+## Decision
+- 2026-02-21: Chose strict/manual handling for unmatched sell events. No code change required.
