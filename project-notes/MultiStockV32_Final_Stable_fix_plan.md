@@ -57,3 +57,13 @@ Decision: pending user confirmation.
 
 ## Review Summary (2026-02-21)
 - Residual risk: If a sell fill or resolution arrives with no matching order id and multiple pending lots, the algorithm logs an error and does not adjust lots, leaving state inconsistent until manual intervention.
+## Next Issue
+- 2026-02-21: Next priority to address is issue #3 (enforce MaxWeight per buy / cap order size). Pending after that: issue #4 (switch to Adjusted normalization) and issue #5 (guard TotalPortfolioValue for weights).
+## Update Log
+- 2026-02-21: Started priority issue #3 fix (cap buy size to respect MaxWeight).
+## Update Log
+- 2026-02-21: Completed priority issue #3 fix by capping buy size to MaxWeight using `maxAdditionalValue`. Also changed buy log message to ASCII to avoid encoding corruption.
+
+## Review Summary (2026-02-21)
+- No new critical issues found in the MaxWeight cap logic.
+- Note: `totalValue` is still used in weight calculations; early return on `maxAdditionalValue <= 0` avoids division when portfolio value is zero.

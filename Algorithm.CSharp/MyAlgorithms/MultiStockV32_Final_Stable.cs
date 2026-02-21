@@ -152,22 +152,26 @@ namespace QuantConnect.Algorithm.CSharp
             {
                 Debug($"    - 持仓: {sd.Symbol.Value} | 数量: {Portfolio[sd.Symbol].Quantity} | 现价: {Securities[sd.Symbol].Price:N2}");
             }
-        }
-
+        }
         private void HandleBuyLogic(SymbolData sd, decimal price)
         {
-            decimal currentWeight = Portfolio[sd.Symbol].HoldingsValue / Portfolio.TotalPortfolioValue;
+            decimal totalValue = Portfolio.TotalPortfolioValue;
+            decimal holdingsValue = Portfolio[sd.Symbol].HoldingsValue;
+            decimal maxAdditionalValue = (sd.Settings.MaxWeight * totalValue) - holdingsValue;
+            if (maxAdditionalValue <= 0) return;
+
+            decimal currentWeight = holdingsValue / totalValue;
             if (sd.Settings.MaxWeight - currentWeight < _rebalanceThreshold) return;
 
             decimal buyTrigger = sd.Sma.Current.Value * (1 - sd.Settings.BuyThreshold);
             if (price < buyTrigger)
             {
-                decimal amountToSpend = Math.Min(Portfolio.Cash, Portfolio.TotalPortfolioValue * _buyStep);
+                decimal amountToSpend = Math.Min(Portfolio.Cash, Math.Min(totalValue * _buyStep, maxAdditionalValue));
                 int qty = (int)(amountToSpend / price);
                 if (qty > 0)
                 {
                     MarketOrder(sd.Symbol, qty);
-                    Debug($"[TRADE] {Time} 发起买入: {sd.Symbol} @ {price}");
+                    Debug($"[TRADE] {Time} Buy: {sd.Symbol} @ {price}");
                 }
             }
         }
