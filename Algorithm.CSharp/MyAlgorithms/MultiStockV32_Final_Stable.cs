@@ -185,36 +185,60 @@ namespace QuantConnect.Algorithm.CSharp
                 if (stopLoss || trailingStop)
                 {
                     var ticket = MarketOrder(sd.Symbol, -lot.Quantity);
+                    if (ticket.OrderId <= 0 || ticket.Status == OrderStatus.Invalid)
+                    {
+                        Error($"[TRADE] {Time} Sell order failed: {sd.Symbol} ({(stopLoss ? "StopLoss" : "TrailingStop")}) @ {price}");
+                        continue;
+                    }
+
                     lot.PendingSell = true;
                     lot.PendingSellOrderId = ticket.OrderId;
                     Debug($"[TRADE] {Time} 发起卖出: {sd.Symbol} ({(stopLoss ? "止损" : "移动止盈")}) @ {price}");
                 }
             }
-        }
-
-                public override void OnOrderEvent(OrderEvent orderEvent)
+        }
+        public override void OnOrderEvent(OrderEvent orderEvent)
         {
             if (!_symbolDataMap.TryGetValue(orderEvent.Symbol, out var sd)) return;
 
             bool stateChanged = false;
             bool isSell = orderEvent.Direction == OrderDirection.Sell || orderEvent.FillQuantity < 0 || orderEvent.Quantity < 0;
 
-            if (orderEvent.FillQuantity != 0)
+            if (orderEvent.FillQuantity > 0)
             {
-                if (orderEvent.FillQuantity > 0)
+                sd.Lots.Add(new Lot { Quantity = (int)orderEvent.FillQuantity, EntryPrice = orderEvent.FillPrice, HighestPrice = orderEvent.FillPrice });
+                stateChanged = true;
+            }
+            else if (orderEvent.FillQuantity < 0)
+            {
+                int qtyToRem = (int)Math.Abs(orderEvent.FillQuantity);
+                var lot = sd.Lots.FirstOrDefault(l => l.PendingSellOrderId == orderEvent.OrderId);
+
+                if (lot == null)
                 {
-                    sd.Lots.Add(new Lot { Quantity = (int)orderEvent.FillQuantity, EntryPrice = orderEvent.FillPrice, HighestPrice = orderEvent.FillPrice });
-                    stateChanged = true;
-                }
-                else
-                {
-                    int qtyToRem = (int)Math.Abs(orderEvent.FillQuantity);
-                    foreach (var lot in sd.Lots.Where(l => l.PendingSell).Concat(sd.Lots.Where(l => !l.PendingSell)).ToList())
+                    var pendingLots = sd.Lots.Where(l => l.PendingSell).ToList();
+                    if (pendingLots.Count == 1)
                     {
-                        if (qtyToRem <= 0) break;
-                        int take = Math.Min(lot.Quantity, qtyToRem);
-                        lot.Quantity -= take; qtyToRem -= take;
+                        lot = pendingLots[0];
+                        Debug($"[WARN] {Time} Sell fill without matching order id. Using only pending lot. Symbol={orderEvent.Symbol} OrderId={orderEvent.OrderId}");
                     }
+                    else
+                    {
+                        Error($"[WARN] {Time} Sell fill without matching lot. Symbol={orderEvent.Symbol} OrderId={orderEvent.OrderId} PendingLots={pendingLots.Count}");
+                    }
+                }
+
+                if (lot != null)
+                {
+                    int take = Math.Min(lot.Quantity, qtyToRem);
+                    lot.Quantity -= take;
+                    qtyToRem -= take;
+
+                    if (qtyToRem > 0)
+                    {
+                        Error($"[WARN] {Time} Sell fill exceeds tracked lot quantity. Symbol={orderEvent.Symbol} OrderId={orderEvent.OrderId} Remaining={qtyToRem}");
+                    }
+
                     sd.Lots.RemoveAll(l => l.Quantity <= 0);
                     stateChanged = true;
                 }
@@ -223,11 +247,26 @@ namespace QuantConnect.Algorithm.CSharp
             if (isSell && (orderEvent.Status == OrderStatus.Filled || orderEvent.Status == OrderStatus.Canceled || orderEvent.Status == OrderStatus.Invalid || orderEvent.Status == OrderStatus.Rejected))
             {
                 var lot = sd.Lots.FirstOrDefault(l => l.PendingSellOrderId == orderEvent.OrderId);
+
+                if (lot == null)
+                {
+                    var pendingLots = sd.Lots.Where(l => l.PendingSell).ToList();
+                    if (pendingLots.Count == 1)
+                    {
+                        lot = pendingLots[0];
+                        Debug($"[WARN] {Time} Sell order resolved without matching order id. Clearing only pending lot. Symbol={orderEvent.Symbol} OrderId={orderEvent.OrderId}");
+                    }
+                }
+
                 if (lot != null)
                 {
                     lot.PendingSell = false;
                     lot.PendingSellOrderId = 0;
                     stateChanged = true;
+                }
+                else
+                {
+                    Error($"[WARN] {Time} Sell order resolved without matching lot. Symbol={orderEvent.Symbol} OrderId={orderEvent.OrderId}");
                 }
             }
 

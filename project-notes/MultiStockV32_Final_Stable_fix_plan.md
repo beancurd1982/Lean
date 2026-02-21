@@ -48,3 +48,12 @@ Decision: pending user confirmation.
 - 2026-02-21: Fixed priority issue #1 in `Algorithm.CSharp/MyAlgorithms/MultiStockV32_Final_Stable.cs`. Added sell order ID tracking and cleared `PendingSell` on cancel/reject/invalid, and processed partial fills so sell lots don't get stuck.
 ## Update Log
 - 2026-02-21: Fixed compile error from literal \\r\\n in sell order block and tightened sell-side detection to handle cancel/reject events safely.
+## Update Log
+- 2026-02-21: Fixed priority issue #2 by applying sell fills to the specific lot via `PendingSellOrderId` (with fallback if no match). Performed strict review after change (see review summary in this log).
+## Review Summary (2026-02-21)
+- Potential risk: If a sell fill arrives without a matching `PendingSellOrderId`, the fallback still mutates other lots silently, which can reintroduce mis-attribution. Consider logging or stricter handling if this becomes common.
+## Update Log
+- 2026-02-21: Addressed review issues by guarding failed sell submissions (do not mark pending when invalid) and adding explicit warnings when sell fills or order resolutions lack a matching lot (fallback only when exactly one pending lot exists).
+
+## Review Summary (2026-02-21)
+- Residual risk: If a sell fill or resolution arrives with no matching order id and multiple pending lots, the algorithm logs an error and does not adjust lots, leaving state inconsistent until manual intervention.
