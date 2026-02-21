@@ -44,3 +44,7 @@ Review of `Algorithm.CSharp/MyAlgorithms/MultiStockV32_Final_Stable.cs` identifi
 Suggested default: `DataNormalizationMode.Adjusted` for signal/indicator stability (SMA, thresholds, trailing stops) and to avoid dividend/split artifacts.
 Use `SplitAdjusted` only if you explicitly want dividend effects to remain in the price series while still handling splits.
 Decision: pending user confirmation.
+## Update Log
+- 2026-02-21: Fixed priority issue #1 in `Algorithm.CSharp/MyAlgorithms/MultiStockV32_Final_Stable.cs`. Added sell order ID tracking and cleared `PendingSell` on cancel/reject/invalid, and processed partial fills so sell lots don't get stuck.
+## Update Log
+- 2026-02-21: Fixed compile error from literal \\r\\n in sell order block and tightened sell-side detection to handle cancel/reject events safely.

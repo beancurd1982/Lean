@@ -45,6 +45,7 @@ namespace QuantConnect.Algorithm.CSharp
             public decimal HighestPrice { get; set; }
             public bool TrailingActive { get; set; }
             public bool PendingSell { get; set; }
+            public int PendingSellOrderId { get; set; }
         }
 
         [Parameter("rebalance-threshold")]
@@ -183,34 +184,54 @@ namespace QuantConnect.Algorithm.CSharp
 
                 if (stopLoss || trailingStop)
                 {
-                    MarketOrder(sd.Symbol, -lot.Quantity);
+                    var ticket = MarketOrder(sd.Symbol, -lot.Quantity);
                     lot.PendingSell = true;
+                    lot.PendingSellOrderId = ticket.OrderId;
                     Debug($"[TRADE] {Time} 发起卖出: {sd.Symbol} ({(stopLoss ? "止损" : "移动止盈")}) @ {price}");
                 }
             }
         }
 
-        public override void OnOrderEvent(OrderEvent orderEvent)
+                public override void OnOrderEvent(OrderEvent orderEvent)
         {
-            if (orderEvent.Status != OrderStatus.Filled) return;
-            var sd = _symbolDataMap[orderEvent.Symbol];
+            if (!_symbolDataMap.TryGetValue(orderEvent.Symbol, out var sd)) return;
 
-            if (orderEvent.Quantity > 0)
+            bool stateChanged = false;
+            bool isSell = orderEvent.Direction == OrderDirection.Sell || orderEvent.FillQuantity < 0 || orderEvent.Quantity < 0;
+
+            if (orderEvent.FillQuantity != 0)
             {
-                sd.Lots.Add(new Lot { Quantity = (int)orderEvent.FillQuantity, EntryPrice = orderEvent.FillPrice, HighestPrice = orderEvent.FillPrice });
-            }
-            else
-            {
-                int qtyToRem = (int)Math.Abs(orderEvent.FillQuantity);
-                foreach (var lot in sd.Lots.Where(l => l.PendingSell).Concat(sd.Lots.Where(l => !l.PendingSell)).ToList())
+                if (orderEvent.FillQuantity > 0)
                 {
-                    if (qtyToRem <= 0) break;
-                    int take = Math.Min(lot.Quantity, qtyToRem);
-                    lot.Quantity -= take; qtyToRem -= take;
+                    sd.Lots.Add(new Lot { Quantity = (int)orderEvent.FillQuantity, EntryPrice = orderEvent.FillPrice, HighestPrice = orderEvent.FillPrice });
+                    stateChanged = true;
                 }
-                sd.Lots.RemoveAll(l => l.Quantity <= 0);
+                else
+                {
+                    int qtyToRem = (int)Math.Abs(orderEvent.FillQuantity);
+                    foreach (var lot in sd.Lots.Where(l => l.PendingSell).Concat(sd.Lots.Where(l => !l.PendingSell)).ToList())
+                    {
+                        if (qtyToRem <= 0) break;
+                        int take = Math.Min(lot.Quantity, qtyToRem);
+                        lot.Quantity -= take; qtyToRem -= take;
+                    }
+                    sd.Lots.RemoveAll(l => l.Quantity <= 0);
+                    stateChanged = true;
+                }
             }
-            if (LiveMode) SaveState();
+
+            if (isSell && (orderEvent.Status == OrderStatus.Filled || orderEvent.Status == OrderStatus.Canceled || orderEvent.Status == OrderStatus.Invalid || orderEvent.Status == OrderStatus.Rejected))
+            {
+                var lot = sd.Lots.FirstOrDefault(l => l.PendingSellOrderId == orderEvent.OrderId);
+                if (lot != null)
+                {
+                    lot.PendingSell = false;
+                    lot.PendingSellOrderId = 0;
+                    stateChanged = true;
+                }
+            }
+
+            if (stateChanged && LiveMode) SaveState();
         }
 
         private void SaveState()
