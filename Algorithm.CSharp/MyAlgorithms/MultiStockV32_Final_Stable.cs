@@ -152,10 +152,12 @@ namespace QuantConnect.Algorithm.CSharp
             {
                 Debug($"    - 持仓: {sd.Symbol.Value} | 数量: {Portfolio[sd.Symbol].Quantity} | 现价: {Securities[sd.Symbol].Price:N2}");
             }
-        }
+        }
         private void HandleBuyLogic(SymbolData sd, decimal price)
         {
             decimal totalValue = Portfolio.TotalPortfolioValue;
+            if (totalValue <= 0) return;
+
             decimal holdingsValue = Portfolio[sd.Symbol].HoldingsValue;
             decimal maxAdditionalValue = (sd.Settings.MaxWeight * totalValue) - holdingsValue;
             if (maxAdditionalValue <= 0) return;

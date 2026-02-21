@@ -74,3 +74,10 @@ Decision: pending user confirmation.
 
 ## Review Summary (2026-02-21)
 - No code issues found. Behavior change is intentional: indicators and thresholds now use adjusted price series, reducing split/dividend artifacts.
+## Update Log
+- 2026-02-21: Started priority issue #5 fix (guard TotalPortfolioValue in weight calculations).
+## Update Log
+- 2026-02-21: Completed priority issue #5 by guarding `TotalPortfolioValue` before weight calculations in `HandleBuyLogic`. Fixed indentation introduced during edit.
+
+## Review Summary (2026-02-21)
+- No new functional issues found. The guard prevents division by zero and avoids buys when portfolio value is not valid.
