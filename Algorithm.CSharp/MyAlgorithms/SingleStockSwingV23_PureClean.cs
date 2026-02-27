@@ -21,18 +21,43 @@ namespace QuantConnect.Algorithm.CSharp
     {
         private string LotStateKey => $"{_ticker}_LOT_STATE_V23";
 
+        // Ticker symbol to trade. Must be a valid Lean equity ticker for AddEquity.
         [Parameter("ticker")] private string _ticker = "JNJ";
-        [Parameter("initial-cash")] private decimal _initialCashParam = 50000m;
+
+        // Backtest-only starting cash in USD. Ignored in live mode.
+        [Parameter("initial-cash")] private decimal _initialCashParam = 10000m;
+
+        // Backtest-only start date in yyyyMMdd (e.g., 20150101). Ignored in live mode.
         [Parameter("start-date")] private string _startDateString = "20150101";
+
+        // Backtest-only end date in yyyyMMdd (e.g., 20250101). Ignored in live mode.
         [Parameter("end-date")] private string _endDateString = "20250101";
-        [Parameter("monthly-contribution")] private decimal _monthlyContribution = 500m;
-        [Parameter("max-holdings-pct")] private decimal _maxHoldingsPct = 0.90m;
+
+        // Backtest-only monthly cash contribution in USD. Added once per calendar month.
+        [Parameter("monthly-contribution")] private decimal _monthlyContribution = 0m;
+
+        // Max fraction of total portfolio value allowed in this symbol (1.0 = 100%).
+        [Parameter("max-holdings-pct")] private decimal _maxHoldingsPct = 1m;
+
+        // Fraction of available cash to deploy per buy attempt (0.20 = 20%).
         [Parameter("buy-fraction")] private decimal _buyFraction = 0.20m;
+
+        // SMA lookback length in trading days used as the mean-reversion anchor.
         [Parameter("sma-length")] private int _smaLength = 240;
+
+        // Buy trigger threshold below SMA (0.06 = 6% below SMA).
         [Parameter("buy-threshold")] private decimal _buyThreshold = 0.06m;
+
+        // Stop-loss percentage below entry price (0.04 = 4% drawdown).
         [Parameter("stop-loss-pct")] private decimal _stopLossPct = 0.04m;
+
+        // Profit threshold above entry to activate trailing stop (0.10 = 10% up).
         [Parameter("take-profit-up")] private decimal _takeProfitUp = 0.10m;
+
+        // Trailing stop drop from highest price after activation (0.03 = 3%).
         [Parameter("trailing-drop")] private decimal _trailingDrop = 0.03m;
+
+        // Minimum USD size for any buy order; smaller amounts are skipped.
         [Parameter("min-buy-amount")] private decimal _minBuyAmount = 2500m;
 
         private Symbol _symbol;
