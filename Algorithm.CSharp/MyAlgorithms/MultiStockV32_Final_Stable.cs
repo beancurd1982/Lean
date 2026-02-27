@@ -54,6 +54,9 @@ namespace QuantConnect.Algorithm.CSharp
         [Parameter("buy-step")]
         private decimal _buyStep = 0.05m;
 
+        // 回测优化方法 27/02/2026：
+        // 先固定stop-loss-pct = 0.04, trailing-drop-pct = 0.03，然后优化 sma-length, buy-threshold-pct, take-profit-up-pct 这三个维度的参数，
+        // 最后微调 stop-loss-pct 和 trailing-drop-pct
         private Dictionary<string, SymbolSettings> _config = new Dictionary<string, SymbolSettings> {
             { "MSFT", new SymbolSettings { SmaLength = 200, StopLoss = 0.04m, BuyThreshold = 0.04m, TakeProfitUp = 0.10m, TrailingDrop = 0.05m, MaxWeight = 0.14m } },
             { "CVX",  new SymbolSettings { SmaLength = 150, StopLoss = 0.08m, BuyThreshold = 0.10m, TakeProfitUp = 0.05m, TrailingDrop = 0.02m, MaxWeight = 0.12m } },
@@ -62,7 +65,10 @@ namespace QuantConnect.Algorithm.CSharp
             { "PG",   new SymbolSettings { SmaLength = 225, StopLoss = 0.05m, BuyThreshold = 0.02m, TakeProfitUp = 0.10m, TrailingDrop = 0.03m, MaxWeight = 0.13m } },
             { "JPM",  new SymbolSettings { SmaLength = 240, StopLoss = 0.05m, BuyThreshold = 0.02m, TakeProfitUp = 0.06m, TrailingDrop = 0.025m, MaxWeight = 0.13m } },
             { "NVDA", new SymbolSettings { SmaLength = 120, StopLoss = 0.10m, BuyThreshold = 0.08m, TakeProfitUp = 0.25m, TrailingDrop = 0.09m, MaxWeight = 0.11m } },
-            { "AVGO", new SymbolSettings { SmaLength = 250, StopLoss = 0.06m, BuyThreshold = 0.12m, TakeProfitUp = 0.15m, TrailingDrop = 0.08m, MaxWeight = 0.12m } }
+            { "AVGO", new SymbolSettings { SmaLength = 250, StopLoss = 0.06m, BuyThreshold = 0.12m, TakeProfitUp = 0.15m, TrailingDrop = 0.08m, MaxWeight = 0.12m } },
+
+            // 27/02/2026 更新：增加 AMZN，参数较为激进，适合高风险偏好投资者
+            { "AMZN", new SymbolSettings { SmaLength = 180, StopLoss = 0.05m, BuyThreshold = 0.06m, TakeProfitUp = 0.10m, TrailingDrop = 0.06m, MaxWeight = 0.10m } }
         };
 
         private Dictionary<Symbol, SymbolData> _symbolDataMap = new Dictionary<Symbol, SymbolData>();
@@ -152,7 +158,9 @@ namespace QuantConnect.Algorithm.CSharp
             {
                 Debug($"    - 持仓: {sd.Symbol.Value} | 数量: {Portfolio[sd.Symbol].Quantity} | 现价: {Securities[sd.Symbol].Price:N2}");
             }
-        }
+        }
+
+
         private void HandleBuyLogic(SymbolData sd, decimal price)
         {
             decimal totalValue = Portfolio.TotalPortfolioValue;
@@ -202,7 +210,8 @@ namespace QuantConnect.Algorithm.CSharp
                     Debug($"[TRADE] {Time} 发起卖出: {sd.Symbol} ({(stopLoss ? "止损" : "移动止盈")}) @ {price}");
                 }
             }
-        }
+        }
+
         public override void OnOrderEvent(OrderEvent orderEvent)
         {
             if (!_symbolDataMap.TryGetValue(orderEvent.Symbol, out var sd)) return;
