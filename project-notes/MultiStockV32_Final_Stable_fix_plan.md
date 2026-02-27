@@ -129,3 +129,71 @@ Decision: pending user confirmation.
 - Scope: `Algorithm.CSharp/MyAlgorithms/SingleStockSwingV23_PureClean.cs` (spacing between parameters).
 - Findings: No issues found. Formatting-only change; no behavior or live-trading impact.
 - Risks/Open Questions: None.
+
+## 2026-02-27
+- Step: Provide thoughts on changing `_minBuyAmount` from fixed USD to percentage (no code changes).
+- Summary: Assess tradeoffs and live-trading considerations.
+- Files: None (discussion only).
+- Risks/Open Questions: Would be a behavioral change affecting live trading; requires explicit confirmation if implemented.
+
+## 2026-02-27
+- Step: Clarify base for new `_minBuyPct` (initial cash vs current cash vs total portfolio), especially in live mode.
+- Summary: Requested user clarification before code changes.
+- Files: None (pending clarification).
+- Risks/Open Questions: Base for percentage impacts live trading behavior and backtest comparability.
+
+## 2026-02-27
+- Step: Provide recommendation for `_minBuyPct` base calculation.
+- Summary: Suggest a base and explain tradeoffs for live/backtest behavior.
+- Files: None (discussion only).
+- Risks/Open Questions: Requires user confirmation before implementing behavioral change.
+
+## 2026-02-27
+- Step: Replace `_minBuyAmount` with `_minBuyPct` (based on `Portfolio.Cash`) in `Algorithm.CSharp/MyAlgorithms/SingleStockSwingV23_PureClean.cs`.
+- Summary: Update parameter name/default and adjust buy logic to use percentage of current cash.
+- Files: `Algorithm.CSharp/MyAlgorithms/SingleStockSwingV23_PureClean.cs`.
+- Risks/Open Questions: Behavior change to buy threshold; confirm with user (requested Portfolio.Cash).
+
+## 2026-02-27
+- Step: Perform strict code review for `_minBuyPct` change.
+- Summary: Review for safety, correctness, and live-trading risks after behavior update.
+- Files: `Algorithm.CSharp/MyAlgorithms/SingleStockSwingV23_PureClean.cs`.
+- Risks/Open Questions: None identified before review.
+
+## 2026-02-27 - Review
+- Scope: `Algorithm.CSharp/MyAlgorithms/SingleStockSwingV23_PureClean.cs` (`_minBuyAmount` -> `_minBuyPct`, Portfolio.Cash-based).
+- Findings:
+  - None. Logic aligns with request; behavior change is explicit and limited to buy threshold check.
+- Risks/Open Questions:
+  - None.
+
+## 2026-02-27
+- Step: Review buy sizing logic using `_buyFraction` and `_minBuyPct` (discussion only).
+- Summary: Evaluate whether current comparison is meaningful and suggest alternatives.
+- Files: None (discussion only).
+- Risks/Open Questions: Behavior implications if `_minBuyPct` > `_buyFraction`.
+
+## 2026-02-27
+- Step: Discuss desired minimum order sizing behavior (no code changes).
+- Summary: Explain that current logic doesn't enforce a fixed-dollar floor across time and suggest storing baseline cash/portfolio value.
+- Files: None (discussion only).
+- Risks/Open Questions: Need to confirm baseline for minimum order in live mode (initial cash vs initial portfolio value).
+
+## 2026-02-27
+- Step: Revert `_minBuyPct` to `_minBuyAmount` with default 1000 and enforce minimum order size in buy logic.
+- Summary: Update parameter name/default and adjust sizing to meet minimum when cash allows.
+- Files: `Algorithm.CSharp/MyAlgorithms/SingleStockSwingV23_PureClean.cs`.
+- Risks/Open Questions: Behavior change to buy sizing; backtest-only per user.
+
+## 2026-02-27
+- Step: Perform strict code review for `_minBuyAmount` change and minimum order enforcement.
+- Summary: Review for safety, correctness, and live-trading risks after sizing update.
+- Files: `Algorithm.CSharp/MyAlgorithms/SingleStockSwingV23_PureClean.cs`.
+- Risks/Open Questions: None identified before review.
+
+## 2026-02-27 - Review
+- Scope: `Algorithm.CSharp/MyAlgorithms/SingleStockSwingV23_PureClean.cs` (`_minBuyAmount` restore and minimum order enforcement).
+- Findings:
+  - None. Logic enforces minimum order size when cash allows; otherwise skips buy.
+- Risks/Open Questions:
+  - None.

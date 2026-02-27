@@ -58,7 +58,7 @@ namespace QuantConnect.Algorithm.CSharp
         [Parameter("trailing-drop")] private decimal _trailingDrop = 0.03m;
 
         // Minimum USD size for any buy order; smaller amounts are skipped.
-        [Parameter("min-buy-amount")] private decimal _minBuyAmount = 2500m;
+        [Parameter("min-buy-amount")] private decimal _minBuyAmount = 1000m;
 
         private Symbol _symbol;
         private SimpleMovingAverage _sma;
@@ -116,7 +116,11 @@ namespace QuantConnect.Algorithm.CSharp
 
             // 资金管理：每次只动用可用现金的 buy-fraction
             var amountToInvest = Portfolio.Cash * _buyFraction;
-            if (amountToInvest < _minBuyAmount) return;
+            if (amountToInvest < _minBuyAmount)
+            {
+                if (Portfolio.Cash < _minBuyAmount) return;
+                amountToInvest = _minBuyAmount;
+            }
 
             var buyTriggerPrice = _sma.Current.Value * (1 - _buyThreshold);
 
