@@ -197,3 +197,21 @@ Decision: pending user confirmation.
   - None. Logic enforces minimum order size when cash allows; otherwise skips buy.
 - Risks/Open Questions:
   - None.
+
+## 2026-02-27
+- Step: Provide guidance on choosing a fixed `buy-fraction` for backtests (discussion only).
+- Summary: Explain tradeoffs and suggest a testing approach; no code changes.
+- Files: None (discussion only).
+- Risks/Open Questions: Optimal value is strategy- and instrument-dependent; should be validated via backtests.
+
+## 2026-02-27
+- Step: Recommend which 3 parameters to fix vs optimize (discussion only).
+- Summary: Provide suggested fixed parameters and values given cloud optimization limits.
+- Files: None (discussion only).
+- Risks/Open Questions: Optimal choices are strategy- and ticker-dependent; confirm objective if needed.
+
+## 2026-02-27
+- Step: Provide suggested optimization ranges and steps for 3 parameters (discussion only).
+- Summary: Recommend practical ranges for AMZN backtest.
+- Files: None (discussion only).
+- Risks/Open Questions: Optimal ranges depend on backtest period and resolution.
