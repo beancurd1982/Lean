@@ -68,7 +68,8 @@ namespace QuantConnect.Algorithm.CSharp
             { "AVGO", new SymbolSettings { SmaLength = 250, StopLoss = 0.06m, BuyThreshold = 0.12m, TakeProfitUp = 0.15m, TrailingDrop = 0.08m, MaxWeight = 0.12m } },
 
             // 27/02/2026 更新：增加 AMZN，参数较为激进，适合高风险偏好投资者
-            { "AMZN", new SymbolSettings { SmaLength = 180, StopLoss = 0.05m, BuyThreshold = 0.06m, TakeProfitUp = 0.10m, TrailingDrop = 0.06m, MaxWeight = 0.10m } }
+            { "AMZN", new SymbolSettings { SmaLength = 180, StopLoss = 0.05m, BuyThreshold = 0.06m, TakeProfitUp = 0.10m, TrailingDrop = 0.06m, MaxWeight = 0.10m } },
+            { "COST", new SymbolSettings { SmaLength = 180, StopLoss = 0.04m, BuyThreshold = 0.06m, TakeProfitUp = 0.18m, TrailingDrop = 0.06m, MaxWeight = 0.10m } }
         };
 
         private Dictionary<Symbol, SymbolData> _symbolDataMap = new Dictionary<Symbol, SymbolData>();

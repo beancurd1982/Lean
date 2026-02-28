@@ -262,3 +262,38 @@ Decision: pending user confirmation.
 - Risks/Open Questions:
   - Should sell fill fallback remove quantity from oldest/lowest-entry pending lots when `OrderId` mapping fails?
   - Is per-fill lot granularity desired, or should fills be aggregated per order id?
+
+## 2026-02-27
+- Step: Provide suggested fixed stop-loss/trailing and optimization ranges for COST (discussion only).
+- Summary: Recommend baseline values and parameter grid for backtest.
+- Files: None (discussion only).
+- Risks/Open Questions: Optimal values depend on backtest window/objective; confirm if needed.
+
+## 2026-02-27
+- Step: Analyze COST optimization results and recommend best parameter combo (discussion only).
+- Summary: Compare top Sharpe entries with drawdown/PSR/orders; ask objective clarifications.
+- Files: None (discussion only).
+- Risks/Open Questions: Need user preference on metric priority.
+
+## 2026-02-28
+- Step: Analyze stop-loss/trailing-drop optimization results and recommend best combo (discussion only).
+- Summary: Compare top Sharpe/PSR/drawdown rows and suggest balanced choice.
+- Files: None (discussion only).
+- Risks/Open Questions: Final pick depends on metric priority (Sharpe vs drawdown vs CAGR).
+
+## 2026-02-28
+- Step: Add COST combo to config in `Algorithm.CSharp/MyAlgorithms/MultiStockV32_Final_Stable.cs` after AMZN.
+- Summary: Insert symbol settings for COST per provided parameters.
+- Files: `Algorithm.CSharp/MyAlgorithms/MultiStockV32_Final_Stable.cs`.
+- Risks/Open Questions: None.
+
+## 2026-02-28
+- Step: Perform strict code review for COST config addition.
+- Summary: Verify dictionary syntax and parameter values for COST.
+- Files: `Algorithm.CSharp/MyAlgorithms/MultiStockV32_Final_Stable.cs`.
+- Risks/Open Questions: None.
+
+## 2026-02-28 - Review
+- Scope: `Algorithm.CSharp/MyAlgorithms/MultiStockV32_Final_Stable.cs` (add COST config after AMZN).
+- Findings: No issues found. Dictionary syntax and parameter values match request.
+- Risks/Open Questions: None.
