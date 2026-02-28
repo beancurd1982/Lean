@@ -215,3 +215,50 @@ Decision: pending user confirmation.
 - Summary: Recommend practical ranges for AMZN backtest.
 - Files: None (discussion only).
 - Risks/Open Questions: Optimal ranges depend on backtest period and resolution.
+
+## 2026-02-27
+- Step: Investigate compile error at line 262 in `Algorithm.CSharp/MyAlgorithms/MultiStockV32_Final_Stable.cs` via git history.
+- Summary: Review file around line 262 and trace commit introducing change.
+- Files: `Algorithm.CSharp/MyAlgorithms/MultiStockV32_Final_Stable.cs`.
+- Risks/Open Questions: Need git history access; compile error detail unknown.
+
+## 2026-02-27
+- Step: Inspect commit diff and file content around line 262 to pinpoint compile error cause.
+- Summary: Review history and check for syntax or hidden-character issues.
+- Files: `Algorithm.CSharp/MyAlgorithms/MultiStockV32_Final_Stable.cs`.
+- Risks/Open Questions: Compile error details not provided; may require compiler output.
+
+## 2026-02-27
+- Step: Remove unsupported `OrderStatus.Rejected` check to fix compile error in `Algorithm.CSharp/MyAlgorithms/MultiStockV32_Final_Stable.cs`.
+- Summary: Align status checks with available enum values.
+- Files: `Algorithm.CSharp/MyAlgorithms/MultiStockV32_Final_Stable.cs`.
+- Risks/Open Questions: Behavior change only for rejected orders; will no longer clear pending sell on rejected status.
+
+## 2026-02-27
+- Step: Perform strict code review for removal of `OrderStatus.Rejected`.
+- Summary: Review for safety, correctness, and live-trading risks after compile fix.
+- Files: `Algorithm.CSharp/MyAlgorithms/MultiStockV32_Final_Stable.cs`.
+- Risks/Open Questions: Rejected orders no longer clear pending sell; if needed, add custom handling via broker-specific status mapping.
+
+## 2026-02-27 - Review
+- Scope: `Algorithm.CSharp/MyAlgorithms/MultiStockV32_Final_Stable.cs` (remove `OrderStatus.Rejected`).
+- Findings:
+  - No compile issues remain from enum usage.
+  - Behavioral change: rejected orders will not clear pending sell status; consider handling via Invalid/Canceled if broker maps rejects to those.
+- Risks/Open Questions:
+  - If your brokerage emits a distinct "Rejected" state in other environments, pending sell flags may remain set.
+
+## 2026-02-27
+- Step: Review `OnOrderEvent()` logic in `Algorithm.CSharp/MyAlgorithms/MultiStockV32_Final_Stable.cs` for correctness.
+- Summary: Inspect for bugs, edge cases, and lot accounting risks.
+- Files: `Algorithm.CSharp/MyAlgorithms/MultiStockV32_Final_Stable.cs`.
+- Risks/Open Questions: None yet; pending review.
+
+## 2026-02-27 - Review
+- Scope: `Algorithm.CSharp/MyAlgorithms/MultiStockV32_Final_Stable.cs` (`OnOrderEvent()` logic only).
+- Findings:
+  - Potential lot-tracking desync if a sell fill arrives without matching `PendingSellOrderId` and there are multiple pending lots; current logic logs an error but does not reduce any lot quantity.
+  - Buy partial fills create multiple lots for a single order (one per fill). This may be intended, but it changes lot granularity and can affect sell logic behavior.
+- Risks/Open Questions:
+  - Should sell fill fallback remove quantity from oldest/lowest-entry pending lots when `OrderId` mapping fails?
+  - Is per-fill lot granularity desired, or should fills be aggregated per order id?

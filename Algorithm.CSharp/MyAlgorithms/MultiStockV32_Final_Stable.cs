@@ -259,7 +259,7 @@ namespace QuantConnect.Algorithm.CSharp
                 }
             }
 
-            if (isSell && (orderEvent.Status == OrderStatus.Filled || orderEvent.Status == OrderStatus.Canceled || orderEvent.Status == OrderStatus.Invalid || orderEvent.Status == OrderStatus.Rejected))
+            if (isSell && (orderEvent.Status == OrderStatus.Filled || orderEvent.Status == OrderStatus.Canceled || orderEvent.Status == OrderStatus.Invalid))
             {
                 var lot = sd.Lots.FirstOrDefault(l => l.PendingSellOrderId == orderEvent.OrderId);
 
