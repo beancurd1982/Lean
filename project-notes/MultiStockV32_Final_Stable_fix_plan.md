@@ -297,3 +297,32 @@ Decision: pending user confirmation.
 - Scope: `Algorithm.CSharp/MyAlgorithms/MultiStockV32_Final_Stable.cs` (add COST config after AMZN).
 - Findings: No issues found. Dictionary syntax and parameter values match request.
 - Risks/Open Questions: None.
+
+## 2026-03-01
+- Step: Provide suggested fixed stop-loss/trailing and optimization ranges for UNH (discussion only).
+- Summary: Recommend baseline values and parameter grid for backtest.
+- Files: None (discussion only).
+- Risks/Open Questions: Optimal values depend on backtest window/objective.
+
+## 2026-03-01
+- Step: Provide stop-loss/trailing-drop optimization ranges for UNH after fixing SMA/buy/take-profit.
+- Summary: Suggest grid ranges and steps for exit parameters.
+- Files: None (discussion only).
+- Risks/Open Questions: Optimal ranges depend on objective and combo limit.
+
+## 2026-03-01
+- Step: Add UNH config after AMZN and COST in `Algorithm.CSharp/MyAlgorithms/MultiStockV32_Final_Stable.cs`.
+- Summary: Insert UNH SymbolSettings with provided parameters.
+- Files: `Algorithm.CSharp/MyAlgorithms/MultiStockV32_Final_Stable.cs`.
+- Risks/Open Questions: None.
+
+## 2026-03-01
+- Step: Perform strict code review for UNH config addition.
+- Summary: Verify dictionary syntax and parameter values for UNH.
+- Files: `Algorithm.CSharp/MyAlgorithms/MultiStockV32_Final_Stable.cs`.
+- Risks/Open Questions: None.
+
+## 2026-03-01 - Review
+- Scope: `Algorithm.CSharp/MyAlgorithms/MultiStockV32_Final_Stable.cs` (add UNH config after COST).
+- Findings: No issues found. Dictionary syntax and parameter values match request.
+- Risks/Open Questions: None.
