@@ -379,3 +379,32 @@ Decision: pending user confirmation.
 - Scope: `Algorithm.CSharp/MyAlgorithms/MultiStockV32_Final_Stable.cs` (add WMT config after UNH).
 - Findings: No issues found. Dictionary syntax is valid and parameter values match request exactly.
 - Risks/Open Questions: None.
+
+## 2026-03-06
+- Step: Gather requirements for optimizing per-symbol `MaxWeight` across 12-stock portfolio.
+- Summary: Need objective and constraints before proposing "best" weights.
+- Files: None (discussion only).
+- Risks/Open Questions: "Best" depends on target metric, drawdown tolerance, and whether weights must sum to <= 1.0.
+
+## 2026-03-06
+- Step: Review current 12-stock symbol list and existing max weights to prepare revised allocation proposal.
+- Summary: Derive a risk-balanced max-weight set targeting ~120% total exposure and moderate-aggressive profile.
+- Files: `Algorithm.CSharp/MyAlgorithms/MultiStockV32_Final_Stable.cs`.
+- Risks/Open Questions: Final "best" should be validated by portfolio-level backtest.
+
+## 2026-03-06
+- Step: Propose 12-stock max-weight allocation for risk style 6.5-7/10 with total cap 120%.
+- Summary: Suggested max weights (sum 1.20): MSFT 0.12, CVX 0.10, DUK 0.10, JNJ 0.11, PG 0.10, JPM 0.10, NVDA 0.08, AVGO 0.09, AMZN 0.10, COST 0.10, UNH 0.10, WMT 0.10.
+- Files: None (discussion only).
+- Risks/Open Questions: This is a risk-balanced proposal; true optimal set should be verified with portfolio-level backtests.
+
+## 2026-03-06
+- Step: Apply revised 12-stock `MaxWeight` values in `Algorithm.CSharp/MyAlgorithms/MultiStockV32_Final_Stable.cs`.
+- Summary: Update per-symbol max allocation to the agreed total 1.20 profile.
+- Files: `Algorithm.CSharp/MyAlgorithms/MultiStockV32_Final_Stable.cs`.
+- Risks/Open Questions: Portfolio exposure can reach 120% by design.
+
+## 2026-03-06 - Review
+- Scope: `Algorithm.CSharp/MyAlgorithms/MultiStockV32_Final_Stable.cs` (apply revised 12-stock max weights).
+- Findings: No issues found. All requested max-weight values were applied correctly; total configured max weight equals 1.20.
+- Risks/Open Questions: Portfolio can leverage to 120% if many symbols are simultaneously eligible.
