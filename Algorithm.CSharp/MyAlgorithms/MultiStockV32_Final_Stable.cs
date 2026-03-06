@@ -48,9 +48,13 @@ namespace QuantConnect.Algorithm.CSharp
             public int PendingSellOrderId { get; set; }
         }
 
+        // Minimum remaining headroom to MaxWeight required to allow another buy.
+        // Example: with MaxWeight=0.10 and threshold=0.01, buys stop once weight is ~0.09+.
         [Parameter("rebalance-threshold")]
-        private decimal _rebalanceThreshold = 0.02m;
+        private decimal _rebalanceThreshold = 0.01m;
 
+        // Target order chunk as a fraction of total portfolio value per buy attempt.
+        // Actual spend is capped by available cash and remaining room to MaxWeight.
         [Parameter("buy-step")]
         private decimal _buyStep = 0.05m;
 
@@ -69,7 +73,7 @@ namespace QuantConnect.Algorithm.CSharp
             { "AMZN", new SymbolSettings { SmaLength = 180, StopLoss = 0.05m, BuyThreshold = 0.06m, TakeProfitUp = 0.10m, TrailingDrop = 0.06m, MaxWeight = 0.10m } },
             { "COST", new SymbolSettings { SmaLength = 180, StopLoss = 0.04m, BuyThreshold = 0.06m, TakeProfitUp = 0.18m, TrailingDrop = 0.06m, MaxWeight = 0.10m } },
             { "UNH",  new SymbolSettings { SmaLength = 180, StopLoss = 0.03m, BuyThreshold = 0.03m, TakeProfitUp = 0.14m, TrailingDrop = 0.04m, MaxWeight = 0.10m } },
-            { "WMT",  new SymbolSettings { SmaLength = 220, StopLoss = 0.08m, BuyThreshold = 0.04m, TakeProfitUp = 0.14m, TrailingDrop = 0.02m, MaxWeight = 0.10m } }
+            { "WMT",  new SymbolSettings { SmaLength = 220, StopLoss = 0.08m, BuyThreshold = 0.04m, TakeProfitUp = 0.14m, TrailingDrop = 0.02m, MaxWeight = 0.10m } },
         };
 
         private Dictionary<Symbol, SymbolData> _symbolDataMap = new Dictionary<Symbol, SymbolData>();
@@ -81,7 +85,8 @@ namespace QuantConnect.Algorithm.CSharp
 
             if (!LiveMode)
             {
-                SetStartDate(2024, 1, 1);
+                SetStartDate(2015, 1, 1);
+                SetEndDate(2025, 1, 1);
                 SetCash(250000);
             }
 

@@ -408,3 +408,52 @@ Decision: pending user confirmation.
 - Scope: `Algorithm.CSharp/MyAlgorithms/MultiStockV32_Final_Stable.cs` (apply revised 12-stock max weights).
 - Findings: No issues found. All requested max-weight values were applied correctly; total configured max weight equals 1.20.
 - Risks/Open Questions: Portfolio can leverage to 120% if many symbols are simultaneously eligible.
+
+## 2026-03-06
+- Step: Review `MultiStockV32_Final_Stable` for backtest readiness.
+- Summary: Perform strict code review for compile/runtime risks and attempt local validation where possible.
+- Files: `Algorithm.CSharp/MyAlgorithms/MultiStockV32_Final_Stable.cs`.
+- Risks/Open Questions: Build/backtest execution may be limited by sandbox permissions.
+
+## 2026-03-06 - Review
+- Scope: `Algorithm.CSharp/MyAlgorithms/MultiStockV32_Final_Stable.cs` backtest readiness review.
+- Validation:
+  - `dotnet build Algorithm.CSharp/QuantConnect.Algorithm.CSharp.csproj -c Release` completed successfully (no compile errors).
+- Findings:
+  - No compile blockers for running backtests.
+  - Residual runtime risk: sell-fill fallback can leave lot state desynced when a sell fill arrives without matching `PendingSellOrderId` and there are multiple pending lots (logs warning but does not decrement another lot).
+- Risks/Open Questions:
+  - Full local backtest execution was not run in this step; readiness conclusion is based on successful compile + static logic review.
+
+## 2026-03-06
+- Step: Clarify backtest date-range configuration for 2015-2025 (discussion only).
+- Summary: Confirm Initialize date settings needed for backtest window.
+- Files: None (discussion only).
+- Risks/Open Questions: None.
+
+## 2026-03-06
+- Step: Analyze _rebalanceThreshold and _buyStep impact on backtest behavior.
+- Summary: Traced usage in HandleBuyLogic; both parameters directly affect order triggering and order sizing in backtests.
+- Files: Algorithm.CSharp/MyAlgorithms/MultiStockV32_Final_Stable.cs.
+- Risks/Open Questions: Parameter tuning changes turnover and capital deployment.
+
+
+## 2026-03-06
+- Step: Assess default values of _rebalanceThreshold and _buyStep when cloud parameters are unset.
+- Summary: Evaluated defaults against current 12-stock max-weight profile and buy logic behavior.
+- Files: Algorithm.CSharp/MyAlgorithms/MultiStockV32_Final_Stable.cs.
+- Risks/Open Questions: Rebalance threshold may be relatively high versus 0.10 max-weight names and can underfill targets.
+
+
+## 2026-03-06
+- Step: Add quick-read comments for _rebalanceThreshold and _buyStep in MultiStockV32_Final_Stable.cs.
+- Summary: Document practical impact on buy gating and buy chunk sizing for faster future tuning.
+- Files: Algorithm.CSharp/MyAlgorithms/MultiStockV32_Final_Stable.cs.
+- Risks/Open Questions: None.
+
+
+## 2026-03-06 - Review
+- Scope: Algorithm.CSharp/MyAlgorithms/MultiStockV32_Final_Stable.cs (comments for _rebalanceThreshold and _buyStep).
+- Findings: No issues found. Documentation-only update; behavior unchanged.
+- Risks/Open Questions: None.
+
