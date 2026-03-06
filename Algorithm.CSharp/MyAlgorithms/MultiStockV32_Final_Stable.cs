@@ -66,11 +66,10 @@ namespace QuantConnect.Algorithm.CSharp
             { "JPM",  new SymbolSettings { SmaLength = 240, StopLoss = 0.05m, BuyThreshold = 0.02m, TakeProfitUp = 0.06m, TrailingDrop = 0.025m, MaxWeight = 0.13m } },
             { "NVDA", new SymbolSettings { SmaLength = 120, StopLoss = 0.10m, BuyThreshold = 0.08m, TakeProfitUp = 0.25m, TrailingDrop = 0.09m, MaxWeight = 0.11m } },
             { "AVGO", new SymbolSettings { SmaLength = 250, StopLoss = 0.06m, BuyThreshold = 0.12m, TakeProfitUp = 0.15m, TrailingDrop = 0.08m, MaxWeight = 0.12m } },
-
-            // 27/02/2026 更新：增加 AMZN，参数较为激进，适合高风险偏好投资者
             { "AMZN", new SymbolSettings { SmaLength = 180, StopLoss = 0.05m, BuyThreshold = 0.06m, TakeProfitUp = 0.10m, TrailingDrop = 0.06m, MaxWeight = 0.10m } },
             { "COST", new SymbolSettings { SmaLength = 180, StopLoss = 0.04m, BuyThreshold = 0.06m, TakeProfitUp = 0.18m, TrailingDrop = 0.06m, MaxWeight = 0.10m } },
-            { "UNH",  new SymbolSettings { SmaLength = 180, StopLoss = 0.03m, BuyThreshold = 0.03m, TakeProfitUp = 0.14m, TrailingDrop = 0.04m, MaxWeight = 0.10m } }
+            { "UNH",  new SymbolSettings { SmaLength = 180, StopLoss = 0.03m, BuyThreshold = 0.03m, TakeProfitUp = 0.14m, TrailingDrop = 0.04m, MaxWeight = 0.10m } },
+            { "WMT",  new SymbolSettings { SmaLength = 220, StopLoss = 0.08m, BuyThreshold = 0.04m, TakeProfitUp = 0.14m, TrailingDrop = 0.02m, MaxWeight = 0.10m } }
         };
 
         private Dictionary<Symbol, SymbolData> _symbolDataMap = new Dictionary<Symbol, SymbolData>();

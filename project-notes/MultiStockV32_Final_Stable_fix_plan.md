@@ -326,3 +326,56 @@ Decision: pending user confirmation.
 - Scope: `Algorithm.CSharp/MyAlgorithms/MultiStockV32_Final_Stable.cs` (add UNH config after COST).
 - Findings: No issues found. Dictionary syntax and parameter values match request.
 - Risks/Open Questions: None.
+
+## 2026-03-06
+- Step: Suggest next stock after AMZN/COST/UNH (discussion only).
+- Summary: Recommend next candidate and rationale.
+- Files: None (discussion only).
+- Risks/Open Questions: Confirm preferred sector/stock before running next optimization.
+
+## 2026-03-06
+- Step: Provide suggested fixed stop-loss/trailing and optimization ranges for WMT (discussion only).
+- Summary: Recommend baseline values and parameter grid for backtest.
+- Files: None (discussion only).
+- Risks/Open Questions: Optimal values depend on backtest window/objective.
+
+## 2026-03-06
+- Step: Analyze WMT optimization pages 1-3 for parameter sensitivity and selection (discussion only).
+- Summary: Compare spread in Sharpe/CAGR/drawdown and identify robust parameter region.
+- Files: None (discussion only).
+- Risks/Open Questions: Need decision between absolute top Sharpe and robust center-of-plateau pick.
+
+## 2026-03-06
+- Step: Suggest stop-loss/trailing-drop optimization grid after fixing WMT entry parameters.
+- Summary: Provide recommended ranges/steps for `stop-loss-pct` and `trailing-drop` with fixed `sma=240`, `buy-threshold=0.04`, `take-profit-up=0.14`.
+- Files: None (discussion only).
+- Risks/Open Questions: Final grid size should match cloud combo budget.
+
+## 2026-03-06
+- Step: Analyze WMT stop-loss/trailing-drop optimization results (pages 1-2 of 3).
+- Summary: Evaluate tradeoffs among Sharpe, drawdown, PSR, CAGR, and trade count to select best pair.
+- Files: None (discussion only).
+- Risks/Open Questions: Remaining page may slightly shift ranking; recommendation based on provided pages.
+
+## 2026-03-06
+- Step: Recommend whether to fix `stop-loss-pct=0.08` and `trailing-drop=0.02` and rerun entry-parameter optimization.
+- Summary: Confirm iterative optimization approach and provide new ranges/steps for `sma-length`, `buy-threshold`, `take-profit-up`.
+- Files: None (discussion only).
+- Risks/Open Questions: Overfitting risk if second pass grid is too narrow; prefer balanced narrowing.
+
+## 2026-03-06
+- Step: Analyze second-round WMT optimization (fixed stop-loss 0.08 / trailing-drop 0.02) from pages 1-3.
+- Summary: Confirm stability/plateau behavior and identify robust lock candidate for SMA/buy-threshold/take-profit-up.
+- Files: None (discussion only).
+- Risks/Open Questions: Remaining pages may slightly reorder close candidates; region-level conclusion is stable.
+
+## 2026-03-06
+- Step: Add WMT parameters after UNH in `Algorithm.CSharp/MyAlgorithms/MultiStockV32_Final_Stable.cs`.
+- Summary: Insert WMT SymbolSettings with provided optimized values and MaxWeight 0.10m.
+- Files: `Algorithm.CSharp/MyAlgorithms/MultiStockV32_Final_Stable.cs`.
+- Risks/Open Questions: None.
+
+## 2026-03-06 - Review
+- Scope: `Algorithm.CSharp/MyAlgorithms/MultiStockV32_Final_Stable.cs` (add WMT config after UNH).
+- Findings: No issues found. Dictionary syntax is valid and parameter values match request exactly.
+- Risks/Open Questions: None.
