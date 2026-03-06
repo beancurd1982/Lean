@@ -132,11 +132,16 @@ namespace QuantConnect.Algorithm.CSharp
                 }
             }
 
-            // 定时器 A：每天 15:50 执行核心逻辑（提前10分钟，避开收盘拒单）
-            Schedule.On(DateRules.EveryDay(), TimeRules.At(15, 50), ScanMarketLogic);
+            var scheduleTicker = _config.Keys.First();
+            // Use a reference symbol's trading calendar so schedules don't fire on weekends/holidays.
+            Schedule.On(DateRules.EveryDay(scheduleTicker), TimeRules.At(15, 50), ScanMarketLogic);
+            Schedule.On(DateRules.EveryDay(scheduleTicker), TimeRules.Every(TimeSpan.FromHours(6)), PrintAccountReport);
 
-            // 定时器 B：每 6 小时打印一次账户报告
-            Schedule.On(DateRules.EveryDay(), TimeRules.Every(TimeSpan.FromHours(6)), PrintAccountReport);
+            // 定时器 A：仅在交易日 15:50 执行核心逻辑（提前10分钟，避开收盘拒单）
+            Schedule.On(DateRules.EveryDay(scheduleTicker), TimeRules.At(15, 50), ScanMarketLogic);
+
+            // 定时器 B：仅在交易日打印账户报告，避免周末/假日触发虚假交易检查
+            Schedule.On(DateRules.EveryDay(scheduleTicker), TimeRules.Every(TimeSpan.FromHours(6)), PrintAccountReport);
 
             Debug(">>> [5/5] 初始化完毕！算法已进入 15:50 预交易监听模式。");
         }
@@ -147,6 +152,7 @@ namespace QuantConnect.Algorithm.CSharp
             foreach (var sd in _symbolDataMap.Values)
             {
                 if (!sd.Sma.IsReady) continue;
+                if (!Securities[sd.Symbol].Exchange.ExchangeOpen) continue;
                 decimal price = Securities[sd.Symbol].Price;
                 if (price <= 0) continue;
 
@@ -204,14 +210,17 @@ namespace QuantConnect.Algorithm.CSharp
 
                 if (stopLoss || trailingStop)
                 {
-                    var ticket = MarketOrder(sd.Symbol, -lot.Quantity);
+                    // Mark pending before submission; async submit avoids immediate fill race in backtests.
+                    lot.PendingSell = true;
+                    var ticket = MarketOrder(sd.Symbol, -lot.Quantity, true);
                     if (ticket.OrderId <= 0 || ticket.Status == OrderStatus.Invalid)
                     {
+                        lot.PendingSell = false;
+                        lot.PendingSellOrderId = 0;
                         Error($"[TRADE] {Time} Sell order failed: {sd.Symbol} ({(stopLoss ? "StopLoss" : "TrailingStop")}) @ {price}");
                         continue;
                     }
 
-                    lot.PendingSell = true;
                     lot.PendingSellOrderId = ticket.OrderId;
                     Debug($"[TRADE] {Time} 发起卖出: {sd.Symbol} ({(stopLoss ? "止损" : "移动止盈")}) @ {price}");
                 }
@@ -243,9 +252,22 @@ namespace QuantConnect.Algorithm.CSharp
                         lot = pendingLots[0];
                         Debug($"[WARN] {Time} Sell fill without matching order id. Using only pending lot. Symbol={orderEvent.Symbol} OrderId={orderEvent.OrderId}");
                     }
+                    else if (pendingLots.Count > 1)
+                    {
+                        lot = pendingLots.OrderBy(l => l.EntryPrice).First();
+                        Debug($"[WARN] {Time} Sell fill without matching order id. PendingLots={pendingLots.Count}; using first pending lot. Symbol={orderEvent.Symbol} OrderId={orderEvent.OrderId}");
+                    }
                     else
                     {
-                        Error($"[WARN] {Time} Sell fill without matching lot. Symbol={orderEvent.Symbol} OrderId={orderEvent.OrderId} PendingLots={pendingLots.Count}");
+                        lot = sd.Lots.OrderBy(l => l.EntryPrice).FirstOrDefault();
+                        if (lot != null)
+                        {
+                            Debug($"[WARN] {Time} Sell fill without pending lot. Using first tracked lot. Symbol={orderEvent.Symbol} OrderId={orderEvent.OrderId}");
+                        }
+                        else
+                        {
+                            Debug($"[WARN] {Time} Sell fill without tracked lot. Symbol={orderEvent.Symbol} OrderId={orderEvent.OrderId}");
+                        }
                     }
                 }
 
@@ -257,7 +279,7 @@ namespace QuantConnect.Algorithm.CSharp
 
                     if (qtyToRem > 0)
                     {
-                        Error($"[WARN] {Time} Sell fill exceeds tracked lot quantity. Symbol={orderEvent.Symbol} OrderId={orderEvent.OrderId} Remaining={qtyToRem}");
+                        Debug($"[WARN] {Time} Sell fill exceeds tracked lot quantity. Symbol={orderEvent.Symbol} OrderId={orderEvent.OrderId} Remaining={qtyToRem}");
                     }
 
                     sd.Lots.RemoveAll(l => l.Quantity <= 0);
@@ -272,10 +294,10 @@ namespace QuantConnect.Algorithm.CSharp
                 if (lot == null)
                 {
                     var pendingLots = sd.Lots.Where(l => l.PendingSell).ToList();
-                    if (pendingLots.Count == 1)
+                    if (pendingLots.Count > 0)
                     {
-                        lot = pendingLots[0];
-                        Debug($"[WARN] {Time} Sell order resolved without matching order id. Clearing only pending lot. Symbol={orderEvent.Symbol} OrderId={orderEvent.OrderId}");
+                        lot = pendingLots.OrderBy(l => l.EntryPrice).First();
+                        Debug($"[WARN] {Time} Sell order resolved without matching order id. PendingLots={pendingLots.Count}; clearing first pending lot. Symbol={orderEvent.Symbol} OrderId={orderEvent.OrderId}");
                     }
                 }
 
@@ -287,7 +309,7 @@ namespace QuantConnect.Algorithm.CSharp
                 }
                 else
                 {
-                    Error($"[WARN] {Time} Sell order resolved without matching lot. Symbol={orderEvent.Symbol} OrderId={orderEvent.OrderId}");
+                    Debug($"[WARN] {Time} Sell order resolved without matching lot. Symbol={orderEvent.Symbol} OrderId={orderEvent.OrderId}");
                 }
             }
 

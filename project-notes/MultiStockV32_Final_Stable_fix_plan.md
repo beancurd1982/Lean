@@ -457,3 +457,24 @@ Decision: pending user confirmation.
 - Findings: No issues found. Documentation-only update; behavior unchanged.
 - Risks/Open Questions: None.
 
+
+## 2026-03-06
+- Step: Fix backtest runtime handled errors in MultiStockV32_Final_Stable (weekend order scheduling + sell-fill lot mapping robustness).
+- Summary: Restrict scheduled trading/reporting to trading days for a reference symbol, submit sell orders asynchronously, and harden lot fallback handling in OnOrderEvent to avoid false handled errors and desync.
+- Files: Algorithm.CSharp/MyAlgorithms/MultiStockV32_Final_Stable.cs.
+- Risks/Open Questions: Behavior changes in order-event fallback path; validate with backtest rerun.
+
+
+## 2026-03-06 - Review
+- Scope: Algorithm.CSharp/MyAlgorithms/MultiStockV32_Final_Stable.cs runtime-error mitigation changes.
+- Validation: dotnet build Algorithm.CSharp/QuantConnect.Algorithm.CSharp.csproj -c Release succeeded with warnings only.
+- Findings: No compile issues in updated algorithm. Schedule now uses trading-day calendar and sell-event fallback is more robust to order-id mismatches.
+- Risks/Open Questions: Need cloud backtest rerun to confirm handled-error frequency is resolved.
+
+
+## 2026-03-06
+- Step: Review 2015-2025 backtest performance snapshot for MultiStockV32_Final_Stable.
+- Summary: Metrics indicate solid risk-adjusted return; flagged duplicate schedule registrations in current code for cleanup.
+- Files: Algorithm.CSharp/MyAlgorithms/MultiStockV32_Final_Stable.cs.
+- Risks/Open Questions: Duplicate Schedule.On calls can double-trigger scans/reports and distort order counts/results.
+
