@@ -137,12 +137,6 @@ namespace QuantConnect.Algorithm.CSharp
             Schedule.On(DateRules.EveryDay(scheduleTicker), TimeRules.At(15, 50), ScanMarketLogic);
             Schedule.On(DateRules.EveryDay(scheduleTicker), TimeRules.Every(TimeSpan.FromHours(6)), PrintAccountReport);
 
-            // 定时器 A：仅在交易日 15:50 执行核心逻辑（提前10分钟，避开收盘拒单）
-            Schedule.On(DateRules.EveryDay(scheduleTicker), TimeRules.At(15, 50), ScanMarketLogic);
-
-            // 定时器 B：仅在交易日打印账户报告，避免周末/假日触发虚假交易检查
-            Schedule.On(DateRules.EveryDay(scheduleTicker), TimeRules.Every(TimeSpan.FromHours(6)), PrintAccountReport);
-
             Debug(">>> [5/5] 初始化完毕！算法已进入 15:50 预交易监听模式。");
         }
 

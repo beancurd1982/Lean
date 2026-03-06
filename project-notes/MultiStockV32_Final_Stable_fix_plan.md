@@ -478,3 +478,24 @@ Decision: pending user confirmation.
 - Files: Algorithm.CSharp/MyAlgorithms/MultiStockV32_Final_Stable.cs.
 - Risks/Open Questions: Duplicate Schedule.On calls can double-trigger scans/reports and distort order counts/results.
 
+
+## 2026-03-06
+- Step: Remove duplicate schedule registrations in Initialize().
+- Summary: Keep only one pair of Schedule.On(...) calls to prevent double-triggered scans/reports.
+- Files: Algorithm.CSharp/MyAlgorithms/MultiStockV32_Final_Stable.cs.
+- Risks/Open Questions: None.
+
+
+## 2026-03-06 - Review
+- Scope: Algorithm.CSharp/MyAlgorithms/MultiStockV32_Final_Stable.cs (remove duplicate schedule registrations).
+- Findings: No issues found. Duplicate Schedule.On calls removed; each schedule now registered once.
+- Validation: dotnet build Algorithm.CSharp/QuantConnect.Algorithm.CSharp.csproj -c Release succeeded with warnings only.
+- Risks/Open Questions: None.
+
+
+## 2026-03-06
+- Step: Compare pre-fix vs post-fix backtest metrics after scheduling and order-event handling changes.
+- Summary: Performance differences are expected due to removed duplicate schedule triggers, trading-day schedule restriction, market-open guard, and async sell submission.
+- Files: Algorithm.CSharp/MyAlgorithms/MultiStockV32_Final_Stable.cs.
+- Risks/Open Questions: Use controlled A/B reruns to isolate each change's impact if exact attribution is needed.
+
