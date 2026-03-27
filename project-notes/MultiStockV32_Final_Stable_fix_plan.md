@@ -218,6 +218,67 @@ Decision: pending user confirmation.
 
 ## 2026-02-27
 - Step: Investigate compile error at line 262 in `Algorithm.CSharp/MyAlgorithms/MultiStockV32_Final_Stable.cs` via git history.
+## 2026-03-27
+- Step: Start cleanup task for `Algorithm.CSharp/MyAlgorithms/MultiStockV32_Final_Stable.cs` and prepare new version `MultiStockV33_Stable_Base`.
+- Summary: Reviewed current algorithm structure and existing workflow log before making changes.
+- Files: `Algorithm.CSharp/MyAlgorithms/MultiStockV32_Final_Stable.cs`, `project-notes/MultiStockV32_Final_Stable_fix_plan.md`.
+- Risks/Open Questions: "Clean up" is broad and this algorithm can affect live trading behavior. Pending user confirmation that scope should be behavior-preserving refactor only unless explicitly requested otherwise.
+## 2026-03-27
+- Step: Confirm cleanup scope for `MultiStockV33_Stable_Base`.
+- Summary: User confirmed scope is behavior-preserving refactor only; no trading logic changes requested.
+- Files: `Algorithm.CSharp/MyAlgorithms/MultiStockV32_Final_Stable.cs`, `project-notes/MultiStockV32_Final_Stable_fix_plan.md`.
+- Risks/Open Questions: Refactor must preserve order handling, state persistence, and live-trading behavior.
+## 2026-03-27
+- Step: Implement behavior-preserving cleanup as `Algorithm.CSharp/MyAlgorithms/MultiStockV33_Stable_Base.cs`.
+- Summary: Create a cleaned-up successor file with the same trading logic and persistence behavior, while improving naming, structure, comments, and log text readability.
+- Files: `Algorithm.CSharp/MyAlgorithms/MultiStockV33_Stable_Base.cs`, `project-notes/MultiStockV32_Final_Stable_fix_plan.md`.
+- Risks/Open Questions: Preserve the existing `ObjectStore` state key to avoid breaking live-state continuity during upgrade.
+## 2026-03-27
+- Step: Completed implementation of `Algorithm.CSharp/MyAlgorithms/MultiStockV33_Stable_Base.cs`.
+- Summary: Added a cleaned-up V33 class with extracted initialization helpers, clearer ASCII logs/comments, and preserved trading/order/state logic from V32.
+- Files: `Algorithm.CSharp/MyAlgorithms/MultiStockV33_Stable_Base.cs`, `project-notes/MultiStockV32_Final_Stable_fix_plan.md`.
+- Risks/Open Questions: The V33 class intentionally keeps the V32 `ObjectStore` key for live continuity; if you want isolated state later, that should be an explicit follow-up change.
+## 2026-03-27
+- Step: Build and strictly review `Algorithm.CSharp/MyAlgorithms/MultiStockV33_Stable_Base.cs`.
+- Summary: Verified the project builds successfully and reviewed the V33 refactor for safety, correctness, order-event handling, and live-state continuity.
+- Files: `Algorithm.CSharp/MyAlgorithms/MultiStockV33_Stable_Base.cs`, `project-notes/MultiStockV32_Final_Stable_fix_plan.md`.
+- Risks/Open Questions: Build emitted existing repository warnings unrelated to this change; no new functional issue identified in V33.
+
+## 2026-03-27 - Review
+- Scope: `Algorithm.CSharp/MyAlgorithms/MultiStockV33_Stable_Base.cs`.
+- Findings:
+  - None. No code issues found in the behavior-preserving refactor.
+- Risks/Open Questions:
+  - V33 intentionally reuses the V32 `ObjectStore` key to preserve live lot-state continuity. If separate persisted state is desired, that should be a deliberate behavior change in a follow-up task.
+## 2026-03-27
+- Step: Summarize current local changes for commit/push description.
+- Summary: Inspect local modified and untracked files so the change description reflects the current workspace accurately.
+- Files: `Algorithm.CSharp/MyAlgorithms/MultiStockV33_Stable_Base.cs`, `project-notes/MultiStockV32_Final_Stable_fix_plan.md`, `Documentation/`.
+- Risks/Open Questions: Two documentation files are untracked; summary should include them only after confirming their contents.
+## 2026-03-27
+- Step: Complete local-change description for pending commit/push.
+- Summary: Confirmed the workspace changes consist of the V33 behavior-preserving algorithm cleanup, workflow-note updates, and two new strategy design documents.
+- Files: `Algorithm.CSharp/MyAlgorithms/MultiStockV33_Stable_Base.cs`, `project-notes/MultiStockV32_Final_Stable_fix_plan.md`, `Documentation/QuantConnect_实盘策略设计文档_V1.md`, `Documentation/QuantConnect_策略设计推导过程记录.md`.
+- Risks/Open Questions: None.
+
+## 2026-03-27 - Review
+- Scope: Local-change description task and note updates.
+- Findings:
+  - None. Documentation-only logging; no code or live-trading behavior changed in this step.
+- Risks/Open Questions:
+  - None.
+## 2026-03-27
+- Step: Commit current local changes with approved description.
+- Summary: Prepare to stage the cleaned V33 algorithm, workflow-note updates, and the two new strategy design documents, then create a local git commit.
+- Files: `Algorithm.CSharp/MyAlgorithms/MultiStockV33_Stable_Base.cs`, `project-notes/MultiStockV32_Final_Stable_fix_plan.md`, `Documentation/QuantConnect_实盘策略设计文档_V1.md`, `Documentation/QuantConnect_策略设计推导过程记录.md`.
+- Risks/Open Questions: Commit should include only the currently requested local changes.
+
+## 2026-03-27 - Review
+- Scope: Commit-preparation note update and commit file scope.
+- Findings:
+  - None. The pending commit scope matches the requested local files only.
+- Risks/Open Questions:
+  - None.
 - Summary: Review file around line 262 and trace commit introducing change.
 - Files: `Algorithm.CSharp/MyAlgorithms/MultiStockV32_Final_Stable.cs`.
 - Risks/Open Questions: Need git history access; compile error detail unknown.
