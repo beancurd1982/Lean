@@ -279,6 +279,24 @@ Decision: pending user confirmation.
   - None. The pending commit scope matches the requested local files only.
 - Risks/Open Questions:
   - None.
+## 2026-03-27
+- Step: Review `Algorithm.CSharp/MyAlgorithms/MultiStockV33_Stable_Base.cs` for live-deployment risks.
+- Summary: Start a code-review-only pass focused on correctness, safety, persistence behavior, and live-trading edge cases. No code changes requested.
+- Files: `Algorithm.CSharp/MyAlgorithms/MultiStockV33_Stable_Base.cs`, `project-notes/MultiStockV32_Final_Stable_fix_plan.md`.
+- Risks/Open Questions: Review should prioritize live deployment risks and propose fixes without modifying the code.
+## 2026-03-27 - Review
+- Scope: `Algorithm.CSharp/MyAlgorithms/MultiStockV33_Stable_Base.cs`.
+- Findings:
+  - High: Startup trusts persisted lot state without reconciling it against current holdings and open orders, which can leave stale `PendingSell` flags or quantity mismatches after a live restart.
+  - High: Rejected sell orders are not treated as resolved, so a live broker rejection can leave a lot permanently stuck in `PendingSell`.
+  - Medium: Fallback handling for unmatched sell fills/order resolutions mutates the first pending lot when multiple pending lots exist, which can silently corrupt lot accounting in live trading.
+- Risks/Open Questions:
+  - The review assumes this algorithm may be restarted during live deployment and that lot state drives future sell decisions.
+## 2026-03-27
+- Step: Discuss next-step plan for turning `MultiStockV33_Stable_Base.cs` into the new paper-trading base.
+- Summary: User clarified that V33 is intended to replace V32 after paper-account reset and several months of paper testing. Next step is to define the hardening and validation plan before implementation.
+- Files: `Algorithm.CSharp/MyAlgorithms/MultiStockV33_Stable_Base.cs`, `project-notes/MultiStockV32_Final_Stable_fix_plan.md`.
+- Risks/Open Questions: Need confirmation on state-key reset strategy, desired scope of live-safety improvements, and whether new symbol additions should be included in the same change set.
 - Summary: Review file around line 262 and trace commit introducing change.
 - Files: `Algorithm.CSharp/MyAlgorithms/MultiStockV32_Final_Stable.cs`.
 - Risks/Open Questions: Need git history access; compile error detail unknown.
