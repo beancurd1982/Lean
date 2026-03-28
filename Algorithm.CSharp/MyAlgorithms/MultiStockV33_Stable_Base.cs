@@ -280,7 +280,7 @@ namespace QuantConnect.Algorithm.CSharp
                 return true;
             }
 
-            var openSellQuantity = openSellTickets.Sum(ticket => (int)Math.Abs(ticket.QuantityRemaining));
+            var openSellQuantity = openSellTickets.Sum(ticket => (int)Math.Abs(ticket.Quantity - ticket.QuantityFilled));
             if (openSellQuantity > currentQuantity)
             {
                 violation = $"Open sell quantity ({openSellQuantity}) exceeds broker holdings ({currentQuantity}).";
@@ -349,16 +349,16 @@ namespace QuantConnect.Algorithm.CSharp
 
             foreach (var ticket in openSellTickets)
             {
-                var pendingQuantity = (int)Math.Abs(ticket.QuantityRemaining);
+                var pendingQuantity = (int)Math.Abs(ticket.Quantity - ticket.QuantityFilled);
                 if (pendingQuantity <= 0)
                 {
-                    Error($"[REBUILD] {Time} Cannot rebuild symbol with non-positive open sell quantity. Symbol={symbolData.Symbol} OrderId={ticket.OrderId} QuantityRemaining={ticket.QuantityRemaining} Reason={reason}");
+                    Error($"[REBUILD] {Time} Cannot rebuild symbol with non-positive open sell quantity. Symbol={symbolData.Symbol} OrderId={ticket.OrderId} QuantityRemaining={ticket.Quantity - ticket.QuantityFilled} Reason={reason}");
                     return false;
                 }
 
                 if (pendingQuantity > remainingQuantity)
                 {
-                    Error($"[REBUILD] {Time} Cannot rebuild symbol because open sell orders exceed broker holdings. Symbol={symbolData.Symbol} OrderId={ticket.OrderId} QuantityRemaining={ticket.QuantityRemaining} Holdings={currentQuantity} Reason={reason}");
+                    Error($"[REBUILD] {Time} Cannot rebuild symbol because open sell orders exceed broker holdings. Symbol={symbolData.Symbol} OrderId={ticket.OrderId} QuantityRemaining={ticket.Quantity - ticket.QuantityFilled} Holdings={currentQuantity} Reason={reason}");
                     return false;
                 }
 
@@ -824,3 +824,4 @@ namespace QuantConnect.Algorithm.CSharp
         }
     }
 }
+
