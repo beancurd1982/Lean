@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using QuantConnect;
 using QuantConnect.Algorithm;
 using QuantConnect.Brokerages;
@@ -16,8 +17,8 @@ namespace QuantConnect.Algorithm.CSharp
     // V33 stable base: cleanup of V32 with behavior-preserving structure and clearer logs.
     public class MultiStockV33_Stable_Base : QCAlgorithm
     {
-        // Preserve the existing key so live deployments can continue loading V32 lot state.
-        private const string StateKey = "EightStar_State_V32_Key";
+        // V33 starts from a clean persistence namespace after paper-account reset.
+        private const string StateKey = "EightStar_State_V33_Key";
 
         public class SymbolSettings
         {
@@ -35,6 +36,8 @@ namespace QuantConnect.Algorithm.CSharp
             public SimpleMovingAverage Sma;
             public SymbolSettings Settings;
             public List<Lot> Lots = new List<Lot>();
+            public bool TradingBlocked;
+            public string BlockedReason;
         }
 
         public class Lot
@@ -73,6 +76,7 @@ namespace QuantConnect.Algorithm.CSharp
         };
 
         private readonly Dictionary<Symbol, SymbolData> _symbolDataMap = new Dictionary<Symbol, SymbolData>();
+        private string _lastSavedStateFingerprint;
 
         public override void Initialize()
         {
@@ -86,6 +90,7 @@ namespace QuantConnect.Algorithm.CSharp
                 SetCash(250000);
             }
 
+            ValidateConfiguration();
             InitializeSymbols();
 
             if (LiveMode)
@@ -93,8 +98,8 @@ namespace QuantConnect.Algorithm.CSharp
                 Debug(">>> [3/5] Restore persisted lot state from ObjectStore.");
                 LoadState();
 
-                Debug(">>> [4/5] Reconcile existing live holdings.");
-                RecoverLiveHoldings();
+                Debug(">>> [4/5] Reconcile tracked lots with live holdings and open orders.");
+                ReconcileLiveState();
             }
 
             InitializeSchedules();
@@ -128,26 +133,298 @@ namespace QuantConnect.Algorithm.CSharp
                 _symbolDataMap.Add(symbol, symbolData);
                 Debug($"    - {ticker} warmup complete. SMA: {symbolData.Sma.Current.Value:N2}");
             }
+
+            Debug($"[CONFIG] {Time} Symbols initialized. Count={_symbolDataMap.Count} TotalMaxWeight={_config.Values.Sum(x => x.MaxWeight):N2} BuyStep={_buyStep:N3} RebalanceThreshold={_rebalanceThreshold:N3}");
         }
 
-        private void RecoverLiveHoldings()
+        private void ReconcileLiveState()
         {
+            var rebuiltSymbols = 0;
+            var blockedSymbols = 0;
+            var activeBlockedSymbols = new List<string>();
+
             foreach (var symbolData in _symbolDataMap.Values)
             {
-                var currentQuantity = Portfolio[symbolData.Symbol].Quantity;
-                if (currentQuantity != 0 && symbolData.Lots.Count == 0)
-                {
-                    symbolData.Lots.Add(new Lot
-                    {
-                        Quantity = (int)currentQuantity,
-                        EntryPrice = Portfolio[symbolData.Symbol].AveragePrice,
-                        HighestPrice = Math.Max(Portfolio[symbolData.Symbol].AveragePrice, Securities[symbolData.Symbol].Price),
-                        TrailingActive = false
-                    });
+                var lotCountBefore = symbolData.Lots.Count;
+                var pendingCountBefore = symbolData.Lots.Count(lot => lot.PendingSell);
+                var wasBlocked = symbolData.TradingBlocked;
 
-                    Debug($"    [RECOVERY] {symbolData.Symbol}: recovered existing holding into tracked lots.");
+                var isReady = EnsureSymbolStateReady(symbolData, "Startup reconciliation");
+                var lotCountAfter = symbolData.Lots.Count;
+                var pendingCountAfter = symbolData.Lots.Count(lot => lot.PendingSell);
+
+                if (!wasBlocked && symbolData.TradingBlocked)
+                {
+                    blockedSymbols++;
+                }
+
+                if (isReady && (lotCountBefore != lotCountAfter || pendingCountBefore != pendingCountAfter))
+                {
+                    rebuiltSymbols++;
+                }
+
+                if (symbolData.TradingBlocked)
+                {
+                    activeBlockedSymbols.Add(symbolData.Symbol.Value);
                 }
             }
+
+            Debug($"[STARTUP] {Time} Reconciliation complete. Symbols={_symbolDataMap.Count} Rebuilt={rebuiltSymbols} NewlyBlocked={blockedSymbols} ActiveBlocked={activeBlockedSymbols.Count}");
+            if (activeBlockedSymbols.Any())
+            {
+                Error($"[STARTUP] {Time} Blocked symbols after reconciliation: {string.Join(", ", activeBlockedSymbols)}");
+            }
+        }
+
+        private List<OrderTicket> GetOpenSellTickets(Symbol symbol)
+        {
+            return Transactions.GetOpenOrders(symbol)
+                .Where(order => order.Direction == OrderDirection.Sell)
+                .Select(order => Transactions.GetOrderTicket(order.Id))
+                .Where(ticket => ticket != null)
+                .OrderBy(ticket => ticket.OrderId)
+                .ToList();
+        }
+
+        private bool EnsureSymbolStateReady(SymbolData symbolData, string context)
+        {
+            var currentQuantity = (int)Portfolio[symbolData.Symbol].Quantity;
+            var openSellTickets = GetOpenSellTickets(symbolData.Symbol);
+
+            if (!TryGetInvariantViolation(symbolData, currentQuantity, openSellTickets, out _))
+            {
+                if (symbolData.TradingBlocked)
+                {
+                    symbolData.TradingBlocked = false;
+                    symbolData.BlockedReason = null;
+                    Debug($"[RECOVERY] {Time} Symbol state recovered and trading resumed. Symbol={symbolData.Symbol} Context={context}");
+                }
+
+                return true;
+            }
+
+            return TryRecoverOrBlockSymbolState(symbolData, openSellTickets, currentQuantity, context);
+        }
+
+        private static bool TryGetInvariantViolation(SymbolData symbolData, int currentQuantity, List<OrderTicket> openSellTickets, out string violation)
+        {
+            violation = null;
+
+            if (currentQuantity < 0)
+            {
+                violation = $"Broker holdings are short ({currentQuantity}).";
+                return true;
+            }
+
+            if (symbolData.Lots.Any(lot => lot.Quantity <= 0))
+            {
+                violation = "Tracked lot quantity must be positive.";
+                return true;
+            }
+
+            if (symbolData.Lots.Any(lot => lot.EntryPrice <= 0))
+            {
+                violation = "Tracked lot entry price must be positive.";
+                return true;
+            }
+
+            if (symbolData.Lots.Any(lot => lot.HighestPrice <= 0))
+            {
+                violation = "Tracked lot highest price must be positive.";
+                return true;
+            }
+
+            if (symbolData.Lots.Any(lot => lot.HighestPrice < lot.EntryPrice))
+            {
+                violation = "Tracked lot highest price cannot be below entry price.";
+                return true;
+            }
+
+            if (symbolData.Lots.Any(lot => !lot.PendingSell && lot.PendingSellOrderId != 0))
+            {
+                violation = "Non-pending lot has a pending sell order id.";
+                return true;
+            }
+
+            if (symbolData.Lots.Any(lot => lot.PendingSell && lot.PendingSellOrderId <= 0))
+            {
+                violation = "Pending sell lot is missing a valid order id.";
+                return true;
+            }
+
+            var pendingOrderIds = symbolData.Lots
+                .Where(lot => lot.PendingSell)
+                .Select(lot => lot.PendingSellOrderId)
+                .ToList();
+
+            if (pendingOrderIds.Count != pendingOrderIds.Distinct().Count())
+            {
+                violation = "Pending sell order ids must be unique per lot.";
+                return true;
+            }
+
+            var trackedQuantity = symbolData.Lots.Sum(lot => lot.Quantity);
+            if (trackedQuantity != currentQuantity)
+            {
+                violation = $"Tracked quantity ({trackedQuantity}) does not match broker holdings ({currentQuantity}).";
+                return true;
+            }
+
+            var openOrderIds = openSellTickets
+                .Select(ticket => ticket.OrderId)
+                .ToHashSet();
+
+            if (!pendingOrderIds.ToHashSet().SetEquals(openOrderIds))
+            {
+                violation = "Tracked pending sell order ids do not match broker open sell orders.";
+                return true;
+            }
+
+            var openSellQuantity = openSellTickets.Sum(ticket => (int)Math.Abs(ticket.QuantityRemaining));
+            if (openSellQuantity > currentQuantity)
+            {
+                violation = $"Open sell quantity ({openSellQuantity}) exceeds broker holdings ({currentQuantity}).";
+                return true;
+            }
+
+            return false;
+        }
+
+        private bool TryRecoverOrBlockSymbolState(SymbolData symbolData, List<OrderTicket> openSellTickets, int currentQuantity, string context)
+        {
+            TryGetInvariantViolation(symbolData, currentQuantity, openSellTickets, out var violation);
+            var reason = $"{context}. {violation}";
+
+            if (TryRebuildTrackedLotsFromBrokerState(symbolData, openSellTickets, currentQuantity, reason))
+            {
+                if (symbolData.TradingBlocked)
+                {
+                    symbolData.TradingBlocked = false;
+                    symbolData.BlockedReason = null;
+                    Debug($"[RECOVERY] {Time} Symbol rebuilt from broker state and trading resumed. Symbol={symbolData.Symbol} Context={context}");
+                }
+
+                return true;
+            }
+
+            BlockSymbol(symbolData, reason);
+            return false;
+        }
+
+        private bool TryRebuildTrackedLotsFromBrokerState(SymbolData symbolData, string reason)
+        {
+            var currentQuantity = (int)Portfolio[symbolData.Symbol].Quantity;
+            var openSellTickets = GetOpenSellTickets(symbolData.Symbol);
+            return TryRebuildTrackedLotsFromBrokerState(symbolData, openSellTickets, currentQuantity, reason);
+        }
+
+        private bool TryRebuildTrackedLotsFromBrokerState(SymbolData symbolData, List<OrderTicket> openSellTickets, int currentQuantity, string reason)
+        {
+            var previousLotCount = symbolData.Lots.Count;
+            var previousPendingCount = symbolData.Lots.Count(lot => lot.PendingSell);
+            var previousTrackedQuantity = symbolData.Lots.Sum(lot => lot.Quantity);
+
+            if (currentQuantity < 0)
+            {
+                Error($"[REBUILD] {Time} Cannot rebuild symbol with short broker holdings. Symbol={symbolData.Symbol} Quantity={currentQuantity} Reason={reason}");
+                return false;
+            }
+
+            var marketPrice = Securities[symbolData.Symbol].Price;
+            var referencePrice = Portfolio[symbolData.Symbol].AveragePrice;
+            if (referencePrice <= 0)
+            {
+                referencePrice = marketPrice;
+            }
+
+            if (currentQuantity > 0 && referencePrice <= 0)
+            {
+                Error($"[REBUILD] {Time} Cannot rebuild symbol without a valid reference price. Symbol={symbolData.Symbol} Holdings={currentQuantity} MarketPrice={marketPrice} AveragePrice={Portfolio[symbolData.Symbol].AveragePrice} Reason={reason}");
+                return false;
+            }
+
+            var highestPrice = Math.Max(referencePrice, marketPrice);
+            var rebuiltLots = new List<Lot>();
+            var remainingQuantity = currentQuantity;
+
+            foreach (var ticket in openSellTickets)
+            {
+                var pendingQuantity = (int)Math.Abs(ticket.QuantityRemaining);
+                if (pendingQuantity <= 0)
+                {
+                    Error($"[REBUILD] {Time} Cannot rebuild symbol with non-positive open sell quantity. Symbol={symbolData.Symbol} OrderId={ticket.OrderId} QuantityRemaining={ticket.QuantityRemaining} Reason={reason}");
+                    return false;
+                }
+
+                if (pendingQuantity > remainingQuantity)
+                {
+                    Error($"[REBUILD] {Time} Cannot rebuild symbol because open sell orders exceed broker holdings. Symbol={symbolData.Symbol} OrderId={ticket.OrderId} QuantityRemaining={ticket.QuantityRemaining} Holdings={currentQuantity} Reason={reason}");
+                    return false;
+                }
+
+                rebuiltLots.Add(new Lot
+                {
+                    Quantity = pendingQuantity,
+                    EntryPrice = referencePrice,
+                    HighestPrice = highestPrice,
+                    TrailingActive = false,
+                    PendingSell = true,
+                    PendingSellOrderId = ticket.OrderId
+                });
+
+                remainingQuantity -= pendingQuantity;
+            }
+
+            if (remainingQuantity > 0)
+            {
+                rebuiltLots.Add(new Lot
+                {
+                    Quantity = remainingQuantity,
+                    EntryPrice = referencePrice,
+                    HighestPrice = highestPrice,
+                    TrailingActive = false,
+                    PendingSell = false,
+                    PendingSellOrderId = 0
+                });
+            }
+
+            if (TryGetInvariantViolationForLots(rebuiltLots, currentQuantity, openSellTickets, out var rebuildViolation))
+            {
+                Error($"[REBUILD] {Time} Rebuilt lot state failed validation. Symbol={symbolData.Symbol} Violation={rebuildViolation} Reason={reason}");
+                return false;
+            }
+
+            symbolData.Lots = rebuiltLots;
+            if (LiveMode)
+            {
+                SaveState($"Rebuild {symbolData.Symbol.Value}");
+            }
+
+            Debug($"[REBUILD] {Time} Rebuilt tracked lots from holdings/open orders. Symbol={symbolData.Symbol} Holdings={currentQuantity} OpenSellOrders={openSellTickets.Count} Lots={previousLotCount}->{rebuiltLots.Count} Pending={previousPendingCount}->{rebuiltLots.Count(lot => lot.PendingSell)} TrackedQty={previousTrackedQuantity}->{rebuiltLots.Sum(lot => lot.Quantity)} Reason={reason}");
+            return true;
+        }
+
+        private bool BlockSymbol(SymbolData symbolData, string reason)
+        {
+            if (symbolData.TradingBlocked && symbolData.BlockedReason == reason)
+            {
+                return false;
+            }
+
+            symbolData.TradingBlocked = true;
+            symbolData.BlockedReason = reason;
+            Error($"[BLOCKED] {Time} Trading blocked for symbol until broker state can be reconciled. Symbol={symbolData.Symbol} Reason={reason}");
+            return true;
+        }
+
+        private static bool TryGetInvariantViolationForLots(List<Lot> lots, int currentQuantity, List<OrderTicket> openSellTickets, out string violation)
+        {
+            var symbolData = new SymbolData
+            {
+                Lots = lots
+            };
+
+            return TryGetInvariantViolation(symbolData, currentQuantity, openSellTickets, out violation);
         }
 
         private void InitializeSchedules()
@@ -165,6 +442,11 @@ namespace QuantConnect.Algorithm.CSharp
 
             foreach (var symbolData in _symbolDataMap.Values)
             {
+                if (!EnsureSymbolStateReady(symbolData, "Pre-trade validation"))
+                {
+                    continue;
+                }
+
                 if (!symbolData.Sma.IsReady)
                 {
                     continue;
@@ -277,6 +559,12 @@ namespace QuantConnect.Algorithm.CSharp
                 return;
             }
 
+            if (symbolData.TradingBlocked)
+            {
+                EnsureSymbolStateReady(symbolData, $"Order event while symbol blocked. OrderId={orderEvent.OrderId}");
+                return;
+            }
+
             var stateChanged = false;
             var isSell = orderEvent.Direction == OrderDirection.Sell || orderEvent.FillQuantity < 0 || orderEvent.Quantity < 0;
 
@@ -300,66 +588,40 @@ namespace QuantConnect.Algorithm.CSharp
                 stateChanged = ResolvePendingSell(symbolData, orderEvent) || stateChanged;
             }
 
+            if (!EnsureSymbolStateReady(symbolData, $"Post-order-event validation. OrderId={orderEvent.OrderId}"))
+            {
+                return;
+            }
+
             if (stateChanged && LiveMode)
             {
-                SaveState();
+                SaveState($"Order event {orderEvent.OrderId}");
             }
         }
 
         private bool HandleSellFill(SymbolData symbolData, OrderEvent orderEvent)
         {
             var quantityToRemove = (int)Math.Abs(orderEvent.FillQuantity);
-            var lot = FindLotForSellFill(symbolData, orderEvent);
+            var lot = symbolData.Lots.FirstOrDefault(l => l.PendingSellOrderId == orderEvent.OrderId);
             if (lot == null)
             {
-                return false;
+                Error($"[REBUILD] {Time} Sell fill without matching tracked lot. Symbol={orderEvent.Symbol} OrderId={orderEvent.OrderId}");
+                return TryRebuildTrackedLotsFromBrokerState(symbolData, $"Sell fill without matching tracked lot. OrderId={orderEvent.OrderId}");
             }
 
-            var quantityTaken = Math.Min(lot.Quantity, quantityToRemove);
-            lot.Quantity -= quantityTaken;
-            quantityToRemove -= quantityTaken;
-
-            if (quantityToRemove > 0)
+            if (quantityToRemove > lot.Quantity)
             {
-                Debug($"[WARN] {Time} Sell fill exceeds tracked lot quantity. Symbol={orderEvent.Symbol} OrderId={orderEvent.OrderId} Remaining={quantityToRemove}");
+                Error($"[REBUILD] {Time} Sell fill exceeds tracked lot quantity. Symbol={orderEvent.Symbol} OrderId={orderEvent.OrderId} FillQuantity={quantityToRemove} LotQuantity={lot.Quantity}");
+                return TryRebuildTrackedLotsFromBrokerState(symbolData, $"Sell fill exceeds tracked lot quantity. OrderId={orderEvent.OrderId}");
             }
 
-            symbolData.Lots.RemoveAll(l => l.Quantity <= 0);
+            lot.Quantity -= quantityToRemove;
+            if (!IsResolvedSellStatus(orderEvent.Status))
+            {
+                symbolData.Lots.RemoveAll(l => l.Quantity <= 0);
+            }
+
             return true;
-        }
-
-        private Lot FindLotForSellFill(SymbolData symbolData, OrderEvent orderEvent)
-        {
-            var lot = symbolData.Lots.FirstOrDefault(l => l.PendingSellOrderId == orderEvent.OrderId);
-            if (lot != null)
-            {
-                return lot;
-            }
-
-            var pendingLots = symbolData.Lots.Where(l => l.PendingSell).ToList();
-            if (pendingLots.Count == 1)
-            {
-                Debug($"[WARN] {Time} Sell fill without matching order id. Using only pending lot. Symbol={orderEvent.Symbol} OrderId={orderEvent.OrderId}");
-                return pendingLots[0];
-            }
-
-            if (pendingLots.Count > 1)
-            {
-                Debug($"[WARN] {Time} Sell fill without matching order id. PendingLots={pendingLots.Count}; using first pending lot. Symbol={orderEvent.Symbol} OrderId={orderEvent.OrderId}");
-                return pendingLots.OrderBy(l => l.EntryPrice).First();
-            }
-
-            lot = symbolData.Lots.OrderBy(l => l.EntryPrice).FirstOrDefault();
-            if (lot != null)
-            {
-                Debug($"[WARN] {Time} Sell fill without pending lot. Using first tracked lot. Symbol={orderEvent.Symbol} OrderId={orderEvent.OrderId}");
-            }
-            else
-            {
-                Debug($"[WARN] {Time} Sell fill without tracked lot. Symbol={orderEvent.Symbol} OrderId={orderEvent.OrderId}");
-            }
-
-            return lot;
         }
 
         private static bool IsResolvedSellStatus(OrderStatus status)
@@ -374,26 +636,21 @@ namespace QuantConnect.Algorithm.CSharp
             var lot = symbolData.Lots.FirstOrDefault(l => l.PendingSellOrderId == orderEvent.OrderId);
             if (lot == null)
             {
-                var pendingLots = symbolData.Lots.Where(l => l.PendingSell).ToList();
-                if (pendingLots.Count > 0)
-                {
-                    lot = pendingLots.OrderBy(l => l.EntryPrice).First();
-                    Debug($"[WARN] {Time} Sell order resolved without matching order id. PendingLots={pendingLots.Count}; clearing first pending lot. Symbol={orderEvent.Symbol} OrderId={orderEvent.OrderId}");
-                }
-            }
-
-            if (lot == null)
-            {
-                Debug($"[WARN] {Time} Sell order resolved without matching lot. Symbol={orderEvent.Symbol} OrderId={orderEvent.OrderId}");
-                return false;
+                Error($"[REBUILD] {Time} Sell order resolved without matching tracked lot. Symbol={orderEvent.Symbol} OrderId={orderEvent.OrderId} Status={orderEvent.Status}");
+                return TryRebuildTrackedLotsFromBrokerState(symbolData, $"Sell order resolved without matching tracked lot. OrderId={orderEvent.OrderId} Status={orderEvent.Status}");
             }
 
             lot.PendingSell = false;
             lot.PendingSellOrderId = 0;
+            if (lot.Quantity <= 0)
+            {
+                symbolData.Lots.Remove(lot);
+            }
+
             return true;
         }
 
-        private void SaveState()
+        private void SaveState(string reason = null)
         {
             try
             {
@@ -401,8 +658,16 @@ namespace QuantConnect.Algorithm.CSharp
                     .Where(kvp => kvp.Value.Lots.Any())
                     .ToDictionary(kvp => kvp.Key.Value, kvp => kvp.Value.Lots);
 
+                var fingerprint = BuildStateFingerprint(state);
+                if (fingerprint == _lastSavedStateFingerprint)
+                {
+                    Debug($"[CloudSave] {Time}: state unchanged, skip save. Reason={reason ?? "unspecified"}");
+                    return;
+                }
+
                 ObjectStore.SaveJson(StateKey, state);
-                Debug($"[CloudSave] {Time}: state saved. Symbols tracked: {string.Join(", ", state.Keys)}");
+                _lastSavedStateFingerprint = fingerprint;
+                Debug($"[CloudSave] {Time}: state saved. Symbols tracked: {string.Join(", ", state.Keys.OrderBy(x => x))} Reason={reason ?? "unspecified"}");
             }
             catch (Exception ex)
             {
@@ -414,12 +679,21 @@ namespace QuantConnect.Algorithm.CSharp
         {
             if (!ObjectStore.ContainsKey(StateKey))
             {
+                Debug($"[CloudLoad] {Time}: no persisted state found for key {StateKey}.");
+                _lastSavedStateFingerprint = BuildStateFingerprint(new Dictionary<string, List<Lot>>());
                 return;
             }
 
             try
             {
                 var loaded = ObjectStore.ReadJson<Dictionary<string, List<Lot>>>(StateKey);
+                if (loaded == null)
+                {
+                    Error($"[CloudLoad] {Time}: persisted state was null for key {StateKey}.");
+                    _lastSavedStateFingerprint = BuildStateFingerprint(new Dictionary<string, List<Lot>>());
+                    return;
+                }
+
                 foreach (var kvp in loaded)
                 {
                     var symbolData = _symbolDataMap.Values.FirstOrDefault(s => s.Symbol.Value == kvp.Key);
@@ -429,7 +703,11 @@ namespace QuantConnect.Algorithm.CSharp
                     }
                 }
 
-                Debug($"[CloudLoad] {Time}: restored lot details for {loaded.Count} symbols.");
+                _lastSavedStateFingerprint = BuildStateFingerprint(loaded);
+
+                var totalLots = loaded.Sum(kvp => kvp.Value?.Count ?? 0);
+                var totalPending = loaded.Sum(kvp => kvp.Value?.Count(lot => lot.PendingSell) ?? 0);
+                Debug($"[CloudLoad] {Time}: restored lot details for {loaded.Count} symbols. Lots={totalLots} PendingSells={totalPending}");
             }
             catch (Exception ex)
             {
@@ -441,8 +719,108 @@ namespace QuantConnect.Algorithm.CSharp
         {
             if (LiveMode)
             {
-                SaveState();
+                SaveState("Algorithm end");
             }
+        }
+
+        private void ValidateConfiguration()
+        {
+            if (string.IsNullOrWhiteSpace(StateKey))
+            {
+                throw new InvalidOperationException("StateKey must not be empty.");
+            }
+
+            if (StateKey.Length > 128)
+            {
+                throw new InvalidOperationException($"StateKey is unexpectedly long ({StateKey.Length}).");
+            }
+
+            if (_config.Count == 0)
+            {
+                throw new InvalidOperationException("At least one symbol must be configured.");
+            }
+
+            if (_buyStep <= 0 || _buyStep > 1)
+            {
+                throw new InvalidOperationException($"buy-step must be in (0, 1]. Current value: {_buyStep}");
+            }
+
+            if (_rebalanceThreshold < 0 || _rebalanceThreshold > 1)
+            {
+                throw new InvalidOperationException($"rebalance-threshold must be in [0, 1]. Current value: {_rebalanceThreshold}");
+            }
+
+            foreach (var kvp in _config)
+            {
+                var ticker = kvp.Key;
+                var settings = kvp.Value;
+
+                if (string.IsNullOrWhiteSpace(ticker))
+                {
+                    throw new InvalidOperationException("Configured ticker must not be empty.");
+                }
+
+                if (settings == null)
+                {
+                    throw new InvalidOperationException($"Settings are missing for ticker {ticker}.");
+                }
+
+                if (settings.SmaLength <= 0)
+                {
+                    throw new InvalidOperationException($"SmaLength must be positive for {ticker}.");
+                }
+
+                if (settings.BuyThreshold < 0 || settings.BuyThreshold >= 1)
+                {
+                    throw new InvalidOperationException($"BuyThreshold must be in [0, 1) for {ticker}. Current value: {settings.BuyThreshold}");
+                }
+
+                if (settings.TakeProfitUp <= 0 || settings.TakeProfitUp >= 1)
+                {
+                    throw new InvalidOperationException($"TakeProfitUp must be in (0, 1) for {ticker}. Current value: {settings.TakeProfitUp}");
+                }
+
+                if (settings.StopLoss <= 0 || settings.StopLoss >= 1)
+                {
+                    throw new InvalidOperationException($"StopLoss must be in (0, 1) for {ticker}. Current value: {settings.StopLoss}");
+                }
+
+                if (settings.TrailingDrop <= 0 || settings.TrailingDrop >= 1)
+                {
+                    throw new InvalidOperationException($"TrailingDrop must be in (0, 1) for {ticker}. Current value: {settings.TrailingDrop}");
+                }
+
+                if (settings.MaxWeight <= 0 || settings.MaxWeight > 1)
+                {
+                    throw new InvalidOperationException($"MaxWeight must be in (0, 1] for {ticker}. Current value: {settings.MaxWeight}");
+                }
+            }
+        }
+
+        private static string BuildStateFingerprint(Dictionary<string, List<Lot>> state)
+        {
+            var builder = new StringBuilder();
+
+            foreach (var symbol in state.Keys.OrderBy(x => x))
+            {
+                builder.Append(symbol).Append('|');
+
+                var lots = state[symbol] ?? new List<Lot>();
+                foreach (var lot in lots.OrderBy(lot => lot.PendingSellOrderId).ThenBy(lot => lot.EntryPrice).ThenBy(lot => lot.Quantity))
+                {
+                    builder.Append(lot.Quantity).Append(':')
+                        .Append(lot.EntryPrice).Append(':')
+                        .Append(lot.HighestPrice).Append(':')
+                        .Append(lot.TrailingActive ? '1' : '0').Append(':')
+                        .Append(lot.PendingSell ? '1' : '0').Append(':')
+                        .Append(lot.PendingSellOrderId)
+                        .Append(';');
+                }
+
+                builder.Append('#');
+            }
+
+            return builder.ToString();
         }
     }
 }
