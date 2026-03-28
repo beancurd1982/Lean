@@ -23,6 +23,8 @@
     },
     "python.analysis.extraPaths": [
         "./Algorithm.Python",
-        "/opt/miniconda3/lib/python3.11/site-packages",
-    ]
+        "/Lean/Algorithm.Python",
+        "/opt/miniconda3/lib/python3.11/site-packages"
+    ],
+    "files.autoSave": "afterDelay"
 }
