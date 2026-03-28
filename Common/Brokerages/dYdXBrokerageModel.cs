@@ -20,6 +20,7 @@ using QuantConnect.Benchmarks;
 using QuantConnect.Orders;
 using QuantConnect.Orders.Fees;
 using QuantConnect.Securities;
+using QuantConnect.Securities.CryptoFuture;
 using QuantConnect.Util;
 
 namespace QuantConnect.Brokerages;
@@ -29,7 +30,7 @@ public class dYdXBrokerageModel : DefaultBrokerageModel
     /// <summary>
     /// Gets a map of the default markets to be used for each security type
     /// </summary>
-    public override IReadOnlyDictionary<SecurityType, string> DefaultMarkets { get; } = GetDefaultMarkets(Market.dYdX);
+    public override IReadOnlyDictionary<SecurityType, string> DefaultMarkets { get; } = GetDefaultMarkets(Market.DYDX);
 
     /// <summary>
     /// Initializes a new instance of the <see cref="dYdXBrokerageModel"/> class
@@ -41,6 +42,21 @@ public class dYdXBrokerageModel : DefaultBrokerageModel
         {
             throw new ArgumentException("dYdXBrokerageModel only supports margin accounts", nameof(accountType));
         }
+    }
+
+    /// <summary>
+    /// Gets a new buying power model for the security, returning the default model with the security's configured leverage.
+    /// For cash accounts, leverage = 1 is used.
+    /// </summary>
+    /// <param name="security">The security to get a buying power model for</param>
+    /// <returns>The buying power model for this brokerage/security</returns>
+    public override IBuyingPowerModel GetBuyingPowerModel(Security security)
+    {
+        return security?.Type switch
+        {
+            SecurityType.CryptoFuture => new SecurityMarginModel(GetLeverage(security)),
+            _ => base.GetBuyingPowerModel(security)
+        };
     }
 
     /// <summary>
@@ -64,8 +80,12 @@ public class dYdXBrokerageModel : DefaultBrokerageModel
     /// <returns>The margin interest rate model for this brokerage</returns>
     public override IMarginInterestRateModel GetMarginInterestRateModel(Security security)
     {
-        // TODO: Implement dYdX margin interest rate model
-        return MarginInterestRateModel.Null;
+        // only applies for perpetual futures
+        return security.Type switch
+        {
+            SecurityType.CryptoFuture => new dYdXFutureMarginInterestRateModel(),
+            _ => base.GetMarginInterestRateModel(security)
+        };
     }
 
     /// <summary>
@@ -75,7 +95,7 @@ public class dYdXBrokerageModel : DefaultBrokerageModel
     /// <returns>The benchmark for this brokerage</returns>
     public override IBenchmark GetBenchmark(SecurityManager securities)
     {
-        var symbol = Symbol.Create("BTCUSD", SecurityType.CryptoFuture, Market.dYdX);
+        var symbol = Symbol.Create("BTCUSD", SecurityType.CryptoFuture, Market.DYDX);
         return SecurityBenchmark.CreateInstance(securities, symbol);
         //todo default conversion?
     }
