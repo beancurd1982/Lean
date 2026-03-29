@@ -147,6 +147,7 @@ The user's answers narrowed further to the following:
 - Role of crypto:
   - **A small enhancement sleeve**
   - Total weight around **5%-8%**
+  - This was later removed from the first implementation path to simplify the initial live-tradable version
 - Individual stocks / ETF preference:
   - **Primarily individual stocks**
 - Rebalancing style:
@@ -182,8 +183,8 @@ After this step, the profile of the strategy became much clearer:
 - Instead, a **buffer layer when the risk environment deteriorates**
 
 ### Crypto Layer
-- Not the main engine
-- Instead, a **satellite enhancement sleeve**
+- Originally treated as a possible satellite enhancement sleeve
+- Later removed from the first implementation path so the initial version could focus on growth, defense, cash, and regime logic
 
 ### Rebalancing Philosophy
 - Not frequent rotation
@@ -268,7 +269,7 @@ This moved the system from "conceptual preferences" into "design boundaries."
 
 At this point, we could say for the first time with some clarity:
 
-## **This is a medium- to low-frequency dynamic portfolio system driven mainly by growth stocks, using three risk states to manage total exposure, using a defensive layer and cash to control drawdown, using a small crypto sleeve for convexity, and supporting intelligent deployment of periodic new capital.**
+## **This is a medium- to low-frequency dynamic portfolio system driven mainly by growth stocks, using three risk states to manage total exposure, using a defensive layer and cash to control drawdown, and supporting intelligent deployment of periodic new capital.**
 
 ---
 
@@ -310,17 +311,16 @@ The design upgrade this created was:
 
 After the earlier rounds of requirements gathering, we stopped asking about preferences and started building the first-version system architecture.
 
-We ultimately split the system into **five layers**:
+For the current first-version Balanced prototype, we ultimately split the system into **four layers**:
 
 1. Core Growth Stock Layer
 2. Defensive Layer
-3. Crypto Enhancement Layer
-4. Risk State Layer
-5. New Capital Deployment Layer
+3. Risk State Layer
+4. New Capital Deployment Layer
 
 ---
 
-## 7.1 Why Five Layers Instead of Two or Three
+## 7.1 Why Four Layers Instead of Two or Three in the Current First Version
 
 This structure did not come out of nowhere. It was a direct mapping from the earlier requirements.
 
@@ -337,12 +337,6 @@ Because the user explicitly wanted:
 - High-dividend assets used mainly as defensive tools
 - Cash that can be held dynamically
 
-### Crypto Enhancement Layer
-Because the user wanted:
-- Some crypto participation for enhanced return
-- But only at a small scale
-- Without damaging overall portfolio stability
-
 ### Risk State Layer
 Because the user did not want:
 - A portfolio that is permanently fully invested
@@ -355,7 +349,9 @@ Because the user explicitly wanted:
 - With variable size
 - And with the algorithm deciding whether to deploy it immediately, deploy it gradually, or hold it as cash
 
-So the five-layer structure was not a post hoc organization. It was the natural mapping of the prior requirements.
+The earlier concept briefly allowed a crypto enhancement layer, but the current first implementation deliberately removes it to keep the system simpler and more auditable.
+
+So the current four-layer structure is the natural mapping of the accepted first-version requirements.
 
 ---
 
@@ -412,7 +408,6 @@ Once the three risk states were defined, we further designed a high-level alloca
 - Growth stocks
 - Defensive assets
 - Cash
-- Crypto
 
 These ranges were not arbitrary. They were constrained jointly by several conditions:
 
@@ -421,7 +416,6 @@ These ranges were not arbitrary. They were constrained jointly by several condit
 3. The user does not want to become an extreme defensive investor
 4. The user also does not want to be fully invested and aggressively exposed at all times
 5. The defensive layer can rise to 50% in weak environments
-6. The total crypto cap is near 8%
 
 ---
 
@@ -438,7 +432,15 @@ The benefit of doing this was:
 
 One important design principle emerged here:
 
-## Even in a Favorable state, the portfolio should not be maximally all-in, and even in a Weak state, it does not need to be completely liquidated.
+## Even in a Favorable state, the portfolio should not be maximally all-in, and even in a Weak state, it should still preserve a small but deliberate growth sleeve rather than mechanically liquidating everything.
+
+As the design was refined further, the current first-version Balanced targets converged toward:
+
+- Favorable: `Growth 65% / Defensive 20% / Cash 15%`
+- Neutral: `Growth 45% / Defensive 30% / Cash 25%`
+- Weak: `Growth 10% / Defensive 40% / Cash 50%`
+
+With narrow tolerances around each target, the regime system became much more operational and less discretionary.
 
 This fully reflects the user's balanced preference profile.
 
@@ -499,6 +501,24 @@ So we introduced the concept of an observation layer, allowing some stocks to fi
 What this really does is:
 
 ## Make the growth stock pool stable, adaptable, and less mechanically rigid.
+
+For the current first-version Balanced prototype, this later crystallized into:
+
+- Core Growth Pool:
+  - `MSFT`
+  - `NVDA`
+  - `AMZN`
+  - `GOOGL`
+  - `META`
+  - `AVGO`
+  - `AAPL`
+  - `COST`
+- Supplemental Growth Pool:
+  - `LLY`
+  - `NFLX`
+  - `TSLA`
+
+`TSLA` was intentionally placed in the supplemental pool rather than the core pool because its behavior is more volatile and less style-stable than the confirmed core names.
 
 ---
 
@@ -723,33 +743,30 @@ What this really defines is:
 
 ## The user's preferred defense is not "full retreat," but rather "cool down first, then contract further."
 
+For the current first-version Balanced prototype, this later translated into the following first-pass defensive candidates:
+
+- ETFs: `SCHD`, `VIG`, `XLV`, `XLU`, `USMV`, `SGOV`
+- Individual defensive stocks: `JNJ`, `PG`, `DUK`
+
 ---
 
-# 15. How the Crypto Layer Was Compressed into an "Enhancement Layer"
+# 15. Why the Earlier Crypto Idea Was Removed from the First Implementation
 
-From the beginning, the user wanted to include cryptocurrency, but also clearly stated:
+An earlier version of the design allowed for a small crypto enhancement sleeve.  
+However, once the first implementation path was narrowed further, we concluded that the cleaner first-version choice was:
 
-- Drawdown should be controlled within roughly 15%
-- Crypto allocation should be around 5%-8%
-- Balance and risk quality matter more
+## Remove crypto entirely from the first implementation
 
-This meant that crypto could not be positioned in the system as:
-- A core driver
-- An independent main engine
+This decision improved the design in several ways:
 
-So we explicitly positioned it as:
+- It reduced moving parts
+- It made the system easier to explain and review
+- It made the regime and allocation framework easier to validate on their own
+- It avoided mixing a higher-volatility satellite sleeve into the first live-tradable version
 
-## A small enhancement layer
+So the final convergence here was:
 
-And required that it:
-- Remain subordinate to the overall risk state
-- Participate in small size under a Favorable state
-- Contract materially in a Neutral state
-- Move close to shut down in a Weak state
-
-The key convergence of this step was:
-
-## Crypto can exist, but it must be disciplined rather than allowed to become a major source of portfolio risk.
+## Crypto may still exist as a future extension, but it should not be part of the first implementation baseline.
 
 ---
 
@@ -853,7 +870,7 @@ It includes:
 
 - Strategy objective
 - Summary of user preferences
-- Five-layer overall architecture
+- Four-layer overall architecture for the current first implementation
 - Three-state risk system
 - High-level allocation framework
 - Growth stock pool design
@@ -862,7 +879,6 @@ It includes:
 - Holding and rebalancing rules
 - Replacement rules and turnover friction
 - Defensive / cash layer rules
-- Crypto layer rules
 - New-capital deployment module
 - Weekly decision process
 - First-version design philosophy
@@ -912,6 +928,15 @@ This fit the user's real preference for minimal activity and made the system muc
 
 ---
 
+## Turning Point 7: The first implementation was deliberately simplified by removing crypto and tightening the regime/allocation spec
+This changed the design from a broader concept into a cleaner first-version Balanced prototype with:
+- A four-layer structure
+- Confirmed candidate pools
+- Fixed regime targets with narrow tolerances
+- Explicitly asymmetric transition logic
+
+---
+
 # 20. How the Outcome of This Conversation Can Ultimately Be Understood
 
 If the outcome of this conversation had to be summarized in one sentence, it would be:
@@ -937,10 +962,11 @@ Based on this derivation process, the most natural next directions are:
 
 ## Direction A: Convert the design into a backtestable specification
 Continue refining the V1 document into a more testable version, for example by defining:
-- The candidate range for the core growth pool
-- The inputs and switching conditions for the risk state
-- The rebalancing-cap mechanism
-- The release conditions for undeployed capital
+- The exact weekly regime decision table
+- The threshold buffers that block `Favorable`
+- The severe-stress condition that forces `Weak`
+- The detailed defensive-sleeve usage rules
+- The turnover-cap and position-sizing mechanism
 
 ## Direction B: Build 2-3 strategy prototype variants
 For example:
@@ -949,6 +975,8 @@ For example:
 - More offensive version
 
 This would allow different prototypes to be compared before any code is written, making it easier to see which version truly fits the user's preferences.
+
+After the current discussions, the accepted immediate path is to continue refining the **Balanced** prototype first rather than broadening the work back out again.
 
 ---
 
@@ -966,6 +994,123 @@ The final design is not an isolated answer. It was derived through the following
 - Narrowing into the growth stock pool and scoring system
 - Narrowing into replacement rules, turnover friction, and defensive mechanisms
 - Finally incorporating periodic new capital into the system's capital-allocation logic
+- Later simplifying the first implementation by removing crypto and fixing the first-version regime targets
 - Then consolidating everything into a formal design document
 
 Because of that, this derivation record can serve as the background explanation and design basis for all future work that follows.
+
+---
+
+# 23. Post-V1 Refinement Addendum: Current First Implementable Balanced Prototype
+
+After the original V1 documents were completed, the design was refined further so the first real implementation target would be narrower, simpler, and more backtestable.
+
+This addendum records the current agreed direction.
+
+## 23.1 The First Implementation No Longer Includes Crypto
+
+The original V1 design allowed a small crypto enhancement sleeve.  
+During later refinement, that sleeve was intentionally removed from the first implementation in order to:
+
+- reduce brokerage and operational complexity,
+- simplify the regime and allocation framework,
+- keep the first live-tradable prototype focused on the core architecture first.
+
+So the current first implementation is not the original five-layer shape. It is a simplified four-layer system.
+
+## 23.2 Current First-Version Architecture
+
+The current first implementation uses:
+
+1. Core Growth Stock Layer
+2. Defensive Layer
+3. Risk State Layer
+4. New Capital Deployment Layer
+
+This keeps the original spirit of the design while removing the optional crypto sleeve from V1 execution scope.
+
+## 23.3 Confirmed Candidate Pools
+
+The current confirmed first-pass candidate structure is:
+
+### Core Growth Pool
+- `MSFT`
+- `NVDA`
+- `AMZN`
+- `GOOGL`
+- `META`
+- `AVGO`
+- `AAPL`
+- `COST`
+
+### Supplemental Growth Pool
+- `LLY`
+- `NFLX`
+- `TSLA`
+
+### Defensive Sleeve Candidates
+- `SCHD`
+- `VIG`
+- `XLV`
+- `XLU`
+- `USMV`
+- `SGOV`
+- `JNJ`
+- `PG`
+- `DUK`
+
+This also clarified that the defensive sleeve may include both defensive ETFs and individual defensive stocks.
+
+## 23.4 Current Accepted Risk-State Inputs
+
+The current accepted first-version regime inputs are:
+
+- Broad market trend:
+  - `SPY` relative to its `200-day SMA`
+  - `200-day SMA` slope
+- Breadth / risk appetite:
+  - percentage of confirmed growth-pool names above their own `200-day SMA`
+- Stress / volatility:
+  - `5-day average VIX`
+
+This is a more explicit operational definition than the earlier higher-level architecture notes.
+
+## 23.5 Current Accepted State Targets And Transition Logic
+
+A later two-expert review cycle concluded that the earlier broad allocation ranges were too loose for an implementation-grade prototype.
+
+The current accepted default targets for the Balanced prototype are:
+
+- Favorable: `Growth 65%`, `Defensive 20%`, `Cash 15%`
+- Neutral: `Growth 45%`, `Defensive 30%`, `Cash 25%`
+- Weak: `Growth 10%`, `Defensive 40%`, `Cash 50%`
+
+The current accepted operating tolerances are narrow rather than broad:
+
+- Favorable: `60-70 / 15-25 / 10-20`
+- Neutral: `40-50 / 25-35 / 20-30`
+- Weak: `5-15 / 35-45 / 40-55`
+
+The current accepted transition principles are:
+
+- one-step transitions only,
+- downgrades may occur after one weekly review when decisively triggered,
+- upgrades require two consecutive weekly confirmations,
+- upgrade thresholds should be stricter than downgrade thresholds,
+- elevated stress can block `Favorable`,
+- severe stress can force `Weak`.
+
+## 23.6 What This Changes About The Next Steps
+
+The earlier documents correctly suggested either refining the design into a backtestable specification or comparing several prototype variants first.
+
+That later choice has now been made.
+
+The current active path is:
+
+1. Use the `Balanced` prototype as the first implementation target.
+2. Convert the confirmed universe, regime inputs, state targets, and transition principles into an explicit decision table.
+3. Then translate that specification into code and backtests.
+
+So the design process is no longer in open-ended architecture brainstorming. It is now in implementation-specification drafting.
+

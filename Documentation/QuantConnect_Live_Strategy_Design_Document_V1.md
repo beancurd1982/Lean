@@ -27,44 +27,38 @@ This strategy is designed for live trading on the QuantConnect platform. Its goa
 Based on the requirements gathered, the strategy should align with the following preferences:
 
 - The main trading assets should be **U.S. growth stocks**
-- The strategy may also include:
-  - **High-dividend / defensive assets**
-  - **A small crypto allocation**
+- The strategy should also include **high-dividend / defensive assets**
+- The first implementation should **not include a crypto sleeve**, in order to keep the system simpler and more auditable
 - Trading style should be **medium- to low-frequency**
 - The main decision cadence should be **once per week**
 - Rebalancing should be **kept as light as possible**
 - The portfolio should be **moderately concentrated**
 - The total number of holdings should be about **8-12**
-- Crypto should serve as an enhancement sleeve, with an overall cap near **8%**
 - Each individual growth stock should have a maximum weight of about **10%-12%**
-- In poor environments, the total defensive sleeve may increase to **50%**
+- In poor environments, defensive assets may rise materially and cash may become the largest buffer
 - New capital does not need to be deployed immediately after arrival; holding cash first is acceptable
 
 ---
 
 ## 3. Overall Strategy Architecture
 
-This strategy uses a five-layer structure:
+This strategy now uses a four-layer structure for the first implementation:
 
 1. **Core Growth Stock Layer**
 2. **Defensive Layer**
-3. **Crypto Enhancement Layer**
-4. **Risk State Layer**
-5. **New Capital Deployment Layer**
+3. **Risk State Layer**
+4. **New Capital Deployment Layer**
 
 ### 3.1 Core Growth Stock Layer
 This is the main return driver. The core assets are high-quality mega-cap technology growth stocks and large-cap growth stocks, held primarily in individual stock form.
 
 ### 3.2 Defensive Layer
-This layer consists of high-dividend / defensive assets plus cash. It is used to absorb exposure, reduce volatility, and control drawdown in neutral and weak risk environments.
+This layer consists of defensive assets plus cash. It is used to absorb exposure, reduce volatility, and control drawdown in neutral and weak risk environments.
 
-### 3.3 Crypto Enhancement Layer
-This exists as a small enhancement sleeve. It is only active when the risk environment is suitable and must not dominate total portfolio risk.
-
-### 3.4 Risk State Layer
+### 3.3 Risk State Layer
 This layer determines whether the portfolio should lean more offensive or more defensive and sets the overall framework for high-level allocations.
 
-### 3.5 New Capital Deployment Layer
+### 3.4 New Capital Deployment Layer
 This layer handles semiannual capital inflows of varying size and decides whether new capital should be deployed immediately, deployed gradually, or temporarily kept in cash.
 
 ---
@@ -91,14 +85,13 @@ The defensive layer consists of two parts:
 - **Defensive asset sleeve**: high-dividend or otherwise steadier defensive assets
 - **Cash sleeve**: the final buffer layer
 
-### 4.3 Role of the Crypto Layer
-The crypto layer is an enhancement sleeve with the following role:
+### 4.3 First-Version Simplification
+The earlier concept allowed for a small crypto enhancement sleeve, but the first implementation should deliberately exclude it.
 
-- Total weight capped near **8%**
-- A small allocation may be opened in favorable environments
-- It should contract materially in neutral environments
-- It should be close to shut down in weak environments
-- It must remain subordinate to the overall portfolio risk budget
+Reason:
+- Reduce moving parts in the first live-tradable version
+- Keep the strategy easier to explain and review
+- Concentrate the first implementation on the interaction among growth, defense, cash, and regime logic
 
 ---
 
@@ -118,8 +111,7 @@ Meaning: the current environment supports taking relatively high risk.
 Portfolio intent:
 - Growth stocks serve as the primary exposure
 - The defensive layer is light
-- Cash is low
-- A small crypto enhancement allocation is allowed
+- Cash is kept intentionally low, but not eliminated
 
 ### 5.2 Neutral State
 Meaning: the risk/reward ratio has deteriorated, but not enough to justify a full retreat.
@@ -127,72 +119,87 @@ Meaning: the risk/reward ratio has deteriorated, but not enough to justify a ful
 Portfolio intent:
 - Reduce part of the growth exposure
 - Increase the defensive layer
-- Keep some cash
-- Tighten crypto exposure
+- Keep a meaningful cash buffer
 - Deploy new capital more cautiously
 
 ### 5.3 Weak State
 Meaning: the current environment is not suitable for maintaining high growth exposure, so the priority should shift toward drawdown control and cash preservation.
 
 Portfolio intent:
-- Reduce growth exposure meaningfully
+- Reduce growth exposure materially
 - Raise both defensive assets and cash
-- Bring crypto close to shut down
 - Prioritize waiting rather than deploying new capital
 
 ### 5.4 Inputs to the Risk State
-The first version of the risk state should be determined jointly by three groups of inputs:
+The first version of the risk state should be determined jointly by three explicit input groups:
 
-- **Broad market trend condition**
-- **Market breadth / risk appetite condition**
-- **Stress / volatility condition**
+- **Broad market trend condition**:
+  - `SPY` relative to its `200-day SMA`
+  - slope direction of the `200-day SMA`
+- **Market breadth / risk appetite condition**:
+  - percentage of confirmed growth-pool names above their own `200-day SMA`
+- **Stress / volatility condition**:
+  - `5-day average VIX`
 
 ### 5.5 Principles for State Transitions
-- Downgrades may happen slightly faster than upgrades
+- Downgrades may happen faster than upgrades
 - One noisy week should not trigger a major state change
-- In most cases, transitions should pass through:
+- State changes should move one step at a time:
   - Favorable -> Neutral -> Weak
   - Weak -> Neutral -> Favorable
-- Avoid frequent back-and-forth switching whenever possible
+- Downgrades may occur after **1** weekly review if the lower state is decisively triggered
+- Upgrades require **2 consecutive** weekly reviews satisfying the higher state's conditions
+- Upgrades should require stronger threshold buffers than downgrades
+- Elevated stress should be able to block `Favorable`
+- Severe stress should be able to force `Weak`
 
 ---
 
 ## 6. High-Level Allocation Framework
 
-The following are first-version guideline ranges, not final parameters.
+The first version should use explicit target weights with narrow tolerances rather than very broad discretionary ranges.
 
 ### 6.1 Favorable State
-- Growth stocks: **60% - 75%**
-- Defensive assets: **10% - 20%**
-- Cash: **5% - 15%**
-- Crypto: **3% - 8%**
+- Growth stocks target: **65%**
+- Defensive assets target: **20%**
+- Cash target: **15%**
+- Tolerance guide:
+  - Growth stocks: **60% - 70%**
+  - Defensive assets: **15% - 25%**
+  - Cash: **10% - 20%**
 
 Characteristics:
-- The portfolio leans offensive
-- But still keeps some buffer
-- No all-in behavior
+- The portfolio leans constructive, but remains balanced
+- Growth is clearly the main engine
+- The defensive layer and cash still remain meaningful stabilizers
 
 ### 6.2 Neutral State
-- Growth stocks: **35% - 55%**
-- Defensive assets: **20% - 35%**
-- Cash: **10% - 25%**
-- Crypto: **0% - 4%**
+- Growth stocks target: **45%**
+- Defensive assets target: **30%**
+- Cash target: **25%**
+- Tolerance guide:
+  - Growth stocks: **40% - 50%**
+  - Defensive assets: **25% - 35%**
+  - Cash: **20% - 30%**
 
 Characteristics:
-- Hold more cautiously
-- Defensive awareness increases
-- Still retain the core growth sleeve
+- The portfolio cools meaningfully from Favorable
+- The defensive sleeve becomes material, not symbolic
+- Cash becomes a clearer buffer, but not yet the dominant sleeve
 
 ### 6.3 Weak State
-- Growth stocks: **10% - 30%**
-- Defensive assets: **20% - 40%**
-- Cash: **25% - 50%**
-- Crypto: **0% - 2%**
+- Growth stocks target: **10%**
+- Defensive assets target: **40%**
+- Cash target: **50%**
+- Tolerance guide:
+  - Growth stocks: **5% - 15%**
+  - Defensive assets: **35% - 45%**
+  - Cash: **40% - 55%**
 
 Characteristics:
 - Drawdown control comes first
-- Core growth exposure is preserved but materially reduced
-- Cash becomes an important buffer layer
+- Growth exposure is preserved only in a small core size
+- Defensive assets and cash do most of the stabilizing work
 
 ---
 
@@ -208,8 +215,18 @@ The core pool is the main growth universe of the strategy.
 Characteristics:
 - Relatively stable membership
 - Centered on high-quality mega-cap technology growth
-- Allows a small number of high-quality large-cap growth additions
+- Intended to remain style-consistent across market cycles
 - Emphasizes long-term reusability in allocation
+
+Confirmed first-version core pool:
+- `MSFT`
+- `NVDA`
+- `AMZN`
+- `GOOGL`
+- `META`
+- `AVGO`
+- `AAPL`
+- `COST`
 
 Purpose:
 - Preserve a stable strategy style
@@ -224,6 +241,11 @@ Characteristics:
 - Still biased toward large-cap growth
 - Must satisfy minimum standards for liquidity, growth, trend, and quality
 - Must not dominate the portfolio
+
+Confirmed first-version supplemental pool:
+- `LLY`
+- `NFLX`
+- `TSLA`
 
 Purpose:
 - Add adaptability
@@ -381,6 +403,10 @@ The defensive layer is divided into:
 - **Defensive asset sleeve**
 - **Cash sleeve**
 
+First-version defensive sleeve candidates:
+- ETFs: **SCHD**, **VIG**, **XLV**, **XLU**, **USMV**, **SGOV**
+- Individual defensive stocks: **JNJ**, **PG**, **DUK**
+
 ### 12.3 Role Across the Three States
 
 #### Favorable State
@@ -393,33 +419,24 @@ The defensive layer is divided into:
 
 #### Weak State
 - Both defensive assets and cash are increased meaningfully
-- The total defensive share may approach **50%**
+- Defensive assets can move toward their **40%** target while cash can move toward its **50%** target
 
 ### 12.4 Design Constraints
 - Do not assume that high-dividend assets are automatically defensive in all cases
 - Do not turn the strategy into "all cash whenever there is risk"
+- Individual defensive stocks are allowed, but they should behave as sleeve components rather than offensive bets
 - A better sequence is usually to increase defensive assets first, then raise cash further if needed
 
 ---
 
-## 13. Crypto Layer Linkage Rules
+## 13. First-Version Simplification: No Crypto Layer
 
-### 13.1 Basic Role
-Crypto is an enhancement sleeve and must not independently dominate total portfolio risk.
+The earlier concept allowed for a small crypto enhancement sleeve, but the first implementation should omit it.
 
-### 13.2 Linkage Across the Three States
-
-#### Favorable State
-- Allow a small allocation
-- Total cap near **8%**
-
-#### Neutral State
-- Contract exposure materially
-- Keep only a small exploratory allocation or temporarily shut it down
-
-#### Weak State
-- Bring exposure close to zero
-- Do not actively expand by default
+Reasons:
+- Keep the first version focused on the main return engine and the main drawdown-control engine
+- Reduce sources of behavioral and operational complexity
+- Make it easier to evaluate whether the core regime and allocation logic work on their own
 
 ---
 
@@ -498,7 +515,6 @@ Decide:
 - Total growth-stock allocation
 - Defensive layer weight
 - Cash weight
-- Whether crypto remains active
 
 ### Step 3: Review Existing Growth Holdings
 Identify:
@@ -546,8 +562,8 @@ Avoid:
 - Overreacting to small score differences
 - Damaging the live-trading experience with rebalancing noise
 
-### 16.4 Keep Crypto as a Small Enhancement Only
-Do not let it damage the overall stability of the portfolio.
+### 16.4 Keep The First Implementation Simpler Than The Original Concept
+The first implementation should intentionally exclude crypto so that the initial version can focus on the core interaction among growth, defense, cash, and risk state.
 
 ### 16.5 Treat New Capital as a Strategic Resource
 New capital is not an automatic buy order. It is strategic dry powder that the system may deploy deliberately.
@@ -561,6 +577,7 @@ To keep complexity under control, the first version does not prioritize:
 - Machine learning models
 - Minute-level / intraday trading logic
 - An excessively wide stock universe
+- A crypto sleeve in the first implementation
 - Too many detailed financial fundamental inputs
 - Complex black-box multi-factor systems
 - Complex sentiment signals
@@ -571,25 +588,26 @@ To keep complexity under control, the first version does not prioritize:
 
 The first version of this strategy can be defined as:
 
-## **A medium- to low-frequency dynamic portfolio system driven primarily by high-quality U.S. growth stocks, with total exposure managed through three risk states, drawdown controlled through a defensive layer and cash, portfolio convexity enhanced by a small crypto sleeve, and semiannual variable capital inflows deployed intelligently.**
+## **A medium- to low-frequency dynamic portfolio system driven primarily by high-quality U.S. growth stocks, with total exposure managed through three risk states, drawdown controlled through a defensive layer and cash, and semiannual variable capital inflows deployed intelligently.**
 
 ---
 
 ## 19. Recommended Next Steps
 
-Based on this V1 document, the two best directions for further work are:
+Based on the current confirmed Balanced prototype, the next best directions are:
 
-### Direction A: Refine This Design Document into a Backtestable Specification
+### Direction A: Convert This Revised Design Into A Backtestable Decision Table
 That means defining in greater detail:
-- The candidate range for the core growth pool
-- The inputs for determining the risk state
-- The mechanism for rebalancing limits
-- More detailed rules for capital release
+- The exact decision table combining trend, breadth, and stress
+- The explicit downgrade and upgrade buffers
+- The state-allocation rebalance triggers around the target weights
+- The exact defensive-sleeve usage rules inside each state
 
-### Direction B: Split This Design into 2-3 Strategy Prototype Variants
-For example:
-- Balanced version
-- More defensive version
-- More offensive version
+### Direction B: Convert The Confirmed Universe And Regime Design Into An Implementation Specification
+That means finalizing:
+- The qualification and scoring rules for the confirmed growth pools
+- The replacement-friction rules
+- The weekly rebalance sequence
+- The capital-release rules tied to the revised state targets
 
-I recommend starting with **Direction B** first, because it allows you to compare which prototype best fits your real preferences before writing code.
+The current document is already beyond open-ended brainstorming. The next step is precise rule drafting for backtesting and implementation.
