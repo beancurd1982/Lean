@@ -20,6 +20,19 @@ This file captures the working rules and habits for this project so future work 
 3. Keep encoding stable; avoid introducing non-ASCII unless already present and required.
 4. If a change could affect live trading behavior, call it out and confirm before proceeding.
 
+## BackTest Log Rules
+1. For `Algorithm.CSharp/MyAlgorithms/AegisGrowthAllocation/BackTestLogs`, do not install background automation or OS-level scheduled tasks unless the user explicitly asks for that.
+2. When the user says a new Aegis backtest log file was added, the assistant should run the repo-local one-shot renamer:
+   - `Algorithm.CSharp/MyAlgorithms/AegisGrowthAllocation/BackTestLogs/Invoke-BackTestLogRename.ps1`
+3. New Aegis backtest logs must be normalized to:
+   - `YYYY-MM-DD_HHmmss__AegisGrowthAllocation__<sanitized-original-stem>.txt`
+4. The assistant must keep `Algorithm.CSharp/MyAlgorithms/AegisGrowthAllocation/BackTestLogs/log-index.csv` updated:
+   - add new rows when logs are normalized
+   - set `status=reviewed` and `review_note=<project-note-path>` after a log has been analyzed
+5. When choosing which Aegis log to analyze, prefer:
+   - the newest `status=unreviewed` row in `log-index.csv`
+   - otherwise the newest normalized `.txt` file in `BackTestLogs`
+
 ## Multi-Agent Workflow Rules
 1. Default agent model:
    - One **Coordinator** agent owns planning, sequencing, project-note updates, integration, verification, and final sign-off.
