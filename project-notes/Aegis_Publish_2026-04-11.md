@@ -28,6 +28,9 @@ Date: 2026-04-11
 - 2026-04-11: Validation status carried into this publish step:
   - no Aegis compiler errors were reported on the `dotnet build ... --no-restore` path,
   - full clean build confirmation remains limited by existing repository-level restore / vulnerability issues in this sandbox.
+- 2026-04-11: Created commit `3d0017f34` with message `Scaffold AegisGrowthAllocation core modules`.
+- 2026-04-11: Branch status after commit: clean worktree, `research-algorithms` ahead of `origin/research-algorithms` by one commit.
+- 2026-04-11: Next step is to push the branch.
 
 ## Open Questions / Risks
 - The prior validation found no Aegis compiler errors on the `--no-restore` build path, but a full clean build remains blocked in this sandbox by existing repository-level restore / vulnerability issues.
@@ -39,3 +42,6 @@ Date: 2026-04-11
 - 2026-04-11: Strict review completed for the staged diff.
   - Validation method: `git status -sb` and `git diff --cached --summary`.
   - Result: staged content matches the intended Aegis implementation publish scope.
+- 2026-04-11: Strict review completed after commit creation.
+  - Validation method: `git log --oneline -n 1` and `git status -sb`.
+  - Result: commit `3d0017f34` was created successfully and the worktree was clean before push.
