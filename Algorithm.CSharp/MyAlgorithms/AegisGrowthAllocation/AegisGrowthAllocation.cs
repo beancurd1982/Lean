@@ -156,12 +156,7 @@ namespace QuantConnect.Algorithm.CSharp
 
             ExecutePlan(plan, currentWeights);
 
-            Debug(
-                $"[AEGIS] {Time} Regime={plan.PreviousRegime}->{plan.ActiveRegime} Raw={regimeSnapshot.RawRegime} " +
-                $"Trend={regimeSnapshot.TrendState} Breadth={regimeSnapshot.BreadthState} Stress={regimeSnapshot.StressState} " +
-                $"Growth={string.Join(",", plan.SelectedGrowthSymbols.Select(symbol => symbol.Value))} " +
-                $"Defensive={string.Join(",", plan.SelectedDefensiveSymbols.Select(symbol => symbol.Value))} " +
-                $"ForcedExits={plan.ForcedExitSymbols.Count} TrimOnly={plan.TrimOnly} ReserveRelease={plan.ReleasedReserve.ToString("0.##", CultureInfo.InvariantCulture)}");
+            Debug(FormatWeeklySummary(plan, regimeSnapshot));
         }
 
         private void ExecutePlan(PortfolioPlan plan, IReadOnlyDictionary<Symbol, decimal> currentWeights)
@@ -318,6 +313,57 @@ namespace QuantConnect.Algorithm.CSharp
             return decimal.TryParse(raw, NumberStyles.Any, CultureInfo.InvariantCulture, out var value)
                 ? Math.Max(0m, value)
                 : 0m;
+        }
+
+        private string FormatWeeklySummary(PortfolioPlan plan, RegimeSnapshot regimeSnapshot)
+        {
+            var currentCashWeight = Math.Max(0m, 1m - plan.CurrentGrowthWeight - plan.CurrentDefensiveWeight);
+            var targetGrowthWeight = plan.TargetWeights
+                .Where(pair => _assetStates.TryGetValue(pair.Key, out var assetState) && assetState.IsGrowth)
+                .Sum(pair => pair.Value);
+            var targetDefensiveWeight = plan.TargetWeights
+                .Where(pair => _assetStates.TryGetValue(pair.Key, out var assetState) && assetState.IsDefensive)
+                .Sum(pair => pair.Value);
+            var targetCashWeight = Math.Max(0m, 1m - targetGrowthWeight - targetDefensiveWeight);
+
+            return string.Format(
+                CultureInfo.InvariantCulture,
+                "[AEGIS] {0:yyyy-MM-dd} Prev={1} Act={2} Raw={3} Trend={4} Breadth={5} Stress={6} Severe={7} Curr=G{8:0.00}/D{9:0.00}/C{10:0.00} Target=G{11:0.00}/D{12:0.00}/C{13:0.00} Growth{14} Def{15} Forced={16} Trim={17} Reserve={18:0.##}",
+                Time,
+                plan.PreviousRegime,
+                plan.ActiveRegime,
+                regimeSnapshot.RawRegime,
+                regimeSnapshot.TrendState,
+                regimeSnapshot.BreadthState,
+                regimeSnapshot.StressState,
+                regimeSnapshot.SevereStress,
+                plan.CurrentGrowthWeight,
+                plan.CurrentDefensiveWeight,
+                currentCashWeight,
+                targetGrowthWeight,
+                targetDefensiveWeight,
+                targetCashWeight,
+                FormatSymbolPreview(plan.SelectedGrowthSymbols),
+                FormatSymbolPreview(plan.SelectedDefensiveSymbols),
+                plan.ForcedExitSymbols.Count,
+                plan.TrimOnly,
+                plan.ReleasedReserve);
+        }
+
+        private static string FormatSymbolPreview(IReadOnlyList<Symbol> symbols)
+        {
+            if (symbols.Count == 0)
+            {
+                return "[0]";
+            }
+
+            const int previewCount = 3;
+            var preview = string.Join(",", symbols.Take(previewCount).Select(symbol => symbol.Value));
+            var extraCount = symbols.Count - previewCount;
+
+            return extraCount > 0
+                ? $"[{symbols.Count}]={preview}+{extraCount}"
+                : $"[{symbols.Count}]={preview}";
         }
 
         private sealed class AssetState
