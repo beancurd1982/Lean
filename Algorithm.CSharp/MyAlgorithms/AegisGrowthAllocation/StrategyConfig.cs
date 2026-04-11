@@ -11,7 +11,16 @@ namespace QuantConnect.Algorithm.CSharp
         public const string MarketTicker = "SPY";
         public const string StressTicker = "VIX";
         public const int WarmupTradingDays = 252;
+        public const string UndeployedReserveParameter = "undeployed-reserve";
         public static readonly TimeSpan WeeklyDecisionTime = new TimeSpan(10, 0, 0);
+        public const int CloseWindowSize = 252;
+        public const int Return21Period = 21;
+        public const int Return63Period = 63;
+        public const int Return126Period = 126;
+        public const int VolatilityLookbackDays = 63;
+        public const int DrawdownLookbackDays = 63;
+        public const int VixAverageWindow = 5;
+        public const int SpySmaLookbackWindowSize = TrendSlopeLookbackDays + 1;
 
         public static readonly IReadOnlyList<string> CoreGrowthTickers = new[]
         {
@@ -107,6 +116,19 @@ namespace QuantConnect.Algorithm.CSharp
         public const decimal GrowthAtrForcedExitLimit = 0.07m;
         public const decimal GrowthRiskPenaltyAtrLimit = 0.05m;
         public const decimal GrowthOverextensionLimit = 0.20m;
+        public const decimal TrendDistanceCap = 0.15m;
+        public const decimal SmaSpreadCap = 0.10m;
+        public const decimal Return21ScoreCap = 0.10m;
+        public const decimal TrendDistanceScoreWeight = 20m;
+        public const decimal SmaSpreadScoreWeight = 15m;
+        public const decimal Return21ScoreWeight = 10m;
+        public const decimal Return126ScoreWeight = 20m;
+        public const decimal Return63ScoreWeight = 15m;
+        public const decimal VolatilityScoreWeight = 10m;
+        public const decimal DrawdownScoreWeight = 10m;
+        public const decimal DefensiveReturn126Weight = 0.50m;
+        public const decimal DefensiveVolatilityWeight = 0.30m;
+        public const decimal DefensiveDrawdownWeight = 0.20m;
         public const decimal SingleGrowthWeightCap = 0.12m;
         public const decimal SmallTradeThreshold = 0.005m;
         public const int MaxOptimizationReplacementsPerWeek = 1;

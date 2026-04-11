@@ -45,10 +45,39 @@ Date: 2026-04-11
 - 2026-04-11: Next step is to remove those temporary artifacts and hand back the current implementation state for user review.
 - 2026-04-11: Removed the temporary `.dotnet/` folder and malformed build-log artifact.
 - 2026-04-11: Final status check confirmed the worktree now contains only the intended Aegis source files and this implementation note.
+- 2026-04-11: User confirmed the multi-role workflow should remain in effect for continued Aegis work.
+- 2026-04-11: Next implementation scope: `StockSelectionModel`, `PortfolioManager`, and the minimum algorithm wiring needed to connect them cleanly.
+- 2026-04-11: Re-read the committed Aegis implementation spec sections for:
+  - growth selection and scoring,
+  - defensive ranking,
+  - turnover friction,
+  - portfolio target construction,
+  - undeployed-capital handling.
+- 2026-04-11: Implemented `StockSelectionModel` with:
+  - growth eligibility and forced-exit checks,
+  - growth composite scoring,
+  - hold-stability bonus,
+  - defensive eligibility and ranking,
+  - shared snapshot / candidate / selection result types.
+- 2026-04-11: Implemented `PortfolioManager` with:
+  - trim-only handling on regime downgrade,
+  - limited optimization replacement logic,
+  - ranking-driven entry caps,
+  - sleeve-based target weight construction,
+  - reserve-release recommendation output.
+- 2026-04-11: Reworked `AegisGrowthAllocation.cs` to:
+  - subscribe and track market / stress / universe symbols,
+  - maintain rolling close history and indicator state,
+  - compute breadth and stress inputs,
+  - run weekly regime evaluation,
+  - produce selection / portfolio plans,
+  - submit `SetHoldings` targets for meaningful weight changes.
+- 2026-04-11: Re-ran build validation after the selection and portfolio implementation pass.
 
 ## Open Questions / Risks
 - `VIX` access in Lean can vary by data availability and symbol wiring; the first implementation should keep this dependency explicit and isolated.
 - The implementation spec contains proposed thresholds that are intentionally first-pass defaults and still require later validation by backtest.
+- Because explicit sub-agent delegation was not requested in this turn, the multi-role workflow will be applied locally through separate coordinator-style implementation and review passes rather than spawned agents.
 
 ## Review Log
 - 2026-04-11: Strict review completed for the initial implementation note entry. No issues found in the documentation update.
@@ -60,3 +89,13 @@ Date: 2026-04-11
 - 2026-04-11: Strict review completed after temporary-artifact cleanup.
   - Validation method: `git status --short` plus direct existence checks for the removed temporary paths.
   - Result: only the intended Aegis files remain in the worktree.
+- 2026-04-11: Strict review completed after the selection and portfolio implementation pass.
+  - Validation method: direct source inspection plus `dotnet build Algorithm.CSharp/QuantConnect.Algorithm.CSharp.csproj -c Release -nologo --no-restore`.
+  - Result: no Aegis compiler errors were reported.
+  - Residual blockers:
+    - the solution build still exits non-zero because of existing repository-level `NU1903` / `NU1904` warnings,
+    - full restore-path validation remains affected by the sandbox SDK / workload behavior.
+  - Residual implementation risks:
+    - `VIX` live availability still needs real deployment confirmation,
+    - first-week entry caps may make initial portfolio deployment intentionally gradual,
+    - replacement / target logic still needs backtest validation before live use.
