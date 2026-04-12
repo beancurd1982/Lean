@@ -9,6 +9,7 @@ using QuantConnect.Brokerages;
 using QuantConnect.Data;
 using QuantConnect.Data.Market;
 using QuantConnect.Indicators;
+using QuantConnect.Orders;
 #endregion
 
 namespace QuantConnect.Algorithm.CSharp
@@ -23,7 +24,13 @@ namespace QuantConnect.Algorithm.CSharp
         private RegimeModel _regimeModel;
         private StockSelectionModel _stockSelectionModel;
         private PortfolioManager _portfolioManager;
+        private LiveStateStore _liveStateStore;
         private decimal _undeployedCapitalReserve;
+        private bool _startupReconciliationComplete;
+        private DateTime? _lastCompletedWeeklyReviewUtc;
+        private Dictionary<Symbol, decimal> _lastPlannedTargetWeights = new Dictionary<Symbol, decimal>();
+        private Dictionary<int, AegisOpenOrderState> _trackedOpenOrders = new Dictionary<int, AegisOpenOrderState>();
+        private AegisLiveState _loadedLiveState;
 
         public override void Initialize()
         {
@@ -70,6 +77,19 @@ namespace QuantConnect.Algorithm.CSharp
             _regimeModel = new RegimeModel();
             _stockSelectionModel = new StockSelectionModel();
             _portfolioManager = new PortfolioManager();
+            _liveStateStore = new LiveStateStore(this);
+
+            if (LiveMode)
+            {
+                _loadedLiveState = _liveStateStore.Load();
+                RestorePersistedRuntimeState(_loadedLiveState);
+                ReconcileLiveStartup();
+                SaveLiveState("Startup reconciliation");
+            }
+            else
+            {
+                _startupReconciliationComplete = true;
+            }
 
             Schedule.On(
                 DateRules.Every(DayOfWeek.Monday),
@@ -100,6 +120,25 @@ namespace QuantConnect.Algorithm.CSharp
             }
         }
 
+        public override void OnOrderEvent(OrderEvent orderEvent)
+        {
+            if (!LiveMode || !_assetStates.ContainsKey(orderEvent.Symbol))
+            {
+                return;
+            }
+
+            RefreshTrackedOpenOrdersFromBroker();
+            SaveLiveState($"Order event {orderEvent.OrderId} {orderEvent.Status}");
+        }
+
+        public override void OnEndOfAlgorithm()
+        {
+            if (LiveMode)
+            {
+                SaveLiveState("Algorithm end");
+            }
+        }
+
         private void WeeklyReview()
         {
             if (IsWarmingUp)
@@ -107,10 +146,26 @@ namespace QuantConnect.Algorithm.CSharp
                 return;
             }
 
+            if (LiveMode && !_startupReconciliationComplete)
+            {
+                Debug($"[AEGIS-LIVE] {Time}: weekly review skipped. Startup reconciliation incomplete.");
+                return;
+            }
+
             if (!_marketState.IsReady || _stressWindow.Count < StrategyConfig.VixAverageWindow)
             {
                 Debug($"[AEGIS] {Time} Weekly review skipped. MarketReady={_marketState.IsReady} StressCount={_stressWindow.Count}");
                 return;
+            }
+
+            if (LiveMode)
+            {
+                RefreshTrackedOpenOrdersFromBroker();
+                if (_trackedOpenOrders.Count > 0)
+                {
+                    Debug($"[AEGIS-LIVE] {Time}: weekly review skipped. OpenOrders={_trackedOpenOrders.Count} Symbols={string.Join(",", _trackedOpenOrders.Values.Select(order => order.Ticker).Distinct().OrderBy(ticker => ticker, StringComparer.Ordinal))}");
+                    return;
+                }
             }
 
             var snapshots = _assetStates.Values.Select(CreateSnapshot).ToList();
@@ -155,6 +210,10 @@ namespace QuantConnect.Algorithm.CSharp
                 _undeployedCapitalReserve);
 
             ExecutePlan(plan, currentWeights);
+            _lastCompletedWeeklyReviewUtc = UtcTime;
+            _lastPlannedTargetWeights = new Dictionary<Symbol, decimal>(plan.TargetWeights);
+            RefreshTrackedOpenOrdersFromBroker();
+            SaveLiveState("Weekly review");
 
             Debug(FormatWeeklySummary(plan, regimeSnapshot));
         }
@@ -313,6 +372,208 @@ namespace QuantConnect.Algorithm.CSharp
             return decimal.TryParse(raw, NumberStyles.Any, CultureInfo.InvariantCulture, out var value)
                 ? Math.Max(0m, value)
                 : 0m;
+        }
+
+        private void RestorePersistedRuntimeState(AegisLiveState state)
+        {
+            if (state == null)
+            {
+                return;
+            }
+
+            _regimeModel.Restore(state.ActiveRegime, state.UpgradeConfirmationCount);
+            _undeployedCapitalReserve = Math.Max(0m, state.UndeployedReserve);
+            _lastCompletedWeeklyReviewUtc = state.LastCompletedWeeklyReviewUtc;
+            _lastPlannedTargetWeights = state.LastPlannedTargetWeights
+                .Where(kvp => TryGetTrackedSymbol(kvp.Key, out _))
+                .ToDictionary(
+                    kvp =>
+                    {
+                        TryGetTrackedSymbol(kvp.Key, out var symbol);
+                        return symbol;
+                    },
+                    kvp => kvp.Value);
+        }
+
+        private void ReconcileLiveStartup()
+        {
+            try
+            {
+                var brokerHoldings = CaptureBrokerHoldingsByTicker();
+                var brokerOpenOrders = CaptureBrokerOpenOrders();
+                var persistedHoldings = _loadedLiveState?.BrokerHoldingsByTicker ?? new Dictionary<string, decimal>();
+                var persistedOpenOrders = _loadedLiveState?.OpenOrders ?? new List<AegisOpenOrderState>();
+
+                var holdingsMatch = DictionariesMatch(brokerHoldings, persistedHoldings);
+                var openOrdersMatch = OpenOrdersMatch(brokerOpenOrders.Values, persistedOpenOrders);
+
+                if (!holdingsMatch || !openOrdersMatch)
+                {
+                    Debug(
+                        $"[AEGIS-LIVE] {Time}: broker/store mismatch detected. BrokerHoldings={brokerHoldings.Count} StoreHoldings={persistedHoldings.Count} BrokerOpenOrders={brokerOpenOrders.Count} StoreOpenOrders={persistedOpenOrders.Count}. Broker state wins.");
+                }
+                else
+                {
+                    Debug($"[AEGIS-LIVE] {Time}: broker/store state matched on startup.");
+                }
+
+                _trackedOpenOrders = brokerOpenOrders;
+                _startupReconciliationComplete = true;
+                Debug(
+                    $"[AEGIS-LIVE] {Time}: startup reconciliation complete. Holdings={brokerHoldings.Count} OpenOrders={_trackedOpenOrders.Count} RestoredRegime={_regimeModel.ActiveRegime} LastReview={_lastCompletedWeeklyReviewUtc?.ToString("u") ?? "none"}");
+            }
+            catch (Exception ex)
+            {
+                _startupReconciliationComplete = false;
+                Error($"[AEGIS-LIVE] {Time}: startup reconciliation failed: {ex.Message}");
+            }
+        }
+
+        private void SaveLiveState(string reason)
+        {
+            if (!LiveMode)
+            {
+                return;
+            }
+
+            RefreshTrackedOpenOrdersFromBroker();
+            _liveStateStore.Save(BuildPersistedState(), reason);
+        }
+
+        private AegisLiveState BuildPersistedState()
+        {
+            return new AegisLiveState
+            {
+                SchemaVersion = StrategyConfig.LiveStateSchemaVersion,
+                ActiveRegime = _regimeModel.ActiveRegime,
+                UpgradeConfirmationCount = _regimeModel.UpgradeConfirmationCount,
+                UndeployedReserve = _undeployedCapitalReserve,
+                LastCompletedWeeklyReviewUtc = _lastCompletedWeeklyReviewUtc,
+                LastPlannedTargetWeights = _lastPlannedTargetWeights
+                    .ToDictionary(kvp => kvp.Key.Value, kvp => kvp.Value, StringComparer.Ordinal),
+                BrokerHoldingsByTicker = CaptureBrokerHoldingsByTicker(),
+                OpenOrders = _trackedOpenOrders.Values
+                    .OrderBy(order => order.OrderId)
+                    .Select(order => new AegisOpenOrderState
+                    {
+                        OrderId = order.OrderId,
+                        Ticker = order.Ticker,
+                        Direction = order.Direction,
+                        Quantity = order.Quantity,
+                        Status = order.Status
+                    })
+                    .ToList()
+            };
+        }
+
+        private Dictionary<string, decimal> CaptureBrokerHoldingsByTicker()
+        {
+            var holdings = new Dictionary<string, decimal>(StringComparer.Ordinal);
+
+            foreach (var assetState in _assetStates.Values)
+            {
+                var quantity = Portfolio[assetState.Symbol].Quantity;
+                if (Math.Abs(quantity) <= StrategyConfig.LiveStateQuantityTolerance)
+                {
+                    continue;
+                }
+
+                holdings[assetState.Ticker] = quantity;
+            }
+
+            return holdings;
+        }
+
+        private Dictionary<int, AegisOpenOrderState> CaptureBrokerOpenOrders()
+        {
+            return Transactions.GetOpenOrders()
+                .Where(order => _assetStates.ContainsKey(order.Symbol))
+                .ToDictionary(
+                    order => order.Id,
+                    order => new AegisOpenOrderState
+                    {
+                        OrderId = order.Id,
+                        Ticker = order.Symbol.Value,
+                        Direction = order.Direction.ToString(),
+                        Quantity = order.Quantity,
+                        Status = order.Status.ToString()
+                    });
+        }
+
+        private void RefreshTrackedOpenOrdersFromBroker()
+        {
+            _trackedOpenOrders = CaptureBrokerOpenOrders();
+        }
+
+        private bool TryGetTrackedSymbol(string ticker, out Symbol symbol)
+        {
+            var assetState = _assetStates.Values.FirstOrDefault(state => state.Ticker.Equals(ticker, StringComparison.Ordinal));
+            if (assetState != null)
+            {
+                symbol = assetState.Symbol;
+                return true;
+            }
+
+            symbol = null;
+            return false;
+        }
+
+        private static bool DictionariesMatch(
+            IReadOnlyDictionary<string, decimal> left,
+            IReadOnlyDictionary<string, decimal> right)
+        {
+            if (left.Count != right.Count)
+            {
+                return false;
+            }
+
+            foreach (var kvp in left)
+            {
+                if (!right.TryGetValue(kvp.Key, out var value))
+                {
+                    return false;
+                }
+
+                if (Math.Abs(kvp.Value - value) > StrategyConfig.LiveStateQuantityTolerance)
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        private static bool OpenOrdersMatch(
+            IEnumerable<AegisOpenOrderState> brokerOrders,
+            IEnumerable<AegisOpenOrderState> persistedOrders)
+        {
+            var brokerList = brokerOrders
+                .OrderBy(order => order.OrderId)
+                .ToList();
+            var persistedList = persistedOrders
+                .OrderBy(order => order.OrderId)
+                .ToList();
+
+            if (brokerList.Count != persistedList.Count)
+            {
+                return false;
+            }
+
+            for (var index = 0; index < brokerList.Count; index++)
+            {
+                var broker = brokerList[index];
+                var persisted = persistedList[index];
+                if (broker.OrderId != persisted.OrderId ||
+                    !string.Equals(broker.Ticker, persisted.Ticker, StringComparison.Ordinal) ||
+                    !string.Equals(broker.Direction, persisted.Direction, StringComparison.Ordinal) ||
+                    !string.Equals(broker.Status, persisted.Status, StringComparison.Ordinal) ||
+                    Math.Abs(broker.Quantity - persisted.Quantity) > StrategyConfig.LiveStateQuantityTolerance)
+                {
+                    return false;
+                }
+            }
+
+            return true;
         }
 
         private string FormatWeeklySummary(PortfolioPlan plan, RegimeSnapshot regimeSnapshot)

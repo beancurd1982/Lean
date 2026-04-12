@@ -12,6 +12,9 @@ namespace QuantConnect.Algorithm.CSharp
         public const string StressTicker = "VIX";
         public const int WarmupTradingDays = 252;
         public const string UndeployedReserveParameter = "undeployed-reserve";
+        public const string LiveStateKey = "AegisGrowthAllocation_LiveState_V1";
+        public const int LiveStateSchemaVersion = 1;
+        public const decimal LiveStateQuantityTolerance = 0.0001m;
         public static readonly TimeSpan WeeklyDecisionTime = new TimeSpan(10, 0, 0);
         public const int CloseWindowSize = 252;
         public const int Return21Period = 21;

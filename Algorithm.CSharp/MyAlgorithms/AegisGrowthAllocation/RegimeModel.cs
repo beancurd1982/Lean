@@ -14,6 +14,7 @@ namespace QuantConnect.Algorithm.CSharp
         }
 
         public RiskRegime ActiveRegime { get; private set; }
+        public int UpgradeConfirmationCount => _upgradeConfirmationCount;
 
         public RegimeSnapshot Update(RegimeInputs inputs)
         {
@@ -65,6 +66,14 @@ namespace QuantConnect.Algorithm.CSharp
         {
             ActiveRegime = regime;
             _upgradeConfirmationCount = 0;
+        }
+
+        public void Restore(RiskRegime regime, int upgradeConfirmationCount)
+        {
+            ActiveRegime = Enum.IsDefined(typeof(RiskRegime), regime)
+                ? regime
+                : RiskRegime.Neutral;
+            _upgradeConfirmationCount = Math.Max(0, upgradeConfirmationCount);
         }
 
         public static SignalState ClassifyTrend(RegimeInputs inputs)
