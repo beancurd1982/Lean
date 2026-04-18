@@ -71,7 +71,12 @@ namespace QuantConnect.Algorithm.CSharp
                     StrategyConfig.CloseWindowSize);
             }
 
-            _undeployedCapitalReserve = ParseDecimalParameter(StrategyConfig.UndeployedReserveParameter);
+            StrategyConfig.ResetRuntimeParameters();
+            ConfigureRuntimeParameters();
+            _undeployedCapitalReserve = ParseDecimalParameter(
+                StrategyConfig.UndeployedReserveParameter,
+                0m,
+                value => value >= 0m);
             SetWarmUp(StrategyConfig.WarmupTradingDays, Resolution.Daily);
 
             _regimeModel = new RegimeModel();
@@ -96,7 +101,8 @@ namespace QuantConnect.Algorithm.CSharp
                 TimeRules.At(StrategyConfig.WeeklyDecisionTime.Hours, StrategyConfig.WeeklyDecisionTime.Minutes),
                 WeeklyReview);
 
-            Debug($"AegisGrowthAllocation initialized. GrowthUniverse={StrategyConfig.GrowthTickers.Count} DefensiveUniverse={StrategyConfig.DefensiveTickers.Count} UndeployedReserve={_undeployedCapitalReserve.ToString(CultureInfo.InvariantCulture)}");
+            Debug(
+                $"AegisGrowthAllocation initialized. GrowthUniverse={StrategyConfig.GrowthTickers.Count} DefensiveUniverse={StrategyConfig.DefensiveTickers.Count} UndeployedReserve={_undeployedCapitalReserve.ToString(CultureInfo.InvariantCulture)} FavorableBreadthThreshold={StrategyConfig.FavorableBreadthThreshold.ToString(CultureInfo.InvariantCulture)} WeakStressThreshold={StrategyConfig.WeakStressThreshold.ToString(CultureInfo.InvariantCulture)} UpgradeConfirmationWeeks={StrategyConfig.UpgradeConfirmationWeeks}");
         }
 
         public override void OnData(Slice slice)
@@ -149,6 +155,12 @@ namespace QuantConnect.Algorithm.CSharp
             if (LiveMode && !_startupReconciliationComplete)
             {
                 Debug($"[AEGIS-LIVE] {Time}: weekly review skipped. Startup reconciliation incomplete.");
+                return;
+            }
+
+            if (!IsMarketOpen(_marketSymbol))
+            {
+                Debug($"[AEGIS] {Time} Weekly review skipped. Market closed for {_marketSymbol.Value}.");
                 return;
             }
 
@@ -232,6 +244,12 @@ namespace QuantConnect.Algorithm.CSharp
 
                 if (Math.Abs(target.Value - currentWeight) < StrategyConfig.SmallTradeThreshold)
                 {
+                    continue;
+                }
+
+                if (!IsMarketOpen(target.Key))
+                {
+                    Debug($"[AEGIS] {Time} Order skipped for {target.Key.Value}. Market is closed.");
                     continue;
                 }
 
@@ -361,17 +379,71 @@ namespace QuantConnect.Algorithm.CSharp
             return maxDrawdown;
         }
 
-        private decimal ParseDecimalParameter(string name)
+        private void ConfigureRuntimeParameters()
+        {
+            var favorableBreadthThreshold = ParseDecimalParameter(
+                StrategyConfig.FavorableBreadthThresholdParameter,
+                StrategyConfig.DefaultFavorableBreadthThreshold,
+                value => value > StrategyConfig.WeakBreadthThreshold && value <= 1m);
+            var weakStressThreshold = ParseDecimalParameter(
+                StrategyConfig.WeakStressThresholdParameter,
+                StrategyConfig.DefaultWeakStressThreshold,
+                value => value > StrategyConfig.FavorableStressThreshold && value < StrategyConfig.SevereStressThreshold);
+            var upgradeConfirmationWeeks = ParseIntParameter(
+                StrategyConfig.UpgradeConfirmationWeeksParameter,
+                StrategyConfig.DefaultUpgradeConfirmationWeeks,
+                value => value >= 1 && value <= 8);
+
+            StrategyConfig.ConfigureRuntimeParameters(
+                favorableBreadthThreshold,
+                weakStressThreshold,
+                upgradeConfirmationWeeks);
+        }
+
+        private decimal ParseDecimalParameter(string name, decimal defaultValue, Func<decimal, bool> validator)
         {
             var raw = GetParameter(name);
             if (string.IsNullOrWhiteSpace(raw))
             {
-                return 0m;
+                return defaultValue;
             }
 
-            return decimal.TryParse(raw, NumberStyles.Any, CultureInfo.InvariantCulture, out var value)
-                ? Math.Max(0m, value)
-                : 0m;
+            if (!decimal.TryParse(raw, NumberStyles.Any, CultureInfo.InvariantCulture, out var value))
+            {
+                Debug($"[AEGIS] Invalid decimal parameter {name}={raw}. Using default {defaultValue.ToString(CultureInfo.InvariantCulture)}.");
+                return defaultValue;
+            }
+
+            if (!validator(value))
+            {
+                Debug($"[AEGIS] Out-of-range decimal parameter {name}={value.ToString(CultureInfo.InvariantCulture)}. Using default {defaultValue.ToString(CultureInfo.InvariantCulture)}.");
+                return defaultValue;
+            }
+
+            return value;
+        }
+
+        private int ParseIntParameter(string name, int defaultValue, Func<int, bool> validator)
+        {
+            var raw = GetParameter(name);
+            if (string.IsNullOrWhiteSpace(raw))
+            {
+                return defaultValue;
+            }
+
+            if (!int.TryParse(raw, NumberStyles.Integer, CultureInfo.InvariantCulture, out var value))
+            {
+                Debug($"[AEGIS] Invalid integer parameter {name}={raw}. Using default {defaultValue}.");
+                return defaultValue;
+            }
+
+            if (!validator(value))
+            {
+                Debug($"[AEGIS] Out-of-range integer parameter {name}={value}. Using default {defaultValue}.");
+                return defaultValue;
+            }
+
+            return value;
         }
 
         private void RestorePersistedRuntimeState(AegisLiveState state)

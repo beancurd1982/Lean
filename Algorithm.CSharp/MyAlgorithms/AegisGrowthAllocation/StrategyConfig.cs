@@ -12,6 +12,9 @@ namespace QuantConnect.Algorithm.CSharp
         public const string StressTicker = "VIX";
         public const int WarmupTradingDays = 252;
         public const string UndeployedReserveParameter = "undeployed-reserve";
+        public const string WeakStressThresholdParameter = "weak-stress-threshold";
+        public const string FavorableBreadthThresholdParameter = "favorable-breadth-threshold";
+        public const string UpgradeConfirmationWeeksParameter = "upgrade-confirmation-weeks";
         public const string LiveStateKey = "AegisGrowthAllocation_LiveState_V1";
         public const int LiveStateSchemaVersion = 1;
         public const decimal LiveStateQuantityTolerance = 0.0001m;
@@ -47,14 +50,18 @@ namespace QuantConnect.Algorithm.CSharp
         public const decimal TrendLowerBuffer = 0.02m;
         public const int TrendSlopeLookbackDays = 20;
 
-        public const decimal FavorableBreadthThreshold = 0.70m;
+        public const decimal DefaultFavorableBreadthThreshold = 0.70m;
         public const decimal WeakBreadthThreshold = 0.40m;
 
         public const decimal FavorableStressThreshold = 18m;
-        public const decimal WeakStressThreshold = 25m;
+        public const decimal DefaultWeakStressThreshold = 25m;
         public const decimal SevereStressThreshold = 30m;
 
-        public const int UpgradeConfirmationWeeks = 2;
+        public const int DefaultUpgradeConfirmationWeeks = 2;
+
+        public static decimal FavorableBreadthThreshold { get; private set; } = DefaultFavorableBreadthThreshold;
+        public static decimal WeakStressThreshold { get; private set; } = DefaultWeakStressThreshold;
+        public static int UpgradeConfirmationWeeks { get; private set; } = DefaultUpgradeConfirmationWeeks;
 
         public static readonly IReadOnlyDictionary<RiskRegime, SleeveTargets> SleeveTargetsByRegime =
             new Dictionary<RiskRegime, SleeveTargets>
@@ -142,6 +149,23 @@ namespace QuantConnect.Algorithm.CSharp
         public static SleeveTargets GetSleeveTargets(RiskRegime regime)
         {
             return SleeveTargetsByRegime[regime];
+        }
+
+        public static void ResetRuntimeParameters()
+        {
+            FavorableBreadthThreshold = DefaultFavorableBreadthThreshold;
+            WeakStressThreshold = DefaultWeakStressThreshold;
+            UpgradeConfirmationWeeks = DefaultUpgradeConfirmationWeeks;
+        }
+
+        public static void ConfigureRuntimeParameters(
+            decimal favorableBreadthThreshold,
+            decimal weakStressThreshold,
+            int upgradeConfirmationWeeks)
+        {
+            FavorableBreadthThreshold = favorableBreadthThreshold;
+            WeakStressThreshold = weakStressThreshold;
+            UpgradeConfirmationWeeks = upgradeConfirmationWeeks;
         }
     }
 
