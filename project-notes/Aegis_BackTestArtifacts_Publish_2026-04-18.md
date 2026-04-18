@@ -12,3 +12,13 @@
 - User explicitly requested publishing the current baseline artifacts.
 - Existing `*.txt` files remain governed by `BackTestLogs/.gitignore`.
 - This publish does not change executable algorithm code.
+
+### Review
+- Strict review completed after publishing the artifacts.
+- Verified the pushed scope contained only:
+  - `Logs_V1.json`
+  - `StrategyReport_V1.pdf`
+  - this project note
+- Verified no executable Aegis code changed in this step.
+- Verified the `BackTestLogs/.gitignore` rule for `*.txt` remains unchanged.
+- Residual note: this review entry was added immediately after the first artifact push, so it requires one follow-up publish to keep the workflow log complete in the remote branch.
