@@ -15,6 +15,9 @@ namespace QuantConnect.Algorithm.CSharp
         public const string WeakStressThresholdParameter = "weak-stress-threshold";
         public const string FavorableBreadthThresholdParameter = "favorable-breadth-threshold";
         public const string UpgradeConfirmationWeeksParameter = "upgrade-confirmation-weeks";
+        public const string ReplacementScoreGapParameter = "replacement-score-gap";
+        public const string HoldStabilityBonusParameter = "hold-stability-bonus";
+        public const string GrowthAtrEligibilityLimitParameter = "growth-atr-eligibility-limit";
         public const string LiveStateKey = "AegisGrowthAllocation_LiveState_V1";
         public const int LiveStateSchemaVersion = 1;
         public const decimal LiveStateQuantityTolerance = 0.0001m;
@@ -50,14 +53,14 @@ namespace QuantConnect.Algorithm.CSharp
         public const decimal TrendLowerBuffer = 0.02m;
         public const int TrendSlopeLookbackDays = 20;
 
-        public const decimal DefaultFavorableBreadthThreshold = 0.70m;
+        public const decimal DefaultFavorableBreadthThreshold = 0.75m;
         public const decimal WeakBreadthThreshold = 0.40m;
 
         public const decimal FavorableStressThreshold = 18m;
-        public const decimal DefaultWeakStressThreshold = 25m;
+        public const decimal DefaultWeakStressThreshold = 27m;
         public const decimal SevereStressThreshold = 30m;
 
-        public const int DefaultUpgradeConfirmationWeeks = 2;
+        public const int DefaultUpgradeConfirmationWeeks = 1;
 
         public static decimal FavorableBreadthThreshold { get; private set; } = DefaultFavorableBreadthThreshold;
         public static decimal WeakStressThreshold { get; private set; } = DefaultWeakStressThreshold;
@@ -122,7 +125,7 @@ namespace QuantConnect.Algorithm.CSharp
                 [RiskRegime.Weak] = 0.00m
             };
 
-        public const decimal GrowthAtrEligibilityLimit = 0.06m;
+        public const decimal DefaultGrowthAtrEligibilityLimit = 0.06m;
         public const decimal GrowthAtrForcedExitLimit = 0.07m;
         public const decimal GrowthRiskPenaltyAtrLimit = 0.05m;
         public const decimal GrowthOverextensionLimit = 0.20m;
@@ -143,8 +146,12 @@ namespace QuantConnect.Algorithm.CSharp
         public const decimal SmallTradeThreshold = 0.005m;
         public const int MaxOptimizationReplacementsPerWeek = 1;
         public const int MaxRankingDrivenEntriesPerWeek = 2;
-        public const decimal ReplacementScoreGap = 10m;
-        public const decimal HoldStabilityBonus = 5m;
+        public const decimal DefaultReplacementScoreGap = 10m;
+        public const decimal DefaultHoldStabilityBonus = 5m;
+
+        public static decimal GrowthAtrEligibilityLimit { get; private set; } = DefaultGrowthAtrEligibilityLimit;
+        public static decimal ReplacementScoreGap { get; private set; } = DefaultReplacementScoreGap;
+        public static decimal HoldStabilityBonus { get; private set; } = DefaultHoldStabilityBonus;
 
         public static SleeveTargets GetSleeveTargets(RiskRegime regime)
         {
@@ -156,16 +163,25 @@ namespace QuantConnect.Algorithm.CSharp
             FavorableBreadthThreshold = DefaultFavorableBreadthThreshold;
             WeakStressThreshold = DefaultWeakStressThreshold;
             UpgradeConfirmationWeeks = DefaultUpgradeConfirmationWeeks;
+            GrowthAtrEligibilityLimit = DefaultGrowthAtrEligibilityLimit;
+            ReplacementScoreGap = DefaultReplacementScoreGap;
+            HoldStabilityBonus = DefaultHoldStabilityBonus;
         }
 
         public static void ConfigureRuntimeParameters(
             decimal favorableBreadthThreshold,
             decimal weakStressThreshold,
-            int upgradeConfirmationWeeks)
+            int upgradeConfirmationWeeks,
+            decimal growthAtrEligibilityLimit,
+            decimal replacementScoreGap,
+            decimal holdStabilityBonus)
         {
             FavorableBreadthThreshold = favorableBreadthThreshold;
             WeakStressThreshold = weakStressThreshold;
             UpgradeConfirmationWeeks = upgradeConfirmationWeeks;
+            GrowthAtrEligibilityLimit = growthAtrEligibilityLimit;
+            ReplacementScoreGap = replacementScoreGap;
+            HoldStabilityBonus = holdStabilityBonus;
         }
     }
 

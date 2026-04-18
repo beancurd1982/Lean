@@ -102,7 +102,7 @@ namespace QuantConnect.Algorithm.CSharp
                 WeeklyReview);
 
             Debug(
-                $"AegisGrowthAllocation initialized. GrowthUniverse={StrategyConfig.GrowthTickers.Count} DefensiveUniverse={StrategyConfig.DefensiveTickers.Count} UndeployedReserve={_undeployedCapitalReserve.ToString(CultureInfo.InvariantCulture)} FavorableBreadthThreshold={StrategyConfig.FavorableBreadthThreshold.ToString(CultureInfo.InvariantCulture)} WeakStressThreshold={StrategyConfig.WeakStressThreshold.ToString(CultureInfo.InvariantCulture)} UpgradeConfirmationWeeks={StrategyConfig.UpgradeConfirmationWeeks}");
+                $"AegisGrowthAllocation initialized. GrowthUniverse={StrategyConfig.GrowthTickers.Count} DefensiveUniverse={StrategyConfig.DefensiveTickers.Count} UndeployedReserve={_undeployedCapitalReserve.ToString(CultureInfo.InvariantCulture)} FavorableBreadthThreshold={StrategyConfig.FavorableBreadthThreshold.ToString(CultureInfo.InvariantCulture)} WeakStressThreshold={StrategyConfig.WeakStressThreshold.ToString(CultureInfo.InvariantCulture)} UpgradeConfirmationWeeks={StrategyConfig.UpgradeConfirmationWeeks} GrowthAtrEligibilityLimit={StrategyConfig.GrowthAtrEligibilityLimit.ToString(CultureInfo.InvariantCulture)} ReplacementScoreGap={StrategyConfig.ReplacementScoreGap.ToString(CultureInfo.InvariantCulture)} HoldStabilityBonus={StrategyConfig.HoldStabilityBonus.ToString(CultureInfo.InvariantCulture)}");
         }
 
         public override void OnData(Slice slice)
@@ -393,11 +393,26 @@ namespace QuantConnect.Algorithm.CSharp
                 StrategyConfig.UpgradeConfirmationWeeksParameter,
                 StrategyConfig.DefaultUpgradeConfirmationWeeks,
                 value => value >= 1 && value <= 8);
+            var growthAtrEligibilityLimit = ParseDecimalParameter(
+                StrategyConfig.GrowthAtrEligibilityLimitParameter,
+                StrategyConfig.DefaultGrowthAtrEligibilityLimit,
+                value => value >= 0.03m && value <= StrategyConfig.GrowthAtrForcedExitLimit);
+            var replacementScoreGap = ParseDecimalParameter(
+                StrategyConfig.ReplacementScoreGapParameter,
+                StrategyConfig.DefaultReplacementScoreGap,
+                value => value >= 0m && value <= 20m);
+            var holdStabilityBonus = ParseDecimalParameter(
+                StrategyConfig.HoldStabilityBonusParameter,
+                StrategyConfig.DefaultHoldStabilityBonus,
+                value => value >= 0m && value <= 20m);
 
             StrategyConfig.ConfigureRuntimeParameters(
                 favorableBreadthThreshold,
                 weakStressThreshold,
-                upgradeConfirmationWeeks);
+                upgradeConfirmationWeeks,
+                growthAtrEligibilityLimit,
+                replacementScoreGap,
+                holdStabilityBonus);
         }
 
         private decimal ParseDecimalParameter(string name, decimal defaultValue, Func<decimal, bool> validator)
