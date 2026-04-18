@@ -147,7 +147,7 @@ namespace QuantConnect.Algorithm.CSharp
         public const int MaxOptimizationReplacementsPerWeek = 1;
         public const int MaxRankingDrivenEntriesPerWeek = 2;
         public const decimal DefaultReplacementScoreGap = 10m;
-        public const decimal DefaultHoldStabilityBonus = 5m;
+        public const decimal DefaultHoldStabilityBonus = 2m;
 
         public static decimal GrowthAtrEligibilityLimit { get; private set; } = DefaultGrowthAtrEligibilityLimit;
         public static decimal ReplacementScoreGap { get; private set; } = DefaultReplacementScoreGap;
