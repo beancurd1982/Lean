@@ -241,3 +241,13 @@ Staged diff summary:
 Review result:
 - No unrelated staged files found.
 - Proceeding to commit and push.
+
+## 2026-04-23 - Step 13: Local Commit Created
+
+Summary:
+- Created local commit `1ede38f05`.
+- Commit message: `fix: keep Aegis exchange-aware schedule`.
+- Commit includes the V7 schedule-only source baseline, schedule regression test, V7/V8 JSON evidence, log index updates, and project notes.
+
+Next step:
+- Commit this workflow-log update, then push `research-algorithms` to `origin`.
