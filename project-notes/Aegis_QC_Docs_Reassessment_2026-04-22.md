@@ -1,0 +1,91 @@
+## 2026-04-22 - Aegis QuantConnect docs reassessment
+
+### Task
+- Re-read relevant QuantConnect `writing-algorithms` documentation for the persistent `OrderFillsDuringExtendedMarketHoursAnalysis` warning.
+- Gather as much official documentation evidence as possible before proposing the next execution-path change.
+- Reassess the current working hypothesis against the actual `AegisGrowthAllocation` order-submission path.
+
+### Files to touch
+- `project-notes/Aegis_QC_Docs_Reassessment_2026-04-22.md`
+
+### Notes
+- QuantConnect documentation reviewed:
+  - Docs root: `https://www.quantconnect.com/docs/v2/`
+  - Writing Algorithms root: `https://www.quantconnect.com/docs/v2/writing-algorithms`
+  - Scheduled Events: `https://www.quantconnect.com/docs/v2/writing-algorithms/scheduled-events`
+  - Trade Fills Key Concepts: `https://www.quantconnect.com/docs/v2/writing-algorithms/reality-modeling/trade-fills/key-concepts`
+  - Position Sizing: `https://www.quantconnect.com/docs/v2/writing-algorithms/trading-and-orders/position-sizing`
+  - Market Orders: `https://www.quantconnect.com/docs/v2/writing-algorithms/trading-and-orders/order-types/market-orders`
+  - Liquidating Positions: `https://www.quantconnect.com/docs/v2/writing-algorithms/trading-and-orders/liquidating-positions`
+  - Securities Market Hours: `https://www.quantconnect.com/docs/v2/writing-algorithms/securities/market-hours`
+  - US Equity Market Hours: `https://www.quantconnect.com/docs/v2/writing-algorithms/securities/asset-classes/us-equity/market-hours`
+  - Consolidating Data / Execution Sequence: `https://www.quantconnect.com/docs/v2/writing-algorithms/consolidating-data/getting-started`
+  - Time Modeling / Periods: `https://www.quantconnect.com/docs/v2/writing-algorithms/key-concepts/time-modeling/periods`
+  - Order Errors: `https://www.quantconnect.com/docs/v2/writing-algorithms/trading-and-orders/order-errors`
+- Strongest documentation findings:
+  - Scheduled Events common error:
+    - QuantConnect explicitly states that if you subscribe to daily resolution data and place trades intraday with a Scheduled Event, you get stale fills.
+  - Scheduled Events execution order:
+    - Scheduled Events run before consolidation handlers and before `OnData`.
+    - Therefore, a Scheduled Event does not see same-pass updates that would arrive later in the loop.
+  - Scheduled Events live timing:
+    - In live trading, a `10:00 AM` Scheduled Event fires exactly at `10:00 AM`.
+    - With minute data, the latest bar may still be the previous minute in live trading because live bars can arrive slightly after the top of the minute.
+  - Trade Fills / stale fills:
+    - QuantConnect explicitly says stale fills usually occur when an algorithm uses daily data but trades intraday with Scheduled Events.
+    - Built-in fill models only fill market orders with stale data.
+  - Time modeling for daily bars:
+    - QuantConnect emits daily bars at market close or midnight depending on `DailyPreciseEndTime`.
+    - Daily bars are end-of-period data, not intraday price updates.
+  - Position sizing:
+    - `SetHoldings` submits market orders.
+    - `SetHoldings` uses market orders to reach the requested target weight.
+  - Market orders:
+    - Market orders placed during pre-market or post-market hours are converted to market-on-open orders.
+  - Liquidations:
+    - `Liquidate` creates market orders.
+    - If liquidation happens while the market is closed, LEAN converts those orders to market-on-open orders.
+  - Market-hours subscriptions:
+    - By default, subscriptions only include regular trading hours.
+    - Extended-hours data is only available on intraday subscriptions.
+    - Daily and hourly bars reflect regular trading hours only.
+- Current Aegis code path compared against the documentation:
+  - `AegisGrowthAllocation` currently subscribes the market symbol, stress symbol, and all tradable equities at `Resolution.Daily`.
+  - `AegisGrowthAllocation` schedules `WeeklyReview` intraday using `DateRules.WeekStart(_marketSymbol)` plus `TimeRules.AfterMarketOpen(_marketSymbol, 30, ...)`.
+  - `WeeklyReview` calls `ExecutePlan`.
+  - `ExecutePlan` calls `SetHoldings` directly.
+  - This means the current algorithm still does the exact pattern QuantConnect documents as a stale-fill / unrealistic-fill risk:
+    - intraday Scheduled Event
+    - daily subscriptions for tradable symbols
+    - market orders via `SetHoldings`
+- Reassessment of the issue:
+  - The schedule-only `V7` change was directionally reasonable but incomplete.
+  - The main documented defect in the current code is not the calendar rule anymore. It is that tradable Aegis equities are still daily-resolution subscriptions while orders are submitted at `10:00 AM`.
+  - That explains why `V7` can still carry a large warning count even after switching to exchange-aware week starts.
+  - The exact QuantConnect report class `OrderFillsDuringExtendedMarketHoursAnalysis` is still not documented directly, so the final mapping from this code path to that warning name remains an inference.
+  - However, the underlying behavior QuantConnect documents as problematic is now much clearer.
+- Revised best-supported fix:
+  - Subscribe tradable Aegis equities at `Resolution.Minute`.
+  - Keep regime and ranking inputs on daily bars by feeding separate daily consolidators or daily indicators into `AssetState`.
+  - Do not rely on daily subscriptions for symbols that are traded intraday.
+  - Prefer splitting decision and execution:
+    - compute the plan in the scheduled review
+    - execute the pending rebalance from `OnData` after fresh regular-hours minute data is present
+  - Keep explicit `IsMarketOpen(symbol)` / exchange-hours checks before sending orders.
+- Why the execution split is still recommended even though the docs do not prescribe it explicitly:
+  - QuantConnect documents that Scheduled Events run before `OnData`.
+  - QuantConnect also documents that live minute bars can arrive slightly after the top of the minute.
+  - Therefore, using the scheduled callback to decide and then using `OnData` to execute on the next minute bar is the most conservative way to ensure fresh intraday price state in both backtest and live trading.
+
+### Review
+- Review completed.
+- Findings:
+  - The earlier schedule-only hypothesis was incomplete.
+  - The current `V7` source still matches QuantConnect's documented stale-fill anti-pattern because tradable symbols remain subscribed at `Resolution.Daily` while trading occurs intraday in a Scheduled Event.
+  - The strongest docs-backed next implementation is a combined fix:
+    - minute subscriptions for tradable symbols
+    - daily consolidators for decision logic
+    - optional deferred execution from `OnData` for fresher minute-bar state
+- Residual uncertainty:
+  - QuantConnect does not appear to publish a warning-specific specification for `OrderFillsDuringExtendedMarketHoursAnalysis`.
+  - The recommendation above is therefore based on the documented order, fill, bar-timing, and market-hours behavior rather than a page dedicated to that specific report warning.

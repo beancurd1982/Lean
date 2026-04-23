@@ -39,41 +39,61 @@
 - Warning count improved from `2504` in `V5` to `2196` in `V6`, but the warning remains.
 - The sample event is still the first `COST` order at `2018-01-08 10:00 AM` New York time.
 - `V6` performance degraded versus `V5`, which indicates the previous change altered execution mechanics without fully fixing the root timing issue.
+- `V7` changed the weekly trigger to an exchange-aware week-start schedule and improved headline performance, but the warning remained and increased to `2698`.
+- Current source review shows the `V7` implementation still trades intraday from a Scheduled Event while the market symbol and all tradable equities remain subscribed at `Resolution.Daily`.
+- QuantConnect documentation explicitly flags that exact pattern as a stale-fill risk.
+- `V8` tested minute subscriptions plus deferred execution, but it did not clear the warning.
+- `V8` warning count was `2336`, exactly `2 x Total Orders`.
+- The same exact `2 x Total Orders` ratio appears in `V5`, `V6`, `V7`, and `V8`.
+- V8 order timestamps are at `10:00 AM` New York time, so the warning classification does not align with the visible order timestamps.
+- The V8 execution-path implementation was rolled back because it changed early regime behavior and degraded performance.
+- 2026-04-23 root-cause investigation found no local LEAN source implementation of `OrderFillsDuringExtendedMarketHoursAnalysis`; the named analyzer appears to be QuantConnect Cloud report-analysis behavior outside this checkout.
+- In both `Logs_V7.json` and `Logs_V8.json`, the warning sample has `status=submitted`, `fillPrice=0.0`, and `fillQuantity=0.0`, so the analyzer sample is not an actual fill despite the warning text saying "filled orders".
+- Every final order record in `Logs_V7.json` and `Logs_V8.json` occurs at `10:00 AM` New York time, with zero final orders outside a simple weekday `09:30-16:00` regular-hours check.
+- QuantConnect's US equity market-hours documentation states regular trading hours are `09:30-16:00` America/New_York.
+- QuantConnect's market-order documentation states market orders are submitted during regular trading hours and are converted to market-on-open only if placed outside regular hours for relevant asset classes.
 
 ## Working Hypothesis
-- The remaining warning is most likely caused by order submission timing at the Monday `10:00 AM` scheduled review and/or how `SetHoldings` is interacting with the backtest fill model at that time.
-- The core issue is more likely market-open gating / scheduled-event fill timing than security-selection logic.
-- The best-documented next change is to replace the generic clock-based schedule with a symbol-aware `DateRules.WeekStart(symbol)` plus `TimeRules.AfterMarketOpen(symbol, minutes)` trigger.
+- The earlier execution-data-resolution hypothesis is rejected as the primary cause.
+- The most likely explanation is a QuantConnect Cloud analyzer false positive or analyzer wording/counting bug:
+  - the sample row is a submitted event, not a fill
+  - the count equals exactly `2 x Total Orders`
+  - final order timestamps are regular-session times
+  - Aegis already has both schedule-level and per-symbol market-open guards
+- A lower-probability explanation is a cloud-side time-zone, exchange-hours, or symbol metadata interpretation mismatch that is not visible from the downloaded JSON.
+- The next step should not be another execution-path fix. The next step should be either:
+  - send the evidence to QuantConnect support/forum, or
+  - run one diagnostic cloud backtest with temporary order-event logging if we need more proof.
 
 ## Files Likely To Change
 - `Algorithm.CSharp/MyAlgorithms/AegisGrowthAllocation/AegisGrowthAllocation.cs`
 - `Tests/Algorithm/AegisGrowthAllocationTests.cs`
 - `project-notes/Aegis_Execution_Realism_Fix_2026-04-21.md`
 - `project-notes/Aegis_Backtest_Log_Analysis_2026-04-21.md`
+- `project-notes/Aegis_QC_Docs_Reassessment_2026-04-22.md`
 
 ## Plan
 
 ### Phase 1 - Fix the highest-priority realism warning
-- Replace the generic Monday `10:00 AM` callback with an exchange-aware `DateRules.WeekStart(_marketSymbol)` plus `TimeRules.AfterMarketOpen(_marketSymbol, minutes)` schedule.
-- Add explicit regular-hours execution gating before `SetHoldings` / liquidation actions using exchange-hours checks.
-- If the scheduled callback can still run before the engine has the fresh regular-hours pricing state needed for realistic fills, defer execution to the next safe minute instead of forcing the order immediately.
-- Keep the strategy logic, target-weight construction, and daily decision inputs unchanged in this phase.
+- Keep the exchange-aware weekly schedule already added in `V7`.
+- Do not make further execution-path changes for this warning unless new evidence proves an Aegis defect.
+- Treat the warning as likely cloud analyzer behavior until QuantConnect confirms otherwise.
+- Preserve the V7 schedule-only source baseline because it improves platform alignment without changing strategy behavior.
 
 ### Phase 2 - Verify that the fix did not accidentally change strategy logic
 - Confirm the weekly regime and target-selection summaries remain aligned with the intended daily-bar logic.
 - Compare a small set of milestone weekly summaries between the prior baseline and the new run to ensure that the selected assets and regime states are not unexpectedly drifting because of the execution fix.
 
 ### Phase 3 - Cloud validation
-- Upload the touched Aegis source files to QuantConnect Cloud.
-- Rerun the same backtest window used for `V5` and `V6`.
-- Compare:
-  - presence/absence of `OrderFillsDuringExtendedMarketHoursAnalysis`
-  - warning count if still present
-  - `CAGR`, `Sharpe`, `Drawdown`, `Total Orders`, `Portfolio Turnover`, and `End Equity`
+- No additional cloud validation is recommended for another execution fix at this time.
+- If we run another cloud backtest, make it diagnostic:
+  - add temporary backtest-only debug lines for order submission time, symbol exchange-open status, and `OnOrderEvent` status/fill data
+  - rerun once
+  - remove the instrumentation after collecting evidence
 
 ### Phase 4 - Decide whether to keep or revert the fix
 - Keep the fix if:
-  - the warning is removed, or reduced to a clearly acceptable and explainable residual level
+  - the warning is proven to identify a real Aegis market-hours defect and the fix removes or materially reduces it
   - the strategy logic remains intact
   - the performance degradation is acceptable relative to the realism improvement
 - Reject or revise the fix if:
@@ -83,7 +103,7 @@
 
 ## Acceptance Criteria
 - Primary:
-  - `OrderFillsDuringExtendedMarketHoursAnalysis` is removed, or the count is materially reduced with a clear explanation of the residual cases.
+  - The warning is either removed by a proven Aegis fix, or documented as a likely QuantConnect Cloud analyzer false positive with supporting evidence.
 - Secondary:
   - No new fatal errors or pathological trading behavior appear in the logs.
   - Weekly decision summaries remain logically consistent with the strategy design.
@@ -95,15 +115,17 @@
 - Guarding too aggressively can accidentally suppress intended trades.
 
 ## Recommendation
-- Proceed with `OrderFillsDuringExtendedMarketHoursAnalysis` first.
-- Start with the smallest behavior change that matches the QuantConnect documentation:
-  - exchange-aware weekly scheduling
-  - explicit regular-hours execution checks
+- Stop trying to eliminate `OrderFillsDuringExtendedMarketHoursAnalysis` through strategy/execution changes unless QuantConnect confirms the analyzer is reporting a real Aegis defect.
+- Keep the code at the `V7` schedule-only baseline.
+- Preserve the root-cause evidence in `project-notes/Aegis_OrderFillsWarning_RootCause_2026-04-23.md`.
+- If we need more evidence, run one diagnostic cloud backtest with temporary order-event logging, then remove the instrumentation.
+- Otherwise, ask QuantConnect support/forum why `OrderFillsDuringExtendedMarketHoursAnalysis` samples `status=submitted`, `fillQuantity=0.0` rows at `10:00 AM` New York time and reports a count equal to `2 x Total Orders`.
 - Do not spend engineering time on the lower-priority report warnings until the execution-realism issue is either resolved or reduced to an understood residual.
 
 ## Review
 - Review completed for the planning note.
 - Findings:
-  - The priority order is consistent with the QuantConnect documentation on fills, market hours, and reconciliation.
-  - No conflicting plan item was identified.
+  - The priority order is consistent with the QuantConnect documentation on fills, market hours, scheduled-event timing, and stale fills.
+  - The plan has been revised after V8 because the execution-data-resolution fix did not resolve the warning and introduced strategy drift.
+  - The plan has been revised again after root-cause investigation because V7/V8 final order timestamps are regular-session times and the cloud sample is a submitted event, not a fill.
   - The plan intentionally avoids treating performance-commentary warnings as implementation defects.

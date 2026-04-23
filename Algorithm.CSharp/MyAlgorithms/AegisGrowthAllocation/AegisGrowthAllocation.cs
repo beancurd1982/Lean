@@ -31,6 +31,7 @@ namespace QuantConnect.Algorithm.CSharp
         private Dictionary<Symbol, decimal> _lastPlannedTargetWeights = new Dictionary<Symbol, decimal>();
         private Dictionary<int, AegisOpenOrderState> _trackedOpenOrders = new Dictionary<int, AegisOpenOrderState>();
         private AegisLiveState _loadedLiveState;
+        private static readonly TimeSpan UsaRegularMarketOpenTime = new TimeSpan(9, 30, 0);
 
         public override void Initialize()
         {
@@ -97,8 +98,8 @@ namespace QuantConnect.Algorithm.CSharp
             }
 
             Schedule.On(
-                DateRules.Every(DayOfWeek.Monday),
-                TimeRules.At(StrategyConfig.WeeklyDecisionTime.Hours, StrategyConfig.WeeklyDecisionTime.Minutes),
+                DateRules.WeekStart(_marketSymbol, extendedMarketHours: false),
+                TimeRules.AfterMarketOpen(_marketSymbol, GetWeeklyDecisionMinutesAfterMarketOpen(), extendedMarketOpen: false),
                 WeeklyReview);
 
             Debug(
@@ -228,6 +229,12 @@ namespace QuantConnect.Algorithm.CSharp
             SaveLiveState("Weekly review");
 
             Debug(FormatWeeklySummary(plan, regimeSnapshot));
+        }
+
+        private static double GetWeeklyDecisionMinutesAfterMarketOpen()
+        {
+            var decisionOffset = StrategyConfig.WeeklyDecisionTime - UsaRegularMarketOpenTime;
+            return Math.Max(0d, decisionOffset.TotalMinutes);
         }
 
         private void ExecutePlan(PortfolioPlan plan, IReadOnlyDictionary<Symbol, decimal> currentWeights)

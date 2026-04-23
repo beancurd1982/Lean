@@ -1,0 +1,119 @@
+## 2026-04-23 - Aegis backtest log analysis
+
+### Task
+- Inspect newly added Aegis backtest artifacts in `Algorithm.CSharp/MyAlgorithms/AegisGrowthAllocation/BackTestLogs`.
+- Normalize any new raw Aegis log filenames using the repo-local renamer.
+- Read the newest relevant log/report artifacts and summarize the findings.
+- Determine whether the execution-path fix reduced or removed `OrderFillsDuringExtendedMarketHoursAnalysis`.
+
+### Files to touch
+- `Algorithm.CSharp/MyAlgorithms/AegisGrowthAllocation/BackTestLogs/log-index.csv`
+- `project-notes/Aegis_Backtest_Log_Analysis_2026-04-23.md`
+
+### Notes
+- New artifacts identified:
+  - Raw log: `Square Blue Armadillo_logs.txt`
+  - Report JSON: `Logs_V8.json`
+- Ran the repo-local log renamer with a process-scoped PowerShell execution-policy bypass after the default policy blocked direct script execution.
+- Normalized raw log to:
+  - `2026-04-23_212554__AegisGrowthAllocation__Square-Blue-Armadillo_logs.txt`
+- Updated `log-index.csv` via the renamer and then reviewed the new entry.
+- Text log observations:
+  - Backtest id: `ad2e47e2258b8466770db9432ad65d1d`
+  - LEAN Engine version: `v2.5.0.0.17679`
+  - Warmup completed at `2018-01-02 09:31:00`, earlier than the V7 text log's `2018-01-02 16:00:00`.
+  - Weekly `[AEGIS]` summaries are present throughout the visible log.
+  - Reviews still occur at `10:00:00` New York time, including Tuesday holiday-week shifts.
+  - No fatal exceptions, skipped-order messages, or runtime errors were found in the visible text log.
+  - QuantConnect's 100 KB log cap truncated the log.
+- `Logs_V8.json` observations:
+  - `OrderFillsDuringExtendedMarketHoursAnalysis` remains present.
+  - Warning count is `2336`.
+  - The sample event is the first `AMZN` order at `2018-01-02T15:00:00Z` / `2018-01-02 10:00 AM` New York time with `status=submitted`.
+  - Other report analyses remain:
+    - `PortfolioMarginUsageAnalysis`
+    - `PerformanceRelativeToBenchmarkAnalysis`
+    - `CrisisEventsAnalysis` with `count=3`
+    - `StatisticalSignificanceOfDailyReturnsAnalysis`
+- Performance comparison:
+  - `V5`:
+    - `Compounding Annual Return`: `17.457%`
+    - `Drawdown`: `14.900%`
+    - `Sharpe Ratio`: `0.864`
+    - `Sortino Ratio`: `0.949`
+    - `Probabilistic Sharpe Ratio`: `60.107%`
+    - `End Equity`: `109528.05`
+    - `Net Profit`: `265.093%`
+    - `Total Orders`: `1252`
+    - `Portfolio Turnover`: `2.99%`
+    - `Total Fees`: `$1316.50`
+    - `OrderFillsDuringExtendedMarketHoursAnalysis`: `2504`
+  - `V6`:
+    - `Compounding Annual Return`: `14.540%`
+    - `Drawdown`: `15.600%`
+    - `Sharpe Ratio`: `0.75`
+    - `Sortino Ratio`: `0.81`
+    - `Probabilistic Sharpe Ratio`: `50.960%`
+    - `End Equity`: `89628.71`
+    - `Net Profit`: `198.762%`
+    - `Total Orders`: `1098`
+    - `Portfolio Turnover`: `2.79%`
+    - `Total Fees`: `$1143.57`
+    - `OrderFillsDuringExtendedMarketHoursAnalysis`: `2196`
+  - `V7`:
+    - `Compounding Annual Return`: `18.291%`
+    - `Drawdown`: `16.500%`
+    - `Sharpe Ratio`: `0.91`
+    - `Sortino Ratio`: `0.998`
+    - `Probabilistic Sharpe Ratio`: `65.089%`
+    - `End Equity`: `116270.92`
+    - `Net Profit`: `287.570%`
+    - `Total Orders`: `1349`
+    - `Portfolio Turnover`: `3.20%`
+    - `Total Fees`: `$1427.14`
+    - `OrderFillsDuringExtendedMarketHoursAnalysis`: `2698`
+  - `V8`:
+    - `Compounding Annual Return`: `15.726%`
+    - `Drawdown`: `16.900%`
+    - `Sharpe Ratio`: `0.838`
+    - `Sortino Ratio`: `0.911`
+    - `Probabilistic Sharpe Ratio`: `62.021%`
+    - `End Equity`: `97463.95`
+    - `Net Profit`: `224.880%`
+    - `Total Orders`: `1168`
+    - `Portfolio Turnover`: `2.98%`
+    - `Total Fees`: `$1231.35`
+    - `OrderFillsDuringExtendedMarketHoursAnalysis`: `2336`
+- Warning-pattern finding:
+  - In every reviewed run, `OrderFillsDuringExtendedMarketHoursAnalysis` equals exactly `2 x Total Orders`:
+    - `V5`: `2504 / 1252 = 2`
+    - `V6`: `2196 / 1098 = 2`
+    - `V7`: `2698 / 1349 = 2`
+    - `V8`: `2336 / 1168 = 2`
+  - V8 order timestamps are all `14:00Z` or `15:00Z`, which corresponds to `10:00 AM` New York time depending on daylight saving time.
+  - This means the report is effectively flagging every submitted/fill event pair, not a small subset of actual off-hours order events.
+- Strategy-behavior finding:
+  - V8 no longer matches the V7 early-regime behavior.
+  - The first visible V8 review is `Act=Neutral`, while V7's first review was `Act=Favorable`.
+  - The V8 log stays Neutral for a long initial stretch, which suggests the minute-subscription/daily-consolidator change altered warmup or daily-state timing more than intended.
+- Interpretation:
+  - The execution-path fix reduced the warning from `2698` in V7 to `2336` in V8, but did not clear it.
+  - Since the warning count remains exactly `2 x Total Orders`, the warning now looks less like a targeted detection of a few off-hours fills and more like a systematic classification of all Aegis order events.
+  - V8 also introduced material strategy drift in regime behavior and weaker performance than V5/V7, so it should not be accepted as the final fix.
+- Next-step implication:
+  - Do not keep stacking execution fixes blindly.
+  - The next investigation should focus on why QuantConnect's report is classifying every regular-hours `10:00 AM` order event as extended-hours-related.
+  - In parallel, review the V8 code path for warmup/daily-consolidator timing drift before considering any performance comparison valid.
+
+### Review
+- Review completed.
+- Findings:
+  - The new log was normalized and indexed correctly.
+  - V8 did not fix `OrderFillsDuringExtendedMarketHoursAnalysis`.
+  - The warning count improved versus V7 but remains worse than V6 and is still exactly two times total orders.
+  - Orders are still timestamped at regular US market hours (`10:00 AM` New York), so the report classification does not currently align with the visible order timestamps.
+  - V8 materially changed early regime behavior and underperformed V5/V7 on headline return metrics.
+- Open questions:
+  - Whether QuantConnect's report analysis is misclassifying every Aegis order event due to a time-zone, exchange-hours, or report-analysis issue.
+  - Whether V8's minute-subscription/daily-consolidator implementation changed warmup timing and daily decision state.
+  - Whether the next implementation should be revised or reverted before further optimization.

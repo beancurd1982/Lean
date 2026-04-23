@@ -45,27 +45,102 @@
     - reverted the abandoned `AegisGrowthAllocation.cs` code change
     - removed the exploratory `Tests/Algorithm/AegisGrowthAllocationTests.cs` file
     - kept the documentation and backtest-artifact updates for the next clean implementation cycle
+- Current implementation scope for the next attempt:
+  - keep the existing `IsMarketOpen` order guards unchanged
+  - change only the weekly trigger from generic `Every(Monday)` plus `At(10, 0)` scheduling to an exchange-aware `WeekStart(_marketSymbol)` plus `AfterMarketOpen(_marketSymbol, minutes)` schedule
+  - add a focused regression test around the scheduled-event registration if the schedule manager seam is workable
+- New implementation step completed:
+  - updated `AegisGrowthAllocation.Initialize()` to replace `DateRules.Every(DayOfWeek.Monday)` plus `TimeRules.At(...)` with `DateRules.WeekStart(_marketSymbol, extendedMarketHours: false)` plus `TimeRules.AfterMarketOpen(_marketSymbol, minutes, extendedMarketOpen: false)`
+  - preserved the existing configured decision time by converting `StrategyConfig.WeeklyDecisionTime` into minutes after the regular US equity open (`9:30 AM`)
+  - left the existing `IsMarketOpen` guards in `WeeklyReview()` and `ExecutePlan()` unchanged
+  - added a focused test `Tests/Algorithm/AegisGrowthAllocationTests.cs` that captures the scheduled event registered during `Initialize()` and asserts the algorithm uses exchange-aware weekly scheduling semantics instead of the generic clock-based rule
+- Live-trading impact of this step:
+  - this changes only the schedule expression for the weekly review trigger
+  - it is intended to preserve the existing practical execution time while making the schedule exchange-aware and less dependent on a generic clock rule
+- 2026-04-22 implementation step approved:
+  - the next fix will keep the exchange-aware schedule but change traded Aegis equities back to `Resolution.Minute`
+  - regime and selection state will remain daily-driven
+  - weekly review will compute and store a pending rebalance plan
+  - actual order submission will occur only after fresh regular-hours minute data is available
+- Live-trading impact of the approved step:
+  - this does affect execution behavior for live trading because orders will no longer be submitted directly from the scheduled callback
+  - the intent is to improve backtest/live consistency and reduce documented stale-fill risk without changing the strategy rules themselves
+- 2026-04-22 implementation completed:
+  - changed all tradable growth and defensive equities from `Resolution.Daily` to `Resolution.Minute`
+  - preserved daily decision inputs by registering a daily consolidator per tradable equity and feeding `AssetState.CloseWindow` from those daily bars
+  - removed the minute-bar `AssetState` updates from `OnData` so ranking windows remain daily-driven
+  - changed the weekly review flow to queue a pending `PortfolioPlan` instead of submitting orders immediately
+  - added `TryExecutePendingPlan(Slice slice)` so order submission only occurs after the current `Slice` contains regular-hours minute bars for every symbol in the plan
+  - moved `_lastCompletedWeeklyReviewUtc` and `_lastPlannedTargetWeights` updates to the actual execution point instead of the scheduled review callback
+  - added a regression test asserting that traded equities include minute-resolution subscriptions while the signal-only market and stress inputs retain daily data
+- Expected effect of the implemented change:
+  - Aegis should no longer submit `SetHoldings` market orders directly from a scheduled callback while relying on daily subscriptions for the traded symbols
+  - daily regime and ranking logic should remain aligned with the existing strategy design
+  - execution should occur on fresher intraday data without changing the target-weight logic itself
 
 ### Review
 - Strict code review completed.
 - Findings:
-  - No correctness issue found in the implemented change.
-  - The update is intentionally narrow: execution subscriptions changed to minute, while decision-state updates remain daily through consolidators.
-  - The previous duplicate-update path in `OnData` was removed, which avoids contaminating daily close windows with minute bars.
+  - No correctness issue found in the current schedule-only change.
+  - The update is intentionally narrow: it changes the weekly review trigger to a symbol-aware exchange schedule and does not alter selection logic, target-weight construction, or existing order guards.
+  - The conversion from `10:00 AM` to `30 minutes after market open` preserves the intended practical review time for US equities while aligning with QuantConnect's documented scheduling primitives.
+- Strict code review completed for the new execution-path change.
+- Findings:
+  - The implementation now matches the QuantConnect guidance more closely by avoiding intraday order submission against daily subscriptions for traded symbols.
+  - The strategy logic remains isolated from the execution change: regime updates, candidate scoring, and plan construction still depend on daily data.
+  - The deferred execution path is intentionally narrow and reuses the existing `ExecutePlan` logic instead of introducing a second order-construction path.
 - Residual risks:
-  - Minute subscriptions will increase backtest runtime and data volume.
   - The extended-hours warning cannot be considered closed until the same `V5` backtest window is rerun in QuantConnect Cloud and the analysis output is checked again.
   - Local test/build verification is limited by repo-level NuGet audit warnings currently causing `dotnet build` / `dotnet test` to exit non-zero despite reporting `0 Error(s)`.
+  - The deferred execution path does not persist a full pending plan across live restarts. The exposure window is small because execution should normally happen on the next minute bar, but it remains a live-trading edge case.
 
 ### Verification
 - Attempted local verification:
-  - Added `Tests/Algorithm/AegisGrowthAllocationTests.cs` to assert that tradable Aegis equity subscriptions are configured at `Resolution.Minute`.
-  - Ran `dotnet build Algorithm.CSharp/QuantConnect.Algorithm.CSharp.csproj -c Release -nologo --no-restore`.
-  - Ran `dotnet build Algorithm.CSharp/QuantConnect.Algorithm.CSharp.csproj -c Release -nologo --no-restore -p:NuGetAudit=false`.
+  - Added `Tests/Algorithm/AegisGrowthAllocationTests.cs` to assert that the algorithm registers an exchange-aware weekly schedule.
+  - Ran `dotnet test Tests/QuantConnect.Tests.csproj --no-restore --filter AegisGrowthAllocationTests -p:NuGetAudit=false -p:TreatWarningsAsErrors=false -p:WarningsAsErrors=''`.
 - Result:
-  - Both build commands exited non-zero because existing package vulnerability warnings (`NU1903` for `DotNetZip`, `NU1904` for `System.Drawing.Common`) are being treated as build-failing conditions in this repo state.
-  - The build output reported `0 Error(s)`, so no source compile error was surfaced from the Aegis change itself.
+  - The test command still exited non-zero before test execution because existing package vulnerability warnings (`NU1902` / `NU1903` / `NU1904`) are being treated as build-failing conditions in this repo state.
+  - No source compile error from the Aegis schedule change was surfaced in the command output.
 - Required external verification:
   - Copy the touched Aegis source file(s) into the QuantConnect Cloud project.
-  - Rerun the same `V5` backtest date range.
+  - Rerun the same `V5` backtest date range with the schedule-only change.
   - Confirm whether `OrderFillsDuringExtendedMarketHoursAnalysis` no longer appears and whether performance metrics remain within an acceptable range.
+- Additional 2026-04-22 verification attempts:
+  - Added a second regression test to assert that tradable sleeves include minute-resolution subscriptions while the signal inputs remain daily.
+  - Re-ran focused local `dotnet test` and `dotnet build` commands using a workspace-local `DOTNET_CLI_HOME` and explicit suppression for the repo's `NU1902` / `NU1903` / `NU1904` audit warnings.
+- 2026-04-22 verification result:
+  - The local .NET toolchain still exits non-zero in this repo state before yielding a usable compile-or-test verdict.
+  - The commands did not report any Aegis source compile errors, but they also did not provide a trustworthy green result.
+  - Because of that toolchain state, QuantConnect Cloud remains the authoritative verification environment for this fix.
+- 2026-04-23 rollback decision:
+  - `V8` reduced `OrderFillsDuringExtendedMarketHoursAnalysis` from `2698` to `2336` but did not clear it.
+  - `V8` also changed early regime behavior and underperformed `V5` / `V7`, so it is not an acceptable final fix.
+  - Roll back only the `V8` execution-path implementation in `AegisGrowthAllocation.cs`.
+  - Keep the `V7` exchange-aware schedule change in place.
+  - Keep the V8 logs, report JSON, analysis notes, and warning-pattern evidence.
+  - Remove the V8-specific minute-subscription regression test while keeping the V7 schedule regression test.
+- 2026-04-23 rollback completed:
+  - reverted tradable equities from `Resolution.Minute` back to `Resolution.Daily`
+  - removed the per-symbol daily consolidator added for the V8 attempt
+  - restored direct `AssetState` updates from daily `OnData` bars
+  - removed `_pendingPlan` and deferred `TryExecutePendingPlan`
+  - restored immediate `ExecutePlan(plan, currentWeights)` in the scheduled weekly review
+  - restored weekly-review state persistence at the scheduled review point
+  - removed the V8-specific minute-subscription regression test
+- Current accepted code shape after rollback:
+  - keep `DateRules.WeekStart(_marketSymbol, extendedMarketHours: false)`
+  - keep `TimeRules.AfterMarketOpen(_marketSymbol, GetWeeklyDecisionMinutesAfterMarketOpen(), extendedMarketOpen: false)`
+  - otherwise preserve the pre-V8 daily-data execution path
+- 2026-04-23 rollback review:
+  - no V8-only execution markers remain in `AegisGrowthAllocation.cs`
+  - `_pendingPlan`, `TryExecutePendingPlan`, minute subscriptions, and added consolidators are gone
+  - the V7 schedule-only change remains in place
+  - the remaining source diff in `AegisGrowthAllocation.cs` is limited to exchange-aware scheduling and the helper that converts the configured review time into minutes after regular US equity open
+  - the V8-specific test was removed, leaving the exchange-aware schedule regression test
+- 2026-04-23 rollback verification:
+  - searched `AegisGrowthAllocation.cs` and `AegisGrowthAllocationTests.cs` for V8-only markers: `_pendingPlan`, `TryExecutePendingPlan`, `Weekly review queued`, `Weekly rebalance executed`, `Resolution.Minute`, and added `Consolidate(...)` calls
+  - no V8-only markers were found
+  - reviewed `git diff` for `AegisGrowthAllocation.cs`; the remaining source diff is the V7 schedule-only change
+  - attempted focused local test: `dotnet test Tests/QuantConnect.Tests.csproj --no-restore --filter "AegisGrowthAllocationTests.RegistersExchangeAwareWeeklyReviewSchedule" -p:NuGetAudit=false -p:TreatWarningsAsErrors=false -p:WarningsAsErrors=''`
+  - local test command still exited non-zero before a trustworthy test result because of existing `NU1902` / `NU1903` / `NU1904` package audit warnings and local .NET first-run/tooling behavior
+  - removed the temporary `.dotnet-home` folder created for the test attempt
