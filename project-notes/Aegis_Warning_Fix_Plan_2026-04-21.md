@@ -52,6 +52,9 @@
 - Every final order record in `Logs_V7.json` and `Logs_V8.json` occurs at `10:00 AM` New York time, with zero final orders outside a simple weekday `09:30-16:00` regular-hours check.
 - QuantConnect's US equity market-hours documentation states regular trading hours are `09:30-16:00` America/New_York.
 - QuantConnect's market-order documentation states market orders are submitted during regular trading hours and are converted to market-on-open only if placed outside regular hours for relevant asset classes.
+- `V9` diagnostic run confirmed the first warning sample order and captured diagnostic rows all occurred at exchange-local `10:00:00` with `IsMarketOpen=True` and `RegularHoursOpen=True`.
+- `V9` warning count was `2702` with `1351` total orders, again exactly `2 x Total Orders`.
+- `V9` diagnostic logs captured `85` submissions, `85` submitted events, and `85` filled events; every captured row had `RegularHoursOpen=True`.
 
 ## Working Hypothesis
 - The earlier execution-data-resolution hypothesis is rejected as the primary cause.
@@ -60,6 +63,7 @@
   - the count equals exactly `2 x Total Orders`
   - final order timestamps are regular-session times
   - Aegis already has both schedule-level and per-symbol market-open guards
+  - V9 diagnostics directly show submitted and filled events at exchange-local `10:00` with regular-hours checks true
 - A lower-probability explanation is a cloud-side time-zone, exchange-hours, or symbol metadata interpretation mismatch that is not visible from the downloaded JSON.
 - The next step should not be another execution-path fix. The next step should be either:
   - send the evidence to QuantConnect support/forum, or
@@ -120,6 +124,8 @@
 - Preserve the root-cause evidence in `project-notes/Aegis_OrderFillsWarning_RootCause_2026-04-23.md`.
 - If we need more evidence, run one diagnostic cloud backtest with temporary order-event logging, then remove the instrumentation.
 - Otherwise, ask QuantConnect support/forum why `OrderFillsDuringExtendedMarketHoursAnalysis` samples `status=submitted`, `fillQuantity=0.0` rows at `10:00 AM` New York time and reports a count equal to `2 x Total Orders`.
+- V9 supplied the diagnostic evidence; the temporary instrumentation has been removed.
+- The recommended external follow-up is now QuantConnect support/forum, not another algorithm execution change.
 - Do not spend engineering time on the lower-priority report warnings until the execution-realism issue is either resolved or reduced to an understood residual.
 
 ## Review
@@ -128,4 +134,5 @@
   - The priority order is consistent with the QuantConnect documentation on fills, market hours, scheduled-event timing, and stale fills.
   - The plan has been revised after V8 because the execution-data-resolution fix did not resolve the warning and introduced strategy drift.
   - The plan has been revised again after root-cause investigation because V7/V8 final order timestamps are regular-session times and the cloud sample is a submitted event, not a fill.
+  - V9 diagnostic evidence makes a real Aegis extended-hours execution defect unlikely.
   - The plan intentionally avoids treating performance-commentary warnings as implementation defects.

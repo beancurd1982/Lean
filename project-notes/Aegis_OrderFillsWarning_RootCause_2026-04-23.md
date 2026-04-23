@@ -251,3 +251,96 @@ Summary:
 
 Next step:
 - Commit this workflow-log update, then push `research-algorithms` to `origin`.
+
+## 2026-04-23 - Step 14: Temporary Diagnostic Instrumentation Plan
+
+Summary:
+- Starting a temporary diagnostic instrumentation pass for one QuantConnect Cloud backtest.
+- Goal is to gather direct evidence around `OrderFillsDuringExtendedMarketHoursAnalysis` without changing strategy decisions or order sizing.
+
+Planned source behavior:
+- Add backtest-only diagnostic debug output around order submission and `OnOrderEvent`.
+- Include algorithm `Time`, `UtcTime`, symbol, order status, fill quantity, fill price, and regular-hours market-open checks.
+- Suppress diagnostics in live mode.
+- Cap diagnostic output so the cloud log is useful and does not become excessively noisy.
+
+Files expected to change:
+- `Algorithm.CSharp/MyAlgorithms/AegisGrowthAllocation/AegisGrowthAllocation.cs`
+- `project-notes/Aegis_OrderFillsWarning_RootCause_2026-04-23.md`
+
+Removal requirement:
+- Remove this instrumentation after the diagnostic cloud run is analyzed.
+
+## 2026-04-23 - Step 15: Temporary Diagnostic Instrumentation Added
+
+Summary:
+- Added capped backtest-only `[AEGIS-DIAG]` diagnostics around `SetHoldings` submissions and `OnOrderEvent`.
+- Diagnostics are suppressed in live mode through `ShouldEmitOrderDiagnostics()`.
+- Submission diagnostics include algorithm time, UTC time, exchange-local time, symbol, current weight, target weight, `IsMarketOpen`, and regular-hours exchange-open status.
+- Order-event diagnostics include algorithm time, event UTC time, event exchange-local time, symbol, order id, event id, status, direction, quantity, fill quantity, fill price, `IsMarketOpen`, and regular-hours exchange-open status.
+- Output caps:
+  - `100` submission diagnostics.
+  - `200` order-event diagnostics.
+
+Files touched:
+- `Algorithm.CSharp/MyAlgorithms/AegisGrowthAllocation/AegisGrowthAllocation.cs`
+- `project-notes/Aegis_OrderFillsWarning_RootCause_2026-04-23.md`
+
+Expected use:
+- Copy this temporary source to QuantConnect Cloud.
+- Run one diagnostic backtest.
+- Download the new JSON and log text.
+- Remove the diagnostic instrumentation after analysis.
+
+## 2026-04-23 - Step 16: Diagnostic Instrumentation Review And Verification
+
+Strict review:
+- Confirmed diagnostics are guarded by `ShouldEmitOrderDiagnostics()`, which returns `!LiveMode`.
+- Confirmed live `OnOrderEvent` state persistence remains unchanged after the diagnostic log call.
+- Confirmed the order submission path still calls the same `SetHoldings(target.Key, (double)target.Value)` overload.
+- Confirmed ticket logging only runs for submissions that were actually logged under the cap.
+- No strategy-selection, target-weight, market-open guard, or live-state behavior change was introduced.
+
+Verification:
+- Searched `AegisGrowthAllocation.cs` for diagnostic markers and confirmed only the intended `[AEGIS-DIAG]` helpers and call sites were added.
+- Ran `git diff --check`; it returned exit code `0`.
+- Attempted local build with workspace-local `DOTNET_CLI_HOME`:
+  - `dotnet build Algorithm.CSharp/QuantConnect.Algorithm.CSharp.csproj -c Release -nologo --no-restore -p:NuGetAudit=false -p:TreatWarningsAsErrors=false -p:WarningsAsErrors=''`
+  - Result: exit code `1`, `Build FAILED`, `2 Warning(s)`, `0 Error(s)`.
+  - The non-zero result is the existing local NuGet audit / .NET first-run tooling condition, not a reported Aegis compile error.
+
+Residual risk:
+- Cloud backtest logs may still truncate output if QuantConnect applies a strict log-size limit. The cap is intentionally conservative to reduce that risk.
+
+## 2026-04-23 - Step 17: V9 Diagnostic Result
+
+Summary:
+- Analyzed V9 diagnostic backtest artifacts:
+  - `Logs_V9.json`
+  - `2026-04-23_220701__AegisGrowthAllocation__Calm-Sky-Blue-Cormorant_logs.txt`
+- `OrderFillsDuringExtendedMarketHoursAnalysis` still appears with count `2702`.
+- V9 total orders are `1351`, so the warning ratio remains exactly `2 x Total Orders`.
+- The warning sample is still a submitted zero-fill event:
+  - `status=submitted`
+  - `fillPrice=0.0`
+  - `fillQuantity=0.0`
+  - `time=2018-01-02T15:00:00Z`
+
+Diagnostic evidence:
+- Captured diagnostic order events:
+  - `85` submissions.
+  - `85` submitted events.
+  - `85` filled events.
+- Every captured submitted and filled event had:
+  - `IsMarketOpen=True`.
+  - `RegularHoursOpen=True`.
+  - exchange-local event time `10:00:00`.
+- No captured diagnostic line had `RegularHoursOpen=False` or `IsMarketOpen=False`.
+- The downloaded log hit QuantConnect's `100kb` log limit, so diagnostics are partial, but the captured sample directly covers the first warning sample order.
+
+Conclusion:
+- V9 strongly supports that this warning is a QuantConnect Cloud analyzer false positive or analyzer classification bug for this backtest.
+- No further Aegis execution changes should be made for this warning unless QuantConnect provides contrary evidence.
+
+Next step:
+- Remove the temporary diagnostic instrumentation from `AegisGrowthAllocation.cs`.
