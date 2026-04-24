@@ -14,7 +14,8 @@ namespace QuantConnect.Algorithm.CSharp
             GrowthSelection growthSelection,
             DefensiveSelection defensiveSelection,
             IReadOnlyDictionary<Symbol, decimal> currentWeights,
-            decimal undeployedCapitalReserve)
+            decimal undeployedCapitalReserve,
+            decimal totalPortfolioValue)
         {
             var sleeveTargets = StrategyConfig.GetSleeveTargets(activeRegime);
             var growthUniverse = new HashSet<Symbol>(growthSelection.AllSnapshots.Select(snapshot => snapshot.Symbol));
@@ -31,6 +32,7 @@ namespace QuantConnect.Algorithm.CSharp
 
             var currentGrowthWeight = currentGrowthHoldings.Sum(symbol => currentWeights[symbol]);
             var currentDefensiveWeight = currentDefensiveHoldings.Sum(symbol => currentWeights[symbol]);
+            var currentCashWeight = System.Math.Max(0m, 1m - currentGrowthWeight - currentDefensiveWeight);
             var trimOnly = previousRegime > activeRegime && growthSelection.ForcedExitSymbols.Count == 0;
 
             var currentEligibleGrowth = currentGrowthHoldings
@@ -117,13 +119,13 @@ namespace QuantConnect.Algorithm.CSharp
                 .OrderBy(symbol => symbol.Value, System.StringComparer.Ordinal)
                 .ToList();
 
-            var targetWeights = new Dictionary<Symbol, decimal>();
+            var exactTargetWeights = new Dictionary<Symbol, decimal>();
             var growthWeightPerSymbol = finalGrowth.Count > 0
                 ? System.Math.Min(StrategyConfig.SingleGrowthWeightCap, sleeveTargets.GrowthTarget / finalGrowth.Count)
                 : 0m;
             foreach (var symbol in finalGrowth)
             {
-                targetWeights[symbol] = growthWeightPerSymbol;
+                exactTargetWeights[symbol] = growthWeightPerSymbol;
             }
 
             var defensiveWeightPerSymbol = finalDefensive.Count > 0
@@ -131,24 +133,62 @@ namespace QuantConnect.Algorithm.CSharp
                 : 0m;
             foreach (var symbol in finalDefensive)
             {
-                targetWeights[symbol] = defensiveWeightPerSymbol;
+                exactTargetWeights[symbol] = defensiveWeightPerSymbol;
             }
 
             foreach (var symbol in currentGrowthHoldings.Concat(currentDefensiveHoldings).Distinct())
             {
-                if (!targetWeights.ContainsKey(symbol))
+                if (!exactTargetWeights.ContainsKey(symbol))
                 {
-                    targetWeights[symbol] = 0m;
+                    exactTargetWeights[symbol] = 0m;
                 }
             }
 
-            var releasedReserve = 0m;
+            var requestedReserveWeight = 0m;
             var releaseRate = StrategyConfig.ReserveReleaseRateByRegime[activeRegime];
+            var reserveWeight = NormalizeReserveWeight(undeployedCapitalReserve, totalPortfolioValue);
             if (undeployedCapitalReserve > 0m &&
                 releaseRate > 0m &&
                 (currentGrowthWeight < sleeveTargets.GrowthTarget || currentDefensiveWeight < sleeveTargets.DefensiveTarget))
             {
-                releasedReserve = undeployedCapitalReserve * releaseRate;
+                requestedReserveWeight = System.Math.Min(currentCashWeight, reserveWeight * releaseRate);
+            }
+
+            var sleevesWithinToleranceBands =
+                sleeveTargets.IsGrowthWithinBand(currentGrowthWeight) &&
+                sleeveTargets.IsDefensiveWithinBand(currentDefensiveWeight) &&
+                sleeveTargets.IsCashWithinBand(currentCashWeight);
+            var hasSelectionChange = HasSelectionChange(
+                currentGrowthHoldings,
+                currentDefensiveHoldings,
+                finalGrowth,
+                finalDefensive);
+            var hasRebalanceTrigger =
+                !sleevesWithinToleranceBands ||
+                growthSelection.ForcedExitSymbols.Count > 0 ||
+                hasSelectionChange ||
+                requestedReserveWeight > 0m;
+
+            var targetWeights = !hasRebalanceTrigger
+                ? new Dictionary<Symbol, decimal>(currentWeights)
+                : requestedReserveWeight > 0m
+                    ? BuildReserveAwareTargetWeights(
+                        currentWeights,
+                        exactTargetWeights,
+                        finalGrowth,
+                        finalDefensive,
+                        requestedReserveWeight)
+                    : exactTargetWeights;
+            var releasedReserveWeight = System.Math.Max(0m, targetWeights.Values.Sum() - currentWeights.Values.Sum());
+            var releasedReserve = DenormalizeReserveAmount(releasedReserveWeight, undeployedCapitalReserve, totalPortfolioValue);
+            hasRebalanceTrigger =
+                !sleevesWithinToleranceBands ||
+                growthSelection.ForcedExitSymbols.Count > 0 ||
+                hasSelectionChange ||
+                releasedReserveWeight > 0m;
+            if (!hasRebalanceTrigger)
+            {
+                targetWeights = new Dictionary<Symbol, decimal>(currentWeights);
             }
 
             return new PortfolioPlan(
@@ -163,8 +203,128 @@ namespace QuantConnect.Algorithm.CSharp
                 finalDefensive,
                 targetWeights,
                 releasedReserve,
+                releasedReserveWeight,
+                sleevesWithinToleranceBands,
+                hasSelectionChange,
+                hasRebalanceTrigger,
                 optimizationReplacementsUsed,
                 newEntriesUsed);
+        }
+
+        private static bool HasSelectionChange(
+            IReadOnlyCollection<Symbol> currentGrowthHoldings,
+            IReadOnlyCollection<Symbol> currentDefensiveHoldings,
+            IReadOnlyCollection<Symbol> finalGrowth,
+            IReadOnlyCollection<Symbol> finalDefensive)
+        {
+            return !new HashSet<Symbol>(currentGrowthHoldings).SetEquals(finalGrowth) ||
+                   !new HashSet<Symbol>(currentDefensiveHoldings).SetEquals(finalDefensive);
+        }
+
+        private static Dictionary<Symbol, decimal> BuildReserveAwareTargetWeights(
+            IReadOnlyDictionary<Symbol, decimal> currentWeights,
+            IReadOnlyDictionary<Symbol, decimal> exactTargetWeights,
+            IReadOnlyCollection<Symbol> finalGrowth,
+            IReadOnlyCollection<Symbol> finalDefensive,
+            decimal releasedReserveWeight)
+        {
+            var targetWeights = new Dictionary<Symbol, decimal>();
+            var availableBuyWeight = releasedReserveWeight;
+
+            foreach (var pair in exactTargetWeights)
+            {
+                var currentWeight = currentWeights.TryGetValue(pair.Key, out var value)
+                    ? value
+                    : 0m;
+
+                if (pair.Value < currentWeight)
+                {
+                    targetWeights[pair.Key] = pair.Value;
+                    availableBuyWeight += currentWeight - pair.Value;
+                    continue;
+                }
+
+                targetWeights[pair.Key] = currentWeight;
+            }
+
+            foreach (var pair in currentWeights)
+            {
+                if (!targetWeights.ContainsKey(pair.Key))
+                {
+                    targetWeights[pair.Key] = pair.Value;
+                }
+            }
+
+            var existingGrowthSymbols = finalGrowth
+                .Where(symbol => currentWeights.TryGetValue(symbol, out var weight) && weight > 0m)
+                .ToList();
+            var newGrowthSymbols = finalGrowth
+                .Where(symbol => !currentWeights.TryGetValue(symbol, out var weight) || weight <= 0m)
+                .ToList();
+            var allocationPriority = existingGrowthSymbols
+                .Concat(newGrowthSymbols)
+                .Concat(finalDefensive)
+                .ToList();
+
+            foreach (var symbol in allocationPriority)
+            {
+                if (availableBuyWeight <= 0m || !exactTargetWeights.TryGetValue(symbol, out var desiredWeight))
+                {
+                    break;
+                }
+
+                var currentTargetWeight = targetWeights.TryGetValue(symbol, out var value)
+                    ? value
+                    : 0m;
+                var requiredIncrease = desiredWeight - currentTargetWeight;
+                if (requiredIncrease <= 0m)
+                {
+                    continue;
+                }
+
+                var increase = System.Math.Min(requiredIncrease, availableBuyWeight);
+                targetWeights[symbol] = currentTargetWeight + increase;
+                availableBuyWeight -= increase;
+            }
+
+            return targetWeights;
+        }
+
+        private static decimal NormalizeReserveWeight(decimal undeployedCapitalReserve, decimal totalPortfolioValue)
+        {
+            if (undeployedCapitalReserve <= 0m)
+            {
+                return 0m;
+            }
+
+            if (undeployedCapitalReserve <= 1m)
+            {
+                return undeployedCapitalReserve;
+            }
+
+            return totalPortfolioValue > 0m
+                ? undeployedCapitalReserve / totalPortfolioValue
+                : 0m;
+        }
+
+        private static decimal DenormalizeReserveAmount(
+            decimal reserveWeight,
+            decimal undeployedCapitalReserve,
+            decimal totalPortfolioValue)
+        {
+            if (reserveWeight <= 0m || undeployedCapitalReserve <= 0m)
+            {
+                return 0m;
+            }
+
+            if (undeployedCapitalReserve <= 1m)
+            {
+                return System.Math.Min(reserveWeight, undeployedCapitalReserve);
+            }
+
+            return totalPortfolioValue > 0m
+                ? System.Math.Min(undeployedCapitalReserve, reserveWeight * totalPortfolioValue)
+                : 0m;
         }
     }
 
@@ -182,6 +342,10 @@ namespace QuantConnect.Algorithm.CSharp
             IReadOnlyList<Symbol> selectedDefensiveSymbols,
             IReadOnlyDictionary<Symbol, decimal> targetWeights,
             decimal releasedReserve,
+            decimal releasedReserveWeight,
+            bool sleevesWithinToleranceBands,
+            bool hasSelectionChange,
+            bool hasRebalanceTrigger,
             int optimizationReplacementsUsed,
             int newEntriesUsed)
         {
@@ -196,6 +360,10 @@ namespace QuantConnect.Algorithm.CSharp
             SelectedDefensiveSymbols = selectedDefensiveSymbols;
             TargetWeights = targetWeights;
             ReleasedReserve = releasedReserve;
+            ReleasedReserveWeight = releasedReserveWeight;
+            SleevesWithinToleranceBands = sleevesWithinToleranceBands;
+            HasSelectionChange = hasSelectionChange;
+            HasRebalanceTrigger = hasRebalanceTrigger;
             OptimizationReplacementsUsed = optimizationReplacementsUsed;
             NewEntriesUsed = newEntriesUsed;
         }
@@ -211,6 +379,10 @@ namespace QuantConnect.Algorithm.CSharp
         public IReadOnlyList<Symbol> SelectedDefensiveSymbols { get; }
         public IReadOnlyDictionary<Symbol, decimal> TargetWeights { get; }
         public decimal ReleasedReserve { get; }
+        public decimal ReleasedReserveWeight { get; }
+        public bool SleevesWithinToleranceBands { get; }
+        public bool HasSelectionChange { get; }
+        public bool HasRebalanceTrigger { get; }
         public int OptimizationReplacementsUsed { get; }
         public int NewEntriesUsed { get; }
     }

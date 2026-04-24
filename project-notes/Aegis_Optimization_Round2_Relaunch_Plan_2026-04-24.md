@@ -172,6 +172,25 @@ Tasks:
 - Only then run a small parameter sweep around the existing regime defaults.
 - Do not bundle multiple behavioral changes into a single backtest round unless the earlier phase explicitly requires it.
 
+## Status Update After V10
+- `V10` is the first post-implementation cloud backtest for the Round 2 structural changes.
+- `V10` improved the main baseline metrics versus `V9`:
+  - End Equity: `$119,327.19` vs `$116,079.66`
+  - Net Profit: `297.757%` vs `286.932%`
+  - Sharpe: `0.929` vs `0.908`
+  - Drawdown: unchanged at `16.500%`
+  - Total Orders: `1267` vs `1351`
+- `V10` used:
+  - `UndeployedReserve=0`
+  - `ToleranceBandScale=1`
+- Interpretation:
+  - `V10` is strong evidence that Phase 2 tolerance-band rebalance gating is a keep candidate.
+  - `V10` does **not** validate Phase 3 reserve integration because the reserve path was inactive with `UndeployedReserve=0`.
+- Working conclusion:
+  - keep the current tolerance-band change in the local source baseline
+  - do not treat undeployed reserve as a default optimization knob
+  - if reserve behavior is tested further, do it only through an explicit staged-cash scenario
+
 ## Review
 - Strict review completed for this planning note.
 - Findings:
@@ -187,3 +206,4 @@ Tasks:
 - What tolerance-band width should be the initial hypothesis value?
 - Should undeployed reserve stay fixed by regime, or should it become regime-sensitive?
 - After the first design-gap fixes, should the next batch optimize allocation sleeves first or regime thresholds first?
+- After `V10`, does it still make sense to optimize undeployed reserve at all for the default baseline, or should it remain a scenario-only parameter for staged cash deployment?

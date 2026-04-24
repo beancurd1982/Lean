@@ -103,7 +103,7 @@ namespace QuantConnect.Algorithm.CSharp
                 WeeklyReview);
 
             Debug(
-                $"AegisGrowthAllocation initialized. GrowthUniverse={StrategyConfig.GrowthTickers.Count} DefensiveUniverse={StrategyConfig.DefensiveTickers.Count} UndeployedReserve={_undeployedCapitalReserve.ToString(CultureInfo.InvariantCulture)} FavorableBreadthThreshold={StrategyConfig.FavorableBreadthThreshold.ToString(CultureInfo.InvariantCulture)} WeakStressThreshold={StrategyConfig.WeakStressThreshold.ToString(CultureInfo.InvariantCulture)} UpgradeConfirmationWeeks={StrategyConfig.UpgradeConfirmationWeeks} GrowthAtrEligibilityLimit={StrategyConfig.GrowthAtrEligibilityLimit.ToString(CultureInfo.InvariantCulture)} ReplacementScoreGap={StrategyConfig.ReplacementScoreGap.ToString(CultureInfo.InvariantCulture)} HoldStabilityBonus={StrategyConfig.HoldStabilityBonus.ToString(CultureInfo.InvariantCulture)}");
+                $"AegisGrowthAllocation initialized. GrowthUniverse={StrategyConfig.GrowthTickers.Count} DefensiveUniverse={StrategyConfig.DefensiveTickers.Count} UndeployedReserve={_undeployedCapitalReserve.ToString(CultureInfo.InvariantCulture)} FavorableBreadthThreshold={StrategyConfig.FavorableBreadthThreshold.ToString(CultureInfo.InvariantCulture)} WeakStressThreshold={StrategyConfig.WeakStressThreshold.ToString(CultureInfo.InvariantCulture)} UpgradeConfirmationWeeks={StrategyConfig.UpgradeConfirmationWeeks} GrowthAtrEligibilityLimit={StrategyConfig.GrowthAtrEligibilityLimit.ToString(CultureInfo.InvariantCulture)} ReplacementScoreGap={StrategyConfig.ReplacementScoreGap.ToString(CultureInfo.InvariantCulture)} HoldStabilityBonus={StrategyConfig.HoldStabilityBonus.ToString(CultureInfo.InvariantCulture)} ToleranceBandScale={StrategyConfig.RebalanceToleranceBandScale.ToString(CultureInfo.InvariantCulture)}");
         }
 
         public override void OnData(Slice slice)
@@ -220,9 +220,15 @@ namespace QuantConnect.Algorithm.CSharp
                 growthSelection,
                 defensiveSelection,
                 currentWeights,
-                _undeployedCapitalReserve);
+                _undeployedCapitalReserve,
+                Portfolio.TotalPortfolioValue);
 
             ExecutePlan(plan, currentWeights);
+            if (plan.ReleasedReserve > 0m)
+            {
+                _undeployedCapitalReserve = Math.Max(0m, _undeployedCapitalReserve - plan.ReleasedReserve);
+            }
+
             _lastCompletedWeeklyReviewUtc = UtcTime;
             _lastPlannedTargetWeights = new Dictionary<Symbol, decimal>(plan.TargetWeights);
             RefreshTrackedOpenOrdersFromBroker();
@@ -412,6 +418,10 @@ namespace QuantConnect.Algorithm.CSharp
                 StrategyConfig.HoldStabilityBonusParameter,
                 StrategyConfig.DefaultHoldStabilityBonus,
                 value => value >= 0m && value <= 20m);
+            var rebalanceToleranceBandScale = ParseDecimalParameter(
+                StrategyConfig.RebalanceToleranceBandScaleParameter,
+                StrategyConfig.DefaultRebalanceToleranceBandScale,
+                value => value > 0m && value <= 2m);
 
             StrategyConfig.ConfigureRuntimeParameters(
                 favorableBreadthThreshold,
@@ -419,7 +429,8 @@ namespace QuantConnect.Algorithm.CSharp
                 upgradeConfirmationWeeks,
                 growthAtrEligibilityLimit,
                 replacementScoreGap,
-                holdStabilityBonus);
+                holdStabilityBonus,
+                rebalanceToleranceBandScale);
         }
 
         private decimal ParseDecimalParameter(string name, decimal defaultValue, Func<decimal, bool> validator)

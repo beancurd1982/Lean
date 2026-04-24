@@ -18,6 +18,7 @@ namespace QuantConnect.Algorithm.CSharp
         public const string ReplacementScoreGapParameter = "replacement-score-gap";
         public const string HoldStabilityBonusParameter = "hold-stability-bonus";
         public const string GrowthAtrEligibilityLimitParameter = "growth-atr-eligibility-limit";
+        public const string RebalanceToleranceBandScaleParameter = "tolerance-band-scale";
         public const string LiveStateKey = "AegisGrowthAllocation_LiveState_V1";
         public const int LiveStateSchemaVersion = 1;
         public const decimal LiveStateQuantityTolerance = 0.0001m;
@@ -126,6 +127,7 @@ namespace QuantConnect.Algorithm.CSharp
             };
 
         public const decimal DefaultGrowthAtrEligibilityLimit = 0.06m;
+        public const decimal DefaultRebalanceToleranceBandScale = 1m;
         public const decimal GrowthAtrForcedExitLimit = 0.07m;
         public const decimal GrowthRiskPenaltyAtrLimit = 0.05m;
         public const decimal GrowthOverextensionLimit = 0.20m;
@@ -152,6 +154,7 @@ namespace QuantConnect.Algorithm.CSharp
         public static decimal GrowthAtrEligibilityLimit { get; private set; } = DefaultGrowthAtrEligibilityLimit;
         public static decimal ReplacementScoreGap { get; private set; } = DefaultReplacementScoreGap;
         public static decimal HoldStabilityBonus { get; private set; } = DefaultHoldStabilityBonus;
+        public static decimal RebalanceToleranceBandScale { get; private set; } = DefaultRebalanceToleranceBandScale;
 
         public static SleeveTargets GetSleeveTargets(RiskRegime regime)
         {
@@ -166,6 +169,7 @@ namespace QuantConnect.Algorithm.CSharp
             GrowthAtrEligibilityLimit = DefaultGrowthAtrEligibilityLimit;
             ReplacementScoreGap = DefaultReplacementScoreGap;
             HoldStabilityBonus = DefaultHoldStabilityBonus;
+            RebalanceToleranceBandScale = DefaultRebalanceToleranceBandScale;
         }
 
         public static void ConfigureRuntimeParameters(
@@ -174,7 +178,8 @@ namespace QuantConnect.Algorithm.CSharp
             int upgradeConfirmationWeeks,
             decimal growthAtrEligibilityLimit,
             decimal replacementScoreGap,
-            decimal holdStabilityBonus)
+            decimal holdStabilityBonus,
+            decimal rebalanceToleranceBandScale)
         {
             FavorableBreadthThreshold = favorableBreadthThreshold;
             WeakStressThreshold = weakStressThreshold;
@@ -182,6 +187,7 @@ namespace QuantConnect.Algorithm.CSharp
             GrowthAtrEligibilityLimit = growthAtrEligibilityLimit;
             ReplacementScoreGap = replacementScoreGap;
             HoldStabilityBonus = holdStabilityBonus;
+            RebalanceToleranceBandScale = rebalanceToleranceBandScale;
         }
     }
 
@@ -218,5 +224,29 @@ namespace QuantConnect.Algorithm.CSharp
         public decimal DefensiveMax { get; }
         public decimal CashMin { get; }
         public decimal CashMax { get; }
+
+        public bool IsGrowthWithinBand(decimal weight)
+        {
+            return IsWithinBand(weight, GrowthTarget, GrowthMin, GrowthMax);
+        }
+
+        public bool IsDefensiveWithinBand(decimal weight)
+        {
+            return IsWithinBand(weight, DefensiveTarget, DefensiveMin, DefensiveMax);
+        }
+
+        public bool IsCashWithinBand(decimal weight)
+        {
+            return IsWithinBand(weight, CashTarget, CashMin, CashMax);
+        }
+
+        private static bool IsWithinBand(decimal weight, decimal target, decimal minimum, decimal maximum)
+        {
+            var scale = StrategyConfig.RebalanceToleranceBandScale;
+            var scaledMinimum = target - ((target - minimum) * scale);
+            var scaledMaximum = target + ((maximum - target) * scale);
+
+            return weight >= scaledMinimum && weight <= scaledMaximum;
+        }
     }
 }
