@@ -1,0 +1,60 @@
+2025-11-16 11:06:09 Launching analysis for L-febb349cd571b1181d4d333972447160 with LEAN Engine v2.5.0.0.17379
+2025-11-16 11:06:16 Paper Brokerage account base currency: USD
+2025-11-16 11:06:16 Accurate daily end-times now enabled by default. See more at https://qnt.co/3YHaWHL. To disable it and use legacy daily bars set self.settings.daily_precise_end_time = False.
+2025-11-17 14:31:00 New Order Event: Time: 11/17/2025 14:31:00 OrderID: 1 EventID: 1 Symbol: SPY Status: Submitted Quantity: 49
+2025-11-17 14:31:00 New Order Event: Time: 11/17/2025 14:31:00 OrderID: 1 EventID: 2 Symbol: SPY Status: Filled Quantity: 49 FillQuantity: 49 FillPrice: $669.12 OrderFee: 1 USD
+2025-11-17 14:31:00 New Order Event: Time: 11/17/2025 14:31:00 OrderID: 2 EventID: 1 Symbol: BND Status: Submitted Quantity: 443
+2025-11-17 14:31:00 New Order Event: Time: 11/17/2025 14:31:00 OrderID: 2 EventID: 2 Symbol: BND Status: Filled Quantity: 443 FillQuantity: 443 FillPrice: $74.21 OrderFee: 2.215 USD
+2025-11-17 14:31:00 New Order Event: Time: 11/17/2025 14:31:00 OrderID: 3 EventID: 1 Symbol: AAPL Status: Submitted Quantity: 122
+2025-11-17 14:31:00 New Order Event: Time: 11/17/2025 14:31:00 OrderID: 3 EventID: 2 Symbol: AAPL Status: Filled Quantity: 122 FillQuantity: 122 FillPrice: $268.03 OrderFee: 1 USD
+2025-11-18 12:00:03 Algorithm Stopped
+Algorithm Initialization: Paper Brokerage account base currency: USD
+Launching analysis for L-61d2eaf329031d378d0367186a4ce608 with LEAN Engine v2.5.0.0.17679
+2026-04-24 07:16:04 [AEGIS-LIVE] 4/24/2026 7:16:04 AM: no persisted state found for key AegisGrowthAllocation_LiveState_V1.
+2026-04-24 07:16:04 [AEGIS-LIVE] 4/24/2026 7:16:04 AM: broker/store state matched on startup.
+2026-04-24 07:16:04 [AEGIS-LIVE] 4/24/2026 7:16:04 AM: startup reconciliation complete. Holdings=0 OpenOrders=0 RestoredRegime=Neutral LastReview=none
+2026-04-24 07:16:04 [AEGIS-LIVE] 4/24/2026 7:16:04 AM: state saved. Holdings=0 OpenOrders=0 Reason=Startup reconciliation
+2026-04-24 07:16:04 AegisGrowthAllocation initialized. GrowthUniverse=11 DefensiveUniverse=9 UndeployedReserve=0 FavorableBreadthThreshold=0.75 WeakStressThreshold=27 UpgradeConfirmationWeeks=1 GrowthAtrEligibilityLimit=0.06 ReplacementScoreGap=10 HoldStabilityBonus=2 ToleranceBandScale=1
+2026-04-24 07:16:04 Will use UniverseSettings for automatically added securities for open orders and holdings. UniverseSettings: Resolution = Minute; Leverage = default; FillForward = True; ExtendedHours = False
+2025-04-23 00:00:00 Algorithm starting warm up...
+2025-04-23 00:00:00 Warning: usa Index TradeBar data not supported. Please consider reviewing the data providers selection.
+2026-04-22 16:15:00 Processing algorithm warm-up request 99%...
+2026-04-24 07:16:32 Algorithm finished warming up.
+2026-04-24 07:19:23 [AEGIS-LIVE] 4/24/2026 7:19:23 AM: state saved. Holdings=1 OpenOrders=0 Reason=Algorithm end
+Algorithm Stopped
+Algorithm Initialization: Interactive Brokers Brokerage account base currency: USD
+Launching analysis for L-1eb64e3666b1ba1be3cf7de36a45be29 with LEAN Engine v2.5.0.0.17679
+2026-04-24 07:21:47 [AEGIS-LIVE] 4/24/2026 7:21:47 AM: state restored. Holdings=1 OpenOrders=0 LastReview=none
+2026-04-24 07:21:47 [AEGIS-LIVE] 4/24/2026 7:21:47 AM: broker/store mismatch detected. BrokerHoldings=0 StoreHoldings=1 BrokerOpenOrders=0 StoreOpenOrders=0. Broker state wins.
+2026-04-24 07:21:47 [AEGIS-LIVE] 4/24/2026 7:21:47 AM: startup reconciliation complete. Holdings=0 OpenOrders=0 RestoredRegime=Neutral LastReview=none
+2026-04-24 07:21:47 [AEGIS-LIVE] 4/24/2026 7:21:47 AM: state saved. Holdings=0 OpenOrders=0 Reason=Startup reconciliation
+2026-04-24 07:21:47 AegisGrowthAllocation initialized. GrowthUniverse=11 DefensiveUniverse=9 UndeployedReserve=0 FavorableBreadthThreshold=0.75 WeakStressThreshold=27 UpgradeConfirmationWeeks=1 GrowthAtrEligibilityLimit=0.06 ReplacementScoreGap=10 HoldStabilityBonus=2 ToleranceBandScale=1
+2025-04-23 00:00:00 Algorithm starting warm up...
+2025-04-23 00:00:00 Warning: usa Index TradeBar data not supported. Please consider reviewing the data providers selection.
+2026-04-24 07:21:55 Algorithm finished warming up.
+New Order Event: Time: 04/27/2026 14:00:02 OrderID: 1 EventID: 1 Symbol: AVGO Status: Submitted Quantity: 74 Message: Interactive Brokers Order Event
+New Order Event: Time: 04/27/2026 14:00:02 OrderID: 1 EventID: 2 Symbol: AVGO Status: PartiallyFilled Quantity: 74 FillQuantity: 40 FillPrice: $420.78 OrderFee: 1 USD Message: Interactive Brokers Order Fill Event - 34 remaining
+New Order Event: Time: 04/27/2026 14:00:02 OrderID: 1 EventID: 3 Symbol: AVGO Status: Filled Quantity: 74 FillQuantity: 34 FillPrice: $420.78 Message: Interactive Brokers Order Fill Event
+New Order Event: Time: 04/27/2026 14:00:02 OrderID: 2 EventID: 1 Symbol: GOOGL Status: Submitted Quantity: 89 Message: Interactive Brokers Order Event
+New Order Event: Time: 04/27/2026 14:00:02 OrderID: 2 EventID: 2 Symbol: GOOGL Status: Filled Quantity: 89 FillQuantity: 89 FillPrice: $348.81 OrderFee: 1 USD Message: Interactive Brokers Order Fill Event
+2026-04-27 10:00:01 [AEGIS-LIVE] 4/27/2026 10:00:01 AM: state saved. Holdings=0 OpenOrders=1 Reason=Order event 1 Submitted
+2026-04-27 10:00:01 [AEGIS-LIVE] 4/27/2026 10:00:01 AM: state saved. Holdings=1 OpenOrders=1 Reason=Order event 1 PartiallyFilled
+2026-04-27 10:00:01 [AEGIS-LIVE] 4/27/2026 10:00:01 AM: state saved. Holdings=1 OpenOrders=0 Reason=Order event 1 Filled
+2026-04-27 10:00:01 [AEGIS-LIVE] 4/27/2026 10:00:01 AM: state saved. Holdings=1 OpenOrders=1 Reason=Order event 2 Submitted
+2026-04-27 10:00:01 [AEGIS-LIVE] 4/27/2026 10:00:01 AM: state saved. Holdings=2 OpenOrders=0 Reason=Order event 2 Filled
+New Order Event: Time: 04/27/2026 14:00:02 OrderID: 3 EventID: 1 Symbol: JNJ Status: Submitted Quantity: 114 Message: Interactive Brokers Order Event
+New Order Event: Time: 04/27/2026 14:00:03 OrderID: 3 EventID: 2 Symbol: JNJ Status: Filled Quantity: 114 FillQuantity: 114 FillPrice: $227.5 OrderFee: 1 USD Message: Interactive Brokers Order Fill Event
+New Order Event: Time: 04/27/2026 14:00:03 OrderID: 4 EventID: 1 Symbol: SCHD Status: Submitted Quantity: 830 Message: Interactive Brokers Order Event
+New Order Event: Time: 04/27/2026 14:00:03 OrderID: 4 EventID: 2 Symbol: SCHD Status: PartiallyFilled Quantity: 830 FillQuantity: 630 FillPrice: $31.34 OrderFee: 3.15 USD Message: Interactive Brokers Order Fill Event - 200 remaining
+New Order Event: Time: 04/27/2026 14:00:03 OrderID: 4 EventID: 3 Symbol: SCHD Status: Filled Quantity: 830 FillQuantity: 200 FillPrice: $31.34 OrderFee: 1 USD Message: Interactive Brokers Order Fill Event
+New Order Event: Time: 04/27/2026 14:00:03 OrderID: 5 EventID: 1 Symbol: SGOV Status: Submitted Quantity: 258 Message: Interactive Brokers Order Event
+2026-04-27 10:00:02 [AEGIS-LIVE] 4/27/2026 10:00:02 AM: state saved. Holdings=2 OpenOrders=1 Reason=Order event 3 Submitted
+2026-04-27 10:00:02 [AEGIS-LIVE] 4/27/2026 10:00:02 AM: state saved. Holdings=3 OpenOrders=0 Reason=Order event 3 Filled
+2026-04-27 10:00:02 [AEGIS-LIVE] 4/27/2026 10:00:02 AM: state saved. Holdings=3 OpenOrders=1 Reason=Order event 4 Submitted
+2026-04-27 10:00:02 [AEGIS-LIVE] 4/27/2026 10:00:02 AM: state saved. Holdings=4 OpenOrders=1 Reason=Order event 4 PartiallyFilled
+2026-04-27 10:00:02 [AEGIS-LIVE] 4/27/2026 10:00:02 AM: state saved. Holdings=4 OpenOrders=0 Reason=Order event 4 Filled
+2026-04-27 10:00:02 [AEGIS-LIVE] 4/27/2026 10:00:02 AM: state saved. Holdings=4 OpenOrders=1 Reason=Order event 5 Submitted
+New Order Event: Time: 04/27/2026 14:00:04 OrderID: 5 EventID: 2 Symbol: SGOV Status: Filled Quantity: 258 FillQuantity: 258 FillPrice: $100.65 OrderFee: 1.29 USD Message: Interactive Brokers Order Fill Event
+2026-04-27 10:00:03 [AEGIS-LIVE] 4/27/2026 10:00:03 AM: state saved. Holdings=5 OpenOrders=0 Reason=Order event 5 Filled
+2026-04-27 10:00:03 [AEGIS-LIVE] 4/27/2026 10:00:03 AM: state saved. Holdings=5 OpenOrders=0 Reason=Weekly review
+2026-04-27 10:00:03 [AEGIS] 2026-04-27 Prev=Neutral Act=Neutral Raw=Neutral Trend=Favorable Breadth=Neutral Stress=Neutral Severe=False Curr=G0.00/D0.00/C1.00 Target=G0.24/D0.30/C0.46 Growth[2]=AVGO,GOOGL Def[3]=JNJ,SCHD,SGOV Forced=0 Trim=False Reserve=0
