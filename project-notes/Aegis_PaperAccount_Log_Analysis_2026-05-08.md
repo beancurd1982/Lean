@@ -97,6 +97,25 @@ Scope review:
 - No unrelated modified or staged files were present in the worktree at publish time.
 - This publish is limited to the new normalized May 4 paper-account artifacts and their analysis note.
 
+## Step 10: Publish Result
+
+Date:
+- 2026-05-08
+
+Summary:
+- The selected paper-account artifacts and analysis note were committed and pushed on branch `research-algorithms`.
+
+Commit:
+- `9a2238bc7` - `docs: record Aegis May paper account run`
+
+Push target:
+- `origin/research-algorithms`
+
+Verification:
+- Commit completed successfully.
+- Push completed successfully.
+- No remaining worktree changes were present immediately after the first publish.
+
 Initial plan:
 - Inspect the new raw-named files.
 - Compare them against the prior normalized April 2026 artifacts to determine what is newly captured.
