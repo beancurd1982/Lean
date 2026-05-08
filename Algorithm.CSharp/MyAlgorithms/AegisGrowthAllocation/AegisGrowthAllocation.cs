@@ -39,7 +39,7 @@ namespace QuantConnect.Algorithm.CSharp
 
             if (!LiveMode)
             {
-                SetStartDate(2018, 1, 1);
+                ConfigureBacktestDates();
                 SetCash(30000);
             }
 
@@ -243,6 +243,27 @@ namespace QuantConnect.Algorithm.CSharp
             return Math.Max(0d, decisionOffset.TotalMinutes);
         }
 
+        private void ConfigureBacktestDates()
+        {
+            var startDate = ParseBacktestStartDate();
+            SetStartDate(startDate);
+
+            var endDate = ParseOptionalBacktestDate(StrategyConfig.BacktestEndParameter);
+            if (!endDate.HasValue)
+            {
+                return;
+            }
+
+            if (endDate.Value.Date < startDate.Date)
+            {
+                Debug(
+                    $"[AEGIS] Backtest end date {endDate.Value:yyyy-MM-dd} is before start date {startDate:yyyy-MM-dd}. Ignoring {StrategyConfig.BacktestEndParameter}.");
+                return;
+            }
+
+            SetEndDate(endDate.Value);
+        }
+
         private void ExecutePlan(PortfolioPlan plan, IReadOnlyDictionary<Symbol, decimal> currentWeights)
         {
             var orderedTargets = plan.TargetWeights
@@ -431,6 +452,44 @@ namespace QuantConnect.Algorithm.CSharp
                 replacementScoreGap,
                 holdStabilityBonus,
                 rebalanceToleranceBandScale);
+        }
+
+        private DateTime ParseBacktestStartDate()
+        {
+            var defaultValue = StrategyConfig.DefaultBacktestStartDate;
+            var parsed = ParseOptionalBacktestDate(StrategyConfig.BacktestStartParameter);
+            if (parsed.HasValue)
+            {
+                return parsed.Value;
+            }
+
+            return defaultValue;
+        }
+
+        private DateTime? ParseOptionalBacktestDate(string name)
+        {
+            var raw = GetParameter(name);
+            if (string.IsNullOrWhiteSpace(raw))
+            {
+                return null;
+            }
+
+            if (!TryParseBacktestDate(raw, out var value))
+            {
+                Debug($"[AEGIS] Invalid backtest date parameter {name}={raw}. Ignoring value.");
+                return null;
+            }
+
+            return value.Date;
+        }
+
+        private static bool TryParseBacktestDate(string raw, out DateTime value)
+        {
+            return DateTime.TryParse(
+                raw,
+                CultureInfo.InvariantCulture,
+                DateTimeStyles.AllowWhiteSpaces | DateTimeStyles.AssumeUniversal,
+                out value);
         }
 
         private decimal ParseDecimalParameter(string name, decimal defaultValue, Func<decimal, bool> validator)
