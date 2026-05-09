@@ -198,3 +198,123 @@ Pre-commit verification already completed:
 - Algorithm project build passed with `0` errors.
 - Focused Aegis tests passed: `13` passed, `0` failed.
 - `git diff --check` passed with only LF-to-CRLF warnings.
+
+## Step 8: Overlay Backtest Upload Analysis Plan
+
+Date:
+- 2026-05-09
+
+Request:
+- Analyze uploaded overlay backtest files in `Algorithm.CSharp/MyAlgorithms/AegisGrowthAllocation/CrisisBackTestLogs`.
+
+Uploaded file convention:
+- `1.json`, `1_logs.txt`, `1_orders.csv`: `2007-10-01` to `2008-12-31`
+- `2.json`, `2_logs.txt`, `2_orders.csv`: `2009-01-01` to `2009-12-31`
+- `3.json`, `3_logs.txt`, `3_orders.csv`: `2010-01-01` to `2010-12-31`
+- `4.json`, `4_logs.txt`, `4_orders.csv`: `2019-07-01` to `2020-12-31`
+- `5.json`, `5_logs.txt`, `5_orders.csv`: `2021-01-01` to `2022-12-31`
+
+Analysis plan:
+- Inventory the uploaded files.
+- Parse overview JSON metrics.
+- Parse `[AEGIS-DIAG]` logs for overlay behavior, drawdown, regime timing, and sleeve targets.
+- Parse orders CSV for order counts and turnover clues where useful.
+- Compare against prior baseline crisis diagnostics recorded in `Aegis_Crisis_Backtest_Log_Analysis_2026-05-09.md`.
+
+## Step 9: Overlay Backtest Analysis Results
+
+Date:
+- 2026-05-09
+
+Files analyzed:
+- `1.json`, `1_logs.txt`, `1_orders.csv`
+- `2.json`, `2_logs.txt`, `2_orders.csv`
+- `3.json`, `3_logs.txt`, `3_orders.csv`
+- `4.json`, `4_logs.txt`, `4_orders.csv`
+- `5.json`, `5_logs.txt`, `5_orders.csv`
+
+Result summary:
+
+| Run | Window | Overlay Net | Baseline Net | Overlay DD | Baseline DD | Judgment |
+| --- | --- | ---: | ---: | ---: | ---: | --- |
+| 1 | 2007-10-01 to 2008-12-31 | `-11.731%` | about `-16.79%` | `15.400%` | about `18.93%` | Clear defensive improvement |
+| 2 | 2009-01-01 to 2009-12-31 | `13.556%` | about `18.20%` | `2.800%` | about `3.66%` | Return drag too high |
+| 3 | 2010-01-01 to 2010-12-31 | `8.082%` | about `9.30%` | `10.700%` | about `9.74%` | Slightly worse overall |
+| 4 | 2019-07-01 to 2020-12-31 | `37.717%` | about `43.51%` | `10.900%` | about `10.91%` | Return drag too high |
+| 5 | 2021-01-01 to 2022-12-31 | `14.204%` | about `14.35%` | `15.900%` | about `16.06%` | Nearly neutral, not enough improvement |
+
+Detailed observations:
+- Run 1, 2007-2008:
+- Overlay improved ending equity by about `$1,538` versus the previous split diagnostic baseline.
+- Diagnostic drawdown improved from about `18.93%` to about `13.93%`.
+- Post-Weak drawdown improved from about `-11.15%` to about `-5.67%`.
+- Overlay target `G0.00/D0.20/C0.80` appeared `13` weeks.
+- This is the best evidence that the overlay does what it was designed to do in a severe prolonged crash.
+
+- Run 2, 2009:
+- Overlay reduced drawdown, but end equity was about `$1,070` lower than the prior split diagnostic baseline.
+- Net return fell from about `18.20%` to about `13.56%`.
+- This violates the recovery-preservation concern raised by the agents.
+
+- Run 3, 2010:
+- Overlay slightly reduced post-Weak drawdown but overall return and reported overview drawdown were worse.
+- End equity was about `$371` lower than baseline.
+- This suggests the overlay is not reliably improving shallow or whippy Weak regimes.
+
+- Run 4, 2019-2020:
+- Overlay reduced post-Weak diagnostic bleed from about `-2.48%` to about `-0.17%`.
+- But total return dropped from about `43.51%` baseline diagnostic return to about `35.39%` diagnostic return, and overview net profit was `37.717%`.
+- This is too much recovery drag for the small drawdown benefit.
+
+- Run 5, 2021-2022:
+- Overlay target appeared `21` weeks, but performance was almost unchanged.
+- Overview drawdown improved only from about `16.5%` prior overview to `15.9%`.
+- Diagnostic post-Weak drawdown improved only from about `-8.22%` to about `-7.56%`.
+- The worst 2022 losses still happened before Weak activation, confirming this overlay does not solve first-leg damage.
+
+Orders:
+- Run 1: `119` filled orders.
+- Run 2: `75` filled orders.
+- Run 3: `179` filled orders.
+- Run 4: `185` filled orders.
+- Run 5: `290` filled orders.
+
+Conclusion:
+- The Weak stress overlay alone is too blunt as currently designed.
+- It is useful in 2008, but it sacrifices too much 2009 and 2020 recovery and does not meaningfully improve 2022.
+- Do not promote this overlay as the final defensive solution.
+
+Recommended next step:
+- Keep the parameter-gated overlay available for experimentation.
+- Do not enable it by default.
+- Move to Experiment A: a partial pre-Weak guard, because 2022 still shows that the largest problem is first-leg damage before Weak activation.
+- If revisiting the overlay later, make it narrower than the current `StressState == Weak` trigger, likely using severe stress or confirmed equity/breadth deterioration rather than any Weak stress reading.
+
+## Step 10: Commit Overlay Backtest Evidence
+
+Date:
+- 2026-05-09
+
+Request:
+- Commit and push the local overlay backtest uploads and analysis note before moving to Experiment A.
+
+Commit scope:
+- `Algorithm.CSharp/MyAlgorithms/AegisGrowthAllocation/CrisisBackTestLogs/1.json`
+- `Algorithm.CSharp/MyAlgorithms/AegisGrowthAllocation/CrisisBackTestLogs/1_logs.txt`
+- `Algorithm.CSharp/MyAlgorithms/AegisGrowthAllocation/CrisisBackTestLogs/1_orders.csv`
+- `Algorithm.CSharp/MyAlgorithms/AegisGrowthAllocation/CrisisBackTestLogs/2.json`
+- `Algorithm.CSharp/MyAlgorithms/AegisGrowthAllocation/CrisisBackTestLogs/2_logs.txt`
+- `Algorithm.CSharp/MyAlgorithms/AegisGrowthAllocation/CrisisBackTestLogs/2_orders.csv`
+- `Algorithm.CSharp/MyAlgorithms/AegisGrowthAllocation/CrisisBackTestLogs/3.json`
+- `Algorithm.CSharp/MyAlgorithms/AegisGrowthAllocation/CrisisBackTestLogs/3_logs.txt`
+- `Algorithm.CSharp/MyAlgorithms/AegisGrowthAllocation/CrisisBackTestLogs/3_orders.csv`
+- `Algorithm.CSharp/MyAlgorithms/AegisGrowthAllocation/CrisisBackTestLogs/4.json`
+- `Algorithm.CSharp/MyAlgorithms/AegisGrowthAllocation/CrisisBackTestLogs/4_logs.txt`
+- `Algorithm.CSharp/MyAlgorithms/AegisGrowthAllocation/CrisisBackTestLogs/4_orders.csv`
+- `Algorithm.CSharp/MyAlgorithms/AegisGrowthAllocation/CrisisBackTestLogs/5.json`
+- `Algorithm.CSharp/MyAlgorithms/AegisGrowthAllocation/CrisisBackTestLogs/5_logs.txt`
+- `Algorithm.CSharp/MyAlgorithms/AegisGrowthAllocation/CrisisBackTestLogs/5_orders.csv`
+- `project-notes/Aegis_Weak_Stress_Overlay_Implementation_2026-05-09.md`
+
+Pre-commit check:
+- Run `git -c safe.directory=D:/Projects/Git/Lean-1 diff --check`.
