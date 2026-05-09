@@ -177,6 +177,105 @@ namespace QuantConnect.Tests.Algorithm
             Assert.That(1m - plan.TargetWeights.Values.Sum(), Is.EqualTo(0.80m));
         }
 
+        [Test]
+        public void DisablesPreWeakGuardByDefault()
+        {
+            var algorithm = CreateAlgorithm();
+
+            Assert.That(IsPreWeakGuardEnabled(algorithm), Is.False);
+        }
+
+        [Test]
+        public void EnablesPreWeakGuardWhenParameterIsTrue()
+        {
+            var algorithm = CreateAlgorithm(new Dictionary<string, string>
+            {
+                ["pre-weak-guard-enabled"] = "true"
+            });
+
+            Assert.That(IsPreWeakGuardEnabled(algorithm), Is.True);
+        }
+
+        [Test]
+        public void IgnoresInvalidPreWeakGuardParameter()
+        {
+            var algorithm = CreateAlgorithm(new Dictionary<string, string>
+            {
+                ["pre-weak-guard-enabled"] = "not-a-bool"
+            });
+
+            Assert.That(IsPreWeakGuardEnabled(algorithm), Is.False);
+        }
+
+        [Test]
+        public void UsesConfiguredPreWeakGuardDrawdownThreshold()
+        {
+            var algorithm = CreateAlgorithm(new Dictionary<string, string>
+            {
+                ["pre-weak-guard-enabled"] = "true",
+                ["pre-weak-guard-drawdown-threshold"] = "0.04"
+            });
+
+            Assert.That(GetPreWeakGuardDrawdownThreshold(algorithm), Is.EqualTo(0.04m));
+        }
+
+        [Test]
+        public void PreWeakGuardRequiresEnabledParameter()
+        {
+            var algorithm = CreateAlgorithm();
+            SetPrivateField(algorithm, "_preWeakGuardEquityHighWaterMark", 100000m);
+
+            Assert.That(ShouldApplyPreWeakGuard(algorithm, CreateNeutralDeterioratingSnapshot(), 94000m), Is.False);
+        }
+
+        [Test]
+        public void PreWeakGuardDoesNotApplyInWeakRegime()
+        {
+            var algorithm = CreateAlgorithm(new Dictionary<string, string>
+            {
+                ["pre-weak-guard-enabled"] = "true"
+            });
+            SetPrivateField(algorithm, "_preWeakGuardEquityHighWaterMark", 100000m);
+
+            Assert.That(ShouldApplyPreWeakGuard(algorithm, CreateWeakSnapshot(), 94000m), Is.False);
+        }
+
+        [Test]
+        public void PreWeakGuardRequiresDrawdownThreshold()
+        {
+            var algorithm = CreateAlgorithm(new Dictionary<string, string>
+            {
+                ["pre-weak-guard-enabled"] = "true"
+            });
+            SetPrivateField(algorithm, "_preWeakGuardEquityHighWaterMark", 100000m);
+
+            Assert.That(ShouldApplyPreWeakGuard(algorithm, CreateNeutralDeterioratingSnapshot(), 96000m), Is.False);
+        }
+
+        [Test]
+        public void PreWeakGuardRequiresDeterioratingSignal()
+        {
+            var algorithm = CreateAlgorithm(new Dictionary<string, string>
+            {
+                ["pre-weak-guard-enabled"] = "true"
+            });
+            SetPrivateField(algorithm, "_preWeakGuardEquityHighWaterMark", 100000m);
+
+            Assert.That(ShouldApplyPreWeakGuard(algorithm, CreateFavorableSnapshot(), 94000m), Is.False);
+        }
+
+        [Test]
+        public void PreWeakGuardAppliesBeforeWeakWhenDrawdownAndSignalsDeteriorate()
+        {
+            var algorithm = CreateAlgorithm(new Dictionary<string, string>
+            {
+                ["pre-weak-guard-enabled"] = "true"
+            });
+            SetPrivateField(algorithm, "_preWeakGuardEquityHighWaterMark", 100000m);
+
+            Assert.That(ShouldApplyPreWeakGuard(algorithm, CreateNeutralDeterioratingSnapshot(), 94000m), Is.True);
+        }
+
         private static QuantConnect.Algorithm.CSharp.AegisGrowthAllocation CreateAlgorithm(
             IReadOnlyDictionary<string, string> parameters = null)
         {
@@ -207,6 +306,87 @@ namespace QuantConnect.Tests.Algorithm
 
             Assert.That(field, Is.Not.Null);
             return (bool)field.GetValue(algorithm);
+        }
+
+        private static bool IsPreWeakGuardEnabled(QuantConnect.Algorithm.CSharp.AegisGrowthAllocation algorithm)
+        {
+            var field = typeof(QuantConnect.Algorithm.CSharp.AegisGrowthAllocation)
+                .GetField("_preWeakGuardEnabled", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+
+            Assert.That(field, Is.Not.Null);
+            return (bool)field.GetValue(algorithm);
+        }
+
+        private static decimal GetPreWeakGuardDrawdownThreshold(QuantConnect.Algorithm.CSharp.AegisGrowthAllocation algorithm)
+        {
+            var field = typeof(QuantConnect.Algorithm.CSharp.AegisGrowthAllocation)
+                .GetField("_preWeakGuardDrawdownThreshold", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+
+            Assert.That(field, Is.Not.Null);
+            return (decimal)field.GetValue(algorithm);
+        }
+
+        private static void SetPrivateField<T>(
+            QuantConnect.Algorithm.CSharp.AegisGrowthAllocation algorithm,
+            string name,
+            T value)
+        {
+            var field = typeof(QuantConnect.Algorithm.CSharp.AegisGrowthAllocation)
+                .GetField(name, System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+
+            Assert.That(field, Is.Not.Null);
+            field.SetValue(algorithm, value);
+        }
+
+        private static bool ShouldApplyPreWeakGuard(
+            QuantConnect.Algorithm.CSharp.AegisGrowthAllocation algorithm,
+            QuantConnect.Algorithm.CSharp.RegimeSnapshot regimeSnapshot,
+            decimal totalPortfolioValue)
+        {
+            var method = typeof(QuantConnect.Algorithm.CSharp.AegisGrowthAllocation)
+                .GetMethod("ShouldApplyPreWeakGuard", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+
+            Assert.That(method, Is.Not.Null);
+            return (bool)method.Invoke(algorithm, new object[] { regimeSnapshot, totalPortfolioValue });
+        }
+
+        private static QuantConnect.Algorithm.CSharp.RegimeSnapshot CreateNeutralDeterioratingSnapshot()
+        {
+            return new QuantConnect.Algorithm.CSharp.RegimeSnapshot(
+                QuantConnect.Algorithm.CSharp.RiskRegime.Neutral,
+                QuantConnect.Algorithm.CSharp.RiskRegime.Neutral,
+                QuantConnect.Algorithm.CSharp.RiskRegime.Neutral,
+                QuantConnect.Algorithm.CSharp.SignalState.Neutral,
+                QuantConnect.Algorithm.CSharp.SignalState.Weak,
+                QuantConnect.Algorithm.CSharp.SignalState.Neutral,
+                severeStress: false,
+                upgradeConfirmationCount: 0);
+        }
+
+        private static QuantConnect.Algorithm.CSharp.RegimeSnapshot CreateWeakSnapshot()
+        {
+            return new QuantConnect.Algorithm.CSharp.RegimeSnapshot(
+                QuantConnect.Algorithm.CSharp.RiskRegime.Neutral,
+                QuantConnect.Algorithm.CSharp.RiskRegime.Weak,
+                QuantConnect.Algorithm.CSharp.RiskRegime.Weak,
+                QuantConnect.Algorithm.CSharp.SignalState.Weak,
+                QuantConnect.Algorithm.CSharp.SignalState.Weak,
+                QuantConnect.Algorithm.CSharp.SignalState.Weak,
+                severeStress: true,
+                upgradeConfirmationCount: 0);
+        }
+
+        private static QuantConnect.Algorithm.CSharp.RegimeSnapshot CreateFavorableSnapshot()
+        {
+            return new QuantConnect.Algorithm.CSharp.RegimeSnapshot(
+                QuantConnect.Algorithm.CSharp.RiskRegime.Favorable,
+                QuantConnect.Algorithm.CSharp.RiskRegime.Favorable,
+                QuantConnect.Algorithm.CSharp.RiskRegime.Favorable,
+                QuantConnect.Algorithm.CSharp.SignalState.Favorable,
+                QuantConnect.Algorithm.CSharp.SignalState.Favorable,
+                QuantConnect.Algorithm.CSharp.SignalState.Favorable,
+                severeStress: false,
+                upgradeConfirmationCount: 0);
         }
 
         private static QuantConnect.Algorithm.CSharp.PortfolioPlan BuildWeakPlan(

@@ -33,6 +33,9 @@ namespace QuantConnect.Algorithm.CSharp
         private AegisLiveState _loadedLiveState;
         private bool _crisisDiagnosticsEnabled;
         private bool _weakStressOverlayEnabled;
+        private bool _preWeakGuardEnabled;
+        private decimal _preWeakGuardDrawdownThreshold = StrategyConfig.DefaultPreWeakGuardDrawdownThreshold;
+        private decimal _preWeakGuardEquityHighWaterMark;
         private static readonly TimeSpan UsaRegularMarketOpenTime = new TimeSpan(9, 30, 0);
 
         public override void Initialize()
@@ -45,6 +48,11 @@ namespace QuantConnect.Algorithm.CSharp
                 SetCash(30000);
                 _crisisDiagnosticsEnabled = ParseBooleanParameter(StrategyConfig.CrisisDiagnosticsParameter, false);
                 _weakStressOverlayEnabled = ParseBooleanParameter(StrategyConfig.WeakStressOverlayParameter, false);
+                _preWeakGuardEnabled = ParseBooleanParameter(StrategyConfig.PreWeakGuardParameter, false);
+                _preWeakGuardDrawdownThreshold = ParseDecimalParameter(
+                    StrategyConfig.PreWeakGuardDrawdownThresholdParameter,
+                    StrategyConfig.DefaultPreWeakGuardDrawdownThreshold,
+                    value => value > 0m && value < 1m);
             }
 
             _marketSymbol = AddEquity(StrategyConfig.MarketTicker, Resolution.Daily).Symbol;
@@ -219,9 +227,16 @@ namespace QuantConnect.Algorithm.CSharp
                 regimeSnapshot.ActiveRegime);
 
             var reserveBeforeReview = _undeployedCapitalReserve;
+            var totalPortfolioValue = Portfolio.TotalPortfolioValue;
+            if (_preWeakGuardEnabled)
+            {
+                UpdatePreWeakGuardHighWaterMark(totalPortfolioValue);
+            }
             var sleeveTargetsOverride = ShouldApplyWeakStressOverlay(regimeSnapshot)
                 ? StrategyConfig.WeakStressOverlaySleeveTargets
-                : null;
+                : ShouldApplyPreWeakGuard(regimeSnapshot, totalPortfolioValue)
+                    ? StrategyConfig.PreWeakGuardSleeveTargets
+                    : null;
             var plan = _portfolioManager.BuildPlan(
                 regimeSnapshot.PreviousRegime,
                 regimeSnapshot.ActiveRegime,
@@ -229,7 +244,7 @@ namespace QuantConnect.Algorithm.CSharp
                 defensiveSelection,
                 currentWeights,
                 _undeployedCapitalReserve,
-                Portfolio.TotalPortfolioValue,
+                totalPortfolioValue,
                 sleeveTargetsOverride);
 
             ExecutePlan(plan, currentWeights);
@@ -557,6 +572,14 @@ namespace QuantConnect.Algorithm.CSharp
             return value;
         }
 
+        private void UpdatePreWeakGuardHighWaterMark(decimal totalPortfolioValue)
+        {
+            if (totalPortfolioValue > _preWeakGuardEquityHighWaterMark)
+            {
+                _preWeakGuardEquityHighWaterMark = totalPortfolioValue;
+            }
+        }
+
         private bool ShouldApplyWeakStressOverlay(RegimeSnapshot regimeSnapshot)
         {
             return _weakStressOverlayEnabled &&
@@ -564,6 +587,27 @@ namespace QuantConnect.Algorithm.CSharp
                    (regimeSnapshot.SevereStress ||
                     regimeSnapshot.StressState == SignalState.Weak ||
                     (regimeSnapshot.TrendState == SignalState.Weak && regimeSnapshot.BreadthState == SignalState.Weak));
+        }
+
+        private bool ShouldApplyPreWeakGuard(RegimeSnapshot regimeSnapshot, decimal totalPortfolioValue)
+        {
+            if (!_preWeakGuardEnabled ||
+                regimeSnapshot.ActiveRegime == RiskRegime.Weak ||
+                totalPortfolioValue <= 0m ||
+                _preWeakGuardEquityHighWaterMark <= 0m)
+            {
+                return false;
+            }
+
+            var drawdown = 1m - totalPortfolioValue / _preWeakGuardEquityHighWaterMark;
+            if (drawdown < _preWeakGuardDrawdownThreshold)
+            {
+                return false;
+            }
+
+            return regimeSnapshot.TrendState != SignalState.Favorable ||
+                   regimeSnapshot.BreadthState != SignalState.Favorable ||
+                   regimeSnapshot.StressState == SignalState.Weak;
         }
 
         private bool ParseBooleanParameter(string name, bool defaultValue)

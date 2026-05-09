@@ -16,6 +16,8 @@ namespace QuantConnect.Algorithm.CSharp
         public const string BacktestEndParameter = "backtest-end";
         public const string CrisisDiagnosticsParameter = "crisis-diagnostics";
         public const string WeakStressOverlayParameter = "weak-stress-overlay-enabled";
+        public const string PreWeakGuardParameter = "pre-weak-guard-enabled";
+        public const string PreWeakGuardDrawdownThresholdParameter = "pre-weak-guard-drawdown-threshold";
         public const string WeakStressThresholdParameter = "weak-stress-threshold";
         public const string FavorableBreadthThresholdParameter = "favorable-breadth-threshold";
         public const string UpgradeConfirmationWeeksParameter = "upgrade-confirmation-weeks";
@@ -65,6 +67,7 @@ namespace QuantConnect.Algorithm.CSharp
         public const decimal FavorableStressThreshold = 18m;
         public const decimal DefaultWeakStressThreshold = 27m;
         public const decimal SevereStressThreshold = 30m;
+        public const decimal DefaultPreWeakGuardDrawdownThreshold = 0.05m;
 
         public const int DefaultUpgradeConfirmationWeeks = 1;
 
@@ -117,6 +120,17 @@ namespace QuantConnect.Algorithm.CSharp
             defensiveMax: 0.25m,
             cashMin: 0.75m,
             cashMax: 1.00m);
+
+        public static readonly SleeveTargets PreWeakGuardSleeveTargets = new SleeveTargets(
+            growthTarget: 0.24m,
+            defensiveTarget: 0.30m,
+            cashTarget: 0.46m,
+            growthMin: 0.20m,
+            growthMax: 0.30m,
+            defensiveMin: 0.25m,
+            defensiveMax: 0.35m,
+            cashMin: 0.40m,
+            cashMax: 0.55m);
 
         public static readonly IReadOnlyDictionary<RiskRegime, int> GrowthHoldingCountByRegime =
             new Dictionary<RiskRegime, int>
