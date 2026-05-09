@@ -15,6 +15,7 @@ namespace QuantConnect.Algorithm.CSharp
         public const string BacktestStartParameter = "backtest-start";
         public const string BacktestEndParameter = "backtest-end";
         public const string CrisisDiagnosticsParameter = "crisis-diagnostics";
+        public const string WeakStressOverlayParameter = "weak-stress-overlay-enabled";
         public const string WeakStressThresholdParameter = "weak-stress-threshold";
         public const string FavorableBreadthThresholdParameter = "favorable-breadth-threshold";
         public const string UpgradeConfirmationWeeksParameter = "upgrade-confirmation-weeks";
@@ -105,6 +106,17 @@ namespace QuantConnect.Algorithm.CSharp
                     cashMin: 0.40m,
                     cashMax: 0.55m)
             };
+
+        public static readonly SleeveTargets WeakStressOverlaySleeveTargets = new SleeveTargets(
+            growthTarget: 0.00m,
+            defensiveTarget: 0.20m,
+            cashTarget: 0.80m,
+            growthMin: 0.00m,
+            growthMax: 0.05m,
+            defensiveMin: 0.00m,
+            defensiveMax: 0.25m,
+            cashMin: 0.75m,
+            cashMax: 1.00m);
 
         public static readonly IReadOnlyDictionary<RiskRegime, int> GrowthHoldingCountByRegime =
             new Dictionary<RiskRegime, int>

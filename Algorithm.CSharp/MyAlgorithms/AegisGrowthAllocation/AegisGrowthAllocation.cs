@@ -32,6 +32,7 @@ namespace QuantConnect.Algorithm.CSharp
         private Dictionary<int, AegisOpenOrderState> _trackedOpenOrders = new Dictionary<int, AegisOpenOrderState>();
         private AegisLiveState _loadedLiveState;
         private bool _crisisDiagnosticsEnabled;
+        private bool _weakStressOverlayEnabled;
         private static readonly TimeSpan UsaRegularMarketOpenTime = new TimeSpan(9, 30, 0);
 
         public override void Initialize()
@@ -43,6 +44,7 @@ namespace QuantConnect.Algorithm.CSharp
                 ConfigureBacktestDates();
                 SetCash(30000);
                 _crisisDiagnosticsEnabled = ParseBooleanParameter(StrategyConfig.CrisisDiagnosticsParameter, false);
+                _weakStressOverlayEnabled = ParseBooleanParameter(StrategyConfig.WeakStressOverlayParameter, false);
             }
 
             _marketSymbol = AddEquity(StrategyConfig.MarketTicker, Resolution.Daily).Symbol;
@@ -217,6 +219,9 @@ namespace QuantConnect.Algorithm.CSharp
                 regimeSnapshot.ActiveRegime);
 
             var reserveBeforeReview = _undeployedCapitalReserve;
+            var sleeveTargetsOverride = ShouldApplyWeakStressOverlay(regimeSnapshot)
+                ? StrategyConfig.WeakStressOverlaySleeveTargets
+                : null;
             var plan = _portfolioManager.BuildPlan(
                 regimeSnapshot.PreviousRegime,
                 regimeSnapshot.ActiveRegime,
@@ -224,7 +229,8 @@ namespace QuantConnect.Algorithm.CSharp
                 defensiveSelection,
                 currentWeights,
                 _undeployedCapitalReserve,
-                Portfolio.TotalPortfolioValue);
+                Portfolio.TotalPortfolioValue,
+                sleeveTargetsOverride);
 
             ExecutePlan(plan, currentWeights);
             if (plan.ReleasedReserve > 0m)
@@ -549,6 +555,15 @@ namespace QuantConnect.Algorithm.CSharp
             }
 
             return value;
+        }
+
+        private bool ShouldApplyWeakStressOverlay(RegimeSnapshot regimeSnapshot)
+        {
+            return _weakStressOverlayEnabled &&
+                   regimeSnapshot.ActiveRegime == RiskRegime.Weak &&
+                   (regimeSnapshot.SevereStress ||
+                    regimeSnapshot.StressState == SignalState.Weak ||
+                    (regimeSnapshot.TrendState == SignalState.Weak && regimeSnapshot.BreadthState == SignalState.Weak));
         }
 
         private bool ParseBooleanParameter(string name, bool defaultValue)

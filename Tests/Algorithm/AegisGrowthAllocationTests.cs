@@ -118,6 +118,65 @@ namespace QuantConnect.Tests.Algorithm
             Assert.That(IsCrisisDiagnosticsEnabled(algorithm), Is.False);
         }
 
+        [Test]
+        public void DisablesWeakStressOverlayByDefault()
+        {
+            var algorithm = CreateAlgorithm();
+
+            Assert.That(IsWeakStressOverlayEnabled(algorithm), Is.False);
+        }
+
+        [Test]
+        public void EnablesWeakStressOverlayWhenParameterIsTrue()
+        {
+            var algorithm = CreateAlgorithm(new Dictionary<string, string>
+            {
+                ["weak-stress-overlay-enabled"] = "true"
+            });
+
+            Assert.That(IsWeakStressOverlayEnabled(algorithm), Is.True);
+        }
+
+        [Test]
+        public void IgnoresInvalidWeakStressOverlayParameter()
+        {
+            var algorithm = CreateAlgorithm(new Dictionary<string, string>
+            {
+                ["weak-stress-overlay-enabled"] = "not-a-bool"
+            });
+
+            Assert.That(IsWeakStressOverlayEnabled(algorithm), Is.False);
+        }
+
+        [Test]
+        public void PortfolioManagerKeepsDefaultWeakSleevesWithoutOverlay()
+        {
+            var growthSymbol = QuantConnect.Symbol.Create("AAPL", QuantConnect.SecurityType.Equity, QuantConnect.Market.USA);
+            var defensiveSymbol = QuantConnect.Symbol.Create("SGOV", QuantConnect.SecurityType.Equity, QuantConnect.Market.USA);
+            var plan = BuildWeakPlan(growthSymbol, defensiveSymbol);
+
+            Assert.That(plan.SelectedGrowthSymbols, Is.EquivalentTo(new[] { growthSymbol }));
+            Assert.That(plan.TargetWeights[growthSymbol], Is.EqualTo(0.10m));
+            Assert.That(plan.TargetWeights[defensiveSymbol], Is.EqualTo(0.40m));
+            Assert.That(1m - plan.TargetWeights.Values.Sum(), Is.EqualTo(0.50m));
+        }
+
+        [Test]
+        public void PortfolioManagerAppliesWeakStressOverlaySleeves()
+        {
+            var growthSymbol = QuantConnect.Symbol.Create("AAPL", QuantConnect.SecurityType.Equity, QuantConnect.Market.USA);
+            var defensiveSymbol = QuantConnect.Symbol.Create("SGOV", QuantConnect.SecurityType.Equity, QuantConnect.Market.USA);
+            var plan = BuildWeakPlan(
+                growthSymbol,
+                defensiveSymbol,
+                QuantConnect.Algorithm.CSharp.StrategyConfig.WeakStressOverlaySleeveTargets);
+
+            Assert.That(plan.SelectedGrowthSymbols, Is.Empty);
+            Assert.That(plan.TargetWeights[growthSymbol], Is.EqualTo(0m));
+            Assert.That(plan.TargetWeights[defensiveSymbol], Is.EqualTo(0.20m));
+            Assert.That(1m - plan.TargetWeights.Values.Sum(), Is.EqualTo(0.80m));
+        }
+
         private static QuantConnect.Algorithm.CSharp.AegisGrowthAllocation CreateAlgorithm(
             IReadOnlyDictionary<string, string> parameters = null)
         {
@@ -139,6 +198,87 @@ namespace QuantConnect.Tests.Algorithm
 
             Assert.That(field, Is.Not.Null);
             return (bool)field.GetValue(algorithm);
+        }
+
+        private static bool IsWeakStressOverlayEnabled(QuantConnect.Algorithm.CSharp.AegisGrowthAllocation algorithm)
+        {
+            var field = typeof(QuantConnect.Algorithm.CSharp.AegisGrowthAllocation)
+                .GetField("_weakStressOverlayEnabled", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+
+            Assert.That(field, Is.Not.Null);
+            return (bool)field.GetValue(algorithm);
+        }
+
+        private static QuantConnect.Algorithm.CSharp.PortfolioPlan BuildWeakPlan(
+            QuantConnect.Symbol growthSymbol,
+            QuantConnect.Symbol defensiveSymbol,
+            QuantConnect.Algorithm.CSharp.SleeveTargets sleeveTargetsOverride = null)
+        {
+            var growthSnapshot = CreateSnapshot(growthSymbol, "AAPL", isGrowth: true, isDefensive: false, isSgov: false);
+            var defensiveSnapshot = CreateSnapshot(defensiveSymbol, "SGOV", isGrowth: false, isDefensive: true, isSgov: true);
+            var growthSelection = new QuantConnect.Algorithm.CSharp.GrowthSelection(
+                new[] { growthSnapshot },
+                new[]
+                {
+                    new QuantConnect.Algorithm.CSharp.GrowthCandidate(
+                        growthSnapshot,
+                        isCurrentHolding: true,
+                        trendScore: 10m,
+                        relativeStrengthScore: 10m,
+                        stabilityScore: 10m,
+                        penalty: 0m,
+                        finalScore: 30m,
+                        adjustedScore: 32m)
+                },
+                Array.Empty<QuantConnect.Symbol>(),
+                targetHoldingCount: 1);
+            var defensiveSelection = new QuantConnect.Algorithm.CSharp.DefensiveSelection(
+                new[] { defensiveSnapshot },
+                new[]
+                {
+                    new QuantConnect.Algorithm.CSharp.DefensiveCandidate(defensiveSnapshot, score: 1m)
+                },
+                targetHoldingCount: 1);
+            var currentWeights = new Dictionary<QuantConnect.Symbol, decimal>
+            {
+                [growthSymbol] = 0.45m,
+                [defensiveSymbol] = 0.30m
+            };
+
+            return new QuantConnect.Algorithm.CSharp.PortfolioManager().BuildPlan(
+                QuantConnect.Algorithm.CSharp.RiskRegime.Weak,
+                QuantConnect.Algorithm.CSharp.RiskRegime.Weak,
+                growthSelection,
+                defensiveSelection,
+                currentWeights,
+                undeployedCapitalReserve: 0m,
+                totalPortfolioValue: 100000m,
+                sleeveTargetsOverride: sleeveTargetsOverride);
+        }
+
+        private static QuantConnect.Algorithm.CSharp.AssetSnapshot CreateSnapshot(
+            QuantConnect.Symbol symbol,
+            string ticker,
+            bool isGrowth,
+            bool isDefensive,
+            bool isSgov)
+        {
+            return new QuantConnect.Algorithm.CSharp.AssetSnapshot(
+                symbol,
+                ticker,
+                isGrowth,
+                isDefensive,
+                isSgov,
+                isDataReady: true,
+                close: 100m,
+                sma50: 105m,
+                sma200: 95m,
+                atr20: 2m,
+                return21: 0.03m,
+                return63: 0.05m,
+                return126: 0.08m,
+                volatility63: 0.10m,
+                drawdown63: -0.02m);
         }
 
         private sealed class CapturingRealTimeHandler : IRealTimeHandler

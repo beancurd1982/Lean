@@ -15,9 +15,10 @@ namespace QuantConnect.Algorithm.CSharp
             DefensiveSelection defensiveSelection,
             IReadOnlyDictionary<Symbol, decimal> currentWeights,
             decimal undeployedCapitalReserve,
-            decimal totalPortfolioValue)
+            decimal totalPortfolioValue,
+            SleeveTargets sleeveTargetsOverride = null)
         {
-            var sleeveTargets = StrategyConfig.GetSleeveTargets(activeRegime);
+            var sleeveTargets = sleeveTargetsOverride ?? StrategyConfig.GetSleeveTargets(activeRegime);
             var growthUniverse = new HashSet<Symbol>(growthSelection.AllSnapshots.Select(snapshot => snapshot.Symbol));
             var defensiveUniverse = new HashSet<Symbol>(defensiveSelection.AllSnapshots.Select(snapshot => snapshot.Symbol));
 
@@ -43,9 +44,11 @@ namespace QuantConnect.Algorithm.CSharp
                 .ThenBy(symbol => symbol.Value, System.StringComparer.Ordinal)
                 .ToList();
 
-            var finalGrowth = currentEligibleGrowth
-                .Take(growthSelection.TargetHoldingCount)
-                .ToList();
+            var finalGrowth = sleeveTargets.GrowthTarget > 0m
+                ? currentEligibleGrowth
+                    .Take(growthSelection.TargetHoldingCount)
+                    .ToList()
+                : new List<Symbol>();
 
             var newEntriesUsed = 0;
             var optimizationReplacementsUsed = 0;
@@ -88,6 +91,11 @@ namespace QuantConnect.Algorithm.CSharp
 
             foreach (var candidate in growthSelection.RankedCandidates)
             {
+                if (sleeveTargets.GrowthTarget <= 0m)
+                {
+                    break;
+                }
+
                 if (finalGrowth.Count >= growthSelection.TargetHoldingCount)
                 {
                     break;
