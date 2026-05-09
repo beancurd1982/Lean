@@ -14,6 +14,7 @@ namespace QuantConnect.Algorithm.CSharp
         public const string UndeployedReserveParameter = "undeployed-reserve";
         public const string BacktestStartParameter = "backtest-start";
         public const string BacktestEndParameter = "backtest-end";
+        public const string CrisisDiagnosticsParameter = "crisis-diagnostics";
         public const string WeakStressThresholdParameter = "weak-stress-threshold";
         public const string FavorableBreadthThresholdParameter = "favorable-breadth-threshold";
         public const string UpgradeConfirmationWeeksParameter = "upgrade-confirmation-weeks";

@@ -88,6 +88,36 @@ namespace QuantConnect.Tests.Algorithm
             Assert.That(algorithm.EndDate, Is.EqualTo(baseline.EndDate));
         }
 
+        [Test]
+        public void DisablesCrisisDiagnosticsByDefault()
+        {
+            var algorithm = CreateAlgorithm();
+
+            Assert.That(IsCrisisDiagnosticsEnabled(algorithm), Is.False);
+        }
+
+        [Test]
+        public void EnablesCrisisDiagnosticsWhenParameterIsTrue()
+        {
+            var algorithm = CreateAlgorithm(new Dictionary<string, string>
+            {
+                ["crisis-diagnostics"] = "true"
+            });
+
+            Assert.That(IsCrisisDiagnosticsEnabled(algorithm), Is.True);
+        }
+
+        [Test]
+        public void IgnoresInvalidCrisisDiagnosticsParameter()
+        {
+            var algorithm = CreateAlgorithm(new Dictionary<string, string>
+            {
+                ["crisis-diagnostics"] = "not-a-bool"
+            });
+
+            Assert.That(IsCrisisDiagnosticsEnabled(algorithm), Is.False);
+        }
+
         private static QuantConnect.Algorithm.CSharp.AegisGrowthAllocation CreateAlgorithm(
             IReadOnlyDictionary<string, string> parameters = null)
         {
@@ -100,6 +130,15 @@ namespace QuantConnect.Tests.Algorithm
 
             algorithm.Initialize();
             return algorithm;
+        }
+
+        private static bool IsCrisisDiagnosticsEnabled(QuantConnect.Algorithm.CSharp.AegisGrowthAllocation algorithm)
+        {
+            var field = typeof(QuantConnect.Algorithm.CSharp.AegisGrowthAllocation)
+                .GetField("_crisisDiagnosticsEnabled", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+
+            Assert.That(field, Is.Not.Null);
+            return (bool)field.GetValue(algorithm);
         }
 
         private sealed class CapturingRealTimeHandler : IRealTimeHandler

@@ -31,6 +31,7 @@ namespace QuantConnect.Algorithm.CSharp
         private Dictionary<Symbol, decimal> _lastPlannedTargetWeights = new Dictionary<Symbol, decimal>();
         private Dictionary<int, AegisOpenOrderState> _trackedOpenOrders = new Dictionary<int, AegisOpenOrderState>();
         private AegisLiveState _loadedLiveState;
+        private bool _crisisDiagnosticsEnabled;
         private static readonly TimeSpan UsaRegularMarketOpenTime = new TimeSpan(9, 30, 0);
 
         public override void Initialize()
@@ -41,6 +42,7 @@ namespace QuantConnect.Algorithm.CSharp
             {
                 ConfigureBacktestDates();
                 SetCash(30000);
+                _crisisDiagnosticsEnabled = ParseBooleanParameter(StrategyConfig.CrisisDiagnosticsParameter, false);
             }
 
             _marketSymbol = AddEquity(StrategyConfig.MarketTicker, Resolution.Daily).Symbol;
@@ -214,6 +216,7 @@ namespace QuantConnect.Algorithm.CSharp
                 defensiveSnapshots,
                 regimeSnapshot.ActiveRegime);
 
+            var reserveBeforeReview = _undeployedCapitalReserve;
             var plan = _portfolioManager.BuildPlan(
                 regimeSnapshot.PreviousRegime,
                 regimeSnapshot.ActiveRegime,
@@ -235,6 +238,16 @@ namespace QuantConnect.Algorithm.CSharp
             SaveLiveState("Weekly review");
 
             Debug(FormatWeeklySummary(plan, regimeSnapshot));
+            if (_crisisDiagnosticsEnabled)
+            {
+                Debug(FormatCrisisDiagnostics(
+                    plan,
+                    regimeSnapshot,
+                    currentWeights,
+                    breadth,
+                    vixAverage5,
+                    reserveBeforeReview));
+            }
         }
 
         private static double GetWeeklyDecisionMinutesAfterMarketOpen()
@@ -538,6 +551,23 @@ namespace QuantConnect.Algorithm.CSharp
             return value;
         }
 
+        private bool ParseBooleanParameter(string name, bool defaultValue)
+        {
+            var raw = GetParameter(name);
+            if (string.IsNullOrWhiteSpace(raw))
+            {
+                return defaultValue;
+            }
+
+            if (bool.TryParse(raw, out var value))
+            {
+                return value;
+            }
+
+            Debug($"[AEGIS] Invalid boolean parameter {name}={raw}. Using default {defaultValue}.");
+            return defaultValue;
+        }
+
         private void RestorePersistedRuntimeState(AegisLiveState state)
         {
             if (state == null)
@@ -775,6 +805,63 @@ namespace QuantConnect.Algorithm.CSharp
                 plan.ReleasedReserve);
         }
 
+        private string FormatCrisisDiagnostics(
+            PortfolioPlan plan,
+            RegimeSnapshot regimeSnapshot,
+            IReadOnlyDictionary<Symbol, decimal> currentWeights,
+            decimal breadth,
+            decimal vixAverage5,
+            decimal reserveBeforeReview)
+        {
+            var currentCashWeight = Math.Max(0m, 1m - plan.CurrentGrowthWeight - plan.CurrentDefensiveWeight);
+            var targetGrowthWeight = plan.TargetWeights
+                .Where(pair => _assetStates.TryGetValue(pair.Key, out var assetState) && assetState.IsGrowth)
+                .Sum(pair => pair.Value);
+            var targetDefensiveWeight = plan.TargetWeights
+                .Where(pair => _assetStates.TryGetValue(pair.Key, out var assetState) && assetState.IsDefensive)
+                .Sum(pair => pair.Value);
+            var targetCashWeight = Math.Max(0m, 1m - targetGrowthWeight - targetDefensiveWeight);
+
+            return string.Format(
+                CultureInfo.InvariantCulture,
+                "[AEGIS-DIAG] {0:yyyy-MM-dd} Equity={1:0.00} Cash={2:0.00} Prev={3} Act={4} Raw={5} Trend={6} BreadthState={7} Stress={8} Severe={9} Inputs=SpyClose:{10:0.00},SpySma200:{11:0.00},SpySma200Lookback:{12:0.00},Breadth:{13:0.0000},Vix5:{14:0.00} Curr=G{15:0.0000}/D{16:0.0000}/C{17:0.0000} Target=G{18:0.0000}/D{19:0.0000}/C{20:0.0000} Bands={21} SelectionChange={22} Rebalance={23} Trim={24} Forced={25} OptRepl={26} NewEntries={27} ReserveBefore={28:0.####} ReserveAfter={29:0.####} ReleasedReserve={30:0.####} Growth={31} Defensive={32} CurrentWeights={33} TargetWeights={34}",
+                Time,
+                Portfolio.TotalPortfolioValue,
+                Portfolio.Cash,
+                plan.PreviousRegime,
+                plan.ActiveRegime,
+                regimeSnapshot.RawRegime,
+                regimeSnapshot.TrendState,
+                regimeSnapshot.BreadthState,
+                regimeSnapshot.StressState,
+                regimeSnapshot.SevereStress,
+                _marketState.CurrentClose,
+                _marketState.CurrentSma200,
+                _marketState.LookbackSma200,
+                breadth,
+                vixAverage5,
+                plan.CurrentGrowthWeight,
+                plan.CurrentDefensiveWeight,
+                currentCashWeight,
+                targetGrowthWeight,
+                targetDefensiveWeight,
+                targetCashWeight,
+                plan.SleevesWithinToleranceBands,
+                plan.HasSelectionChange,
+                plan.HasRebalanceTrigger,
+                plan.TrimOnly,
+                FormatSymbolList(plan.ForcedExitSymbols),
+                plan.OptimizationReplacementsUsed,
+                plan.NewEntriesUsed,
+                reserveBeforeReview,
+                _undeployedCapitalReserve,
+                plan.ReleasedReserve,
+                FormatSymbolList(plan.SelectedGrowthSymbols),
+                FormatSymbolList(plan.SelectedDefensiveSymbols),
+                FormatSymbolWeights(currentWeights),
+                FormatSymbolWeights(plan.TargetWeights));
+        }
+
         private static string FormatSymbolPreview(IReadOnlyList<Symbol> symbols)
         {
             if (symbols.Count == 0)
@@ -789,6 +876,32 @@ namespace QuantConnect.Algorithm.CSharp
             return extraCount > 0
                 ? $"[{symbols.Count}]={preview}+{extraCount}"
                 : $"[{symbols.Count}]={preview}";
+        }
+
+        private static string FormatSymbolList(IEnumerable<Symbol> symbols)
+        {
+            var values = symbols
+                .Select(symbol => symbol.Value)
+                .OrderBy(value => value, StringComparer.Ordinal)
+                .ToList();
+
+            return values.Count == 0
+                ? "none"
+                : string.Join(",", values);
+        }
+
+        private static string FormatSymbolWeights(IReadOnlyDictionary<Symbol, decimal> weights)
+        {
+            if (weights.Count == 0)
+            {
+                return "none";
+            }
+
+            return string.Join(
+                ",",
+                weights
+                    .OrderBy(pair => pair.Key.Value, StringComparer.Ordinal)
+                    .Select(pair => string.Format(CultureInfo.InvariantCulture, "{0}:{1:0.0000}", pair.Key.Value, pair.Value)));
         }
 
         private sealed class AssetState
