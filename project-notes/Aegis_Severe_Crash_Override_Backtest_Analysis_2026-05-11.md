@@ -309,3 +309,21 @@ Result:
 
 Next step:
 - Commit the staged Aegis changes.
+
+## Step 14: Commit Result
+
+Date:
+- 2026-05-11
+
+Commit created:
+- `b6377f5a0 feat: add Aegis severe crash override experiment`
+
+Committed scope:
+- Severe-crash override experiment implementation.
+- Focused Aegis tests for severe-crash override behavior and diagnostics.
+- Severe-crash implementation note.
+- Severe-crash backtest analysis note.
+- Normalized crisis backtest result artifacts for runs `01` through `15`.
+
+Next step:
+- Commit this note update, then push `research-algorithms`.
