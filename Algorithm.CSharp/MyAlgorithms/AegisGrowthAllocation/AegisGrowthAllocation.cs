@@ -34,8 +34,10 @@ namespace QuantConnect.Algorithm.CSharp
         private bool _crisisDiagnosticsEnabled;
         private bool _weakStressOverlayEnabled;
         private bool _preWeakGuardEnabled;
+        private bool _severeCrashOverrideEnabled;
         private decimal _preWeakGuardDrawdownThreshold = StrategyConfig.DefaultPreWeakGuardDrawdownThreshold;
-        private decimal _preWeakGuardEquityHighWaterMark;
+        private decimal _severeCrashOverrideDrawdownThreshold = StrategyConfig.DefaultSevereCrashOverrideDrawdownThreshold;
+        private decimal _defensiveOverrideEquityHighWaterMark;
         private static readonly TimeSpan UsaRegularMarketOpenTime = new TimeSpan(9, 30, 0);
 
         public override void Initialize()
@@ -49,9 +51,14 @@ namespace QuantConnect.Algorithm.CSharp
                 _crisisDiagnosticsEnabled = ParseBooleanParameter(StrategyConfig.CrisisDiagnosticsParameter, false);
                 _weakStressOverlayEnabled = ParseBooleanParameter(StrategyConfig.WeakStressOverlayParameter, false);
                 _preWeakGuardEnabled = ParseBooleanParameter(StrategyConfig.PreWeakGuardParameter, false);
+                _severeCrashOverrideEnabled = ParseBooleanParameter(StrategyConfig.SevereCrashOverrideParameter, false);
                 _preWeakGuardDrawdownThreshold = ParseDecimalParameter(
                     StrategyConfig.PreWeakGuardDrawdownThresholdParameter,
                     StrategyConfig.DefaultPreWeakGuardDrawdownThreshold,
+                    value => value > 0m && value < 1m);
+                _severeCrashOverrideDrawdownThreshold = ParseDecimalParameter(
+                    StrategyConfig.SevereCrashOverrideDrawdownThresholdParameter,
+                    StrategyConfig.DefaultSevereCrashOverrideDrawdownThreshold,
                     value => value > 0m && value < 1m);
             }
 
@@ -228,15 +235,38 @@ namespace QuantConnect.Algorithm.CSharp
 
             var reserveBeforeReview = _undeployedCapitalReserve;
             var totalPortfolioValue = Portfolio.TotalPortfolioValue;
-            if (_preWeakGuardEnabled)
+            if (_crisisDiagnosticsEnabled || _preWeakGuardEnabled || _severeCrashOverrideEnabled)
             {
-                UpdatePreWeakGuardHighWaterMark(totalPortfolioValue);
+                UpdateDefensiveOverrideHighWaterMark(totalPortfolioValue);
             }
-            var sleeveTargetsOverride = ShouldApplyWeakStressOverlay(regimeSnapshot)
-                ? StrategyConfig.WeakStressOverlaySleeveTargets
-                : ShouldApplyPreWeakGuard(regimeSnapshot, totalPortfolioValue)
-                    ? StrategyConfig.PreWeakGuardSleeveTargets
-                    : null;
+            var drawdownFromHigh = CalculateDrawdownFromHigh(totalPortfolioValue);
+            var baseSleeveTargets = StrategyConfig.SleeveTargetsByRegime[regimeSnapshot.ActiveRegime];
+            var sleeveTargetsOverride = (SleeveTargets)null;
+            var sleeveOverride = "none";
+            var overrideReason = "none";
+            var severeCrashOverrideActive = ShouldApplySevereCrashOverride(regimeSnapshot, totalPortfolioValue);
+            var preWeakGuardActive = false;
+            if (severeCrashOverrideActive)
+            {
+                sleeveTargetsOverride = StrategyConfig.SevereCrashOverrideSleeveTargets;
+                sleeveOverride = "severe-crash";
+                overrideReason = "weak-severe-dd10-signals2";
+            }
+            else if (ShouldApplyWeakStressOverlay(regimeSnapshot))
+            {
+                sleeveTargetsOverride = StrategyConfig.WeakStressOverlaySleeveTargets;
+                sleeveOverride = "weak-stress";
+                overrideReason = "weak-stress-overlay";
+            }
+            else if (ShouldApplyPreWeakGuard(regimeSnapshot, totalPortfolioValue))
+            {
+                sleeveTargetsOverride = StrategyConfig.PreWeakGuardSleeveTargets;
+                sleeveOverride = "pre-weak";
+                overrideReason = "pre-weak-drawdown-signal";
+                preWeakGuardActive = true;
+            }
+
+            var finalSleeveTargets = sleeveTargetsOverride ?? baseSleeveTargets;
             var plan = _portfolioManager.BuildPlan(
                 regimeSnapshot.PreviousRegime,
                 regimeSnapshot.ActiveRegime,
@@ -267,7 +297,14 @@ namespace QuantConnect.Algorithm.CSharp
                     currentWeights,
                     breadth,
                     vixAverage5,
-                    reserveBeforeReview));
+                    reserveBeforeReview,
+                    preWeakGuardActive,
+                    severeCrashOverrideActive,
+                    sleeveOverride,
+                    overrideReason,
+                    drawdownFromHigh,
+                    baseSleeveTargets,
+                    finalSleeveTargets));
             }
         }
 
@@ -572,12 +609,22 @@ namespace QuantConnect.Algorithm.CSharp
             return value;
         }
 
-        private void UpdatePreWeakGuardHighWaterMark(decimal totalPortfolioValue)
+        private void UpdateDefensiveOverrideHighWaterMark(decimal totalPortfolioValue)
         {
-            if (totalPortfolioValue > _preWeakGuardEquityHighWaterMark)
+            if (totalPortfolioValue > _defensiveOverrideEquityHighWaterMark)
             {
-                _preWeakGuardEquityHighWaterMark = totalPortfolioValue;
+                _defensiveOverrideEquityHighWaterMark = totalPortfolioValue;
             }
+        }
+
+        private decimal CalculateDrawdownFromHigh(decimal totalPortfolioValue)
+        {
+            if (totalPortfolioValue <= 0m || _defensiveOverrideEquityHighWaterMark <= 0m)
+            {
+                return 0m;
+            }
+
+            return Math.Max(0m, 1m - totalPortfolioValue / _defensiveOverrideEquityHighWaterMark);
         }
 
         private bool ShouldApplyWeakStressOverlay(RegimeSnapshot regimeSnapshot)
@@ -594,12 +641,12 @@ namespace QuantConnect.Algorithm.CSharp
             if (!_preWeakGuardEnabled ||
                 regimeSnapshot.ActiveRegime == RiskRegime.Weak ||
                 totalPortfolioValue <= 0m ||
-                _preWeakGuardEquityHighWaterMark <= 0m)
+                _defensiveOverrideEquityHighWaterMark <= 0m)
             {
                 return false;
             }
 
-            var drawdown = 1m - totalPortfolioValue / _preWeakGuardEquityHighWaterMark;
+            var drawdown = CalculateDrawdownFromHigh(totalPortfolioValue);
             if (drawdown < _preWeakGuardDrawdownThreshold)
             {
                 return false;
@@ -608,6 +655,46 @@ namespace QuantConnect.Algorithm.CSharp
             return regimeSnapshot.TrendState != SignalState.Favorable ||
                    regimeSnapshot.BreadthState != SignalState.Favorable ||
                    regimeSnapshot.StressState == SignalState.Weak;
+        }
+
+        private bool ShouldApplySevereCrashOverride(RegimeSnapshot regimeSnapshot, decimal totalPortfolioValue)
+        {
+            if (!_severeCrashOverrideEnabled ||
+                regimeSnapshot.ActiveRegime != RiskRegime.Weak ||
+                !regimeSnapshot.SevereStress ||
+                totalPortfolioValue <= 0m ||
+                _defensiveOverrideEquityHighWaterMark <= 0m)
+            {
+                return false;
+            }
+
+            if (CalculateDrawdownFromHigh(totalPortfolioValue) < _severeCrashOverrideDrawdownThreshold)
+            {
+                return false;
+            }
+
+            return CountWeakSignals(regimeSnapshot) >= 2;
+        }
+
+        private static int CountWeakSignals(RegimeSnapshot regimeSnapshot)
+        {
+            var count = 0;
+            if (regimeSnapshot.TrendState == SignalState.Weak)
+            {
+                count++;
+            }
+
+            if (regimeSnapshot.BreadthState == SignalState.Weak)
+            {
+                count++;
+            }
+
+            if (regimeSnapshot.StressState == SignalState.Weak)
+            {
+                count++;
+            }
+
+            return count;
         }
 
         private bool ParseBooleanParameter(string name, bool defaultValue)
@@ -870,7 +957,14 @@ namespace QuantConnect.Algorithm.CSharp
             IReadOnlyDictionary<Symbol, decimal> currentWeights,
             decimal breadth,
             decimal vixAverage5,
-            decimal reserveBeforeReview)
+            decimal reserveBeforeReview,
+            bool preWeakGuardActive,
+            bool severeCrashOverrideActive,
+            string sleeveOverride,
+            string overrideReason,
+            decimal drawdownFromHigh,
+            SleeveTargets baseSleeveTargets,
+            SleeveTargets finalSleeveTargets)
         {
             var currentCashWeight = Math.Max(0m, 1m - plan.CurrentGrowthWeight - plan.CurrentDefensiveWeight);
             var targetGrowthWeight = plan.TargetWeights
@@ -883,7 +977,7 @@ namespace QuantConnect.Algorithm.CSharp
 
             return string.Format(
                 CultureInfo.InvariantCulture,
-                "[AEGIS-DIAG] {0:yyyy-MM-dd} Equity={1:0.00} Cash={2:0.00} Prev={3} Act={4} Raw={5} Trend={6} BreadthState={7} Stress={8} Severe={9} Inputs=SpyClose:{10:0.00},SpySma200:{11:0.00},SpySma200Lookback:{12:0.00},Breadth:{13:0.0000},Vix5:{14:0.00} Curr=G{15:0.0000}/D{16:0.0000}/C{17:0.0000} Target=G{18:0.0000}/D{19:0.0000}/C{20:0.0000} Bands={21} SelectionChange={22} Rebalance={23} Trim={24} Forced={25} OptRepl={26} NewEntries={27} ReserveBefore={28:0.####} ReserveAfter={29:0.####} ReleasedReserve={30:0.####} Growth={31} Defensive={32} CurrentWeights={33} TargetWeights={34}",
+                "[AEGIS-DIAG] {0:yyyy-MM-dd} Equity={1:0.00} Cash={2:0.00} Prev={3} Act={4} Raw={5} Trend={6} BreadthState={7} Stress={8} Severe={9} Inputs=SpyClose:{10:0.00},SpySma200:{11:0.00},SpySma200Lookback:{12:0.00},Breadth:{13:0.0000},Vix5:{14:0.00} Curr=G{15:0.0000}/D{16:0.0000}/C{17:0.0000} Target=G{18:0.0000}/D{19:0.0000}/C{20:0.0000} {21} Bands={22} SelectionChange={23} Rebalance={24} Trim={25} Forced={26} OptRepl={27} NewEntries={28} ReserveBefore={29:0.####} ReserveAfter={30:0.####} ReleasedReserve={31:0.####} Growth={32} Defensive={33} CurrentWeights={34} TargetWeights={35}",
                 Time,
                 Portfolio.TotalPortfolioValue,
                 Portfolio.Cash,
@@ -905,6 +999,14 @@ namespace QuantConnect.Algorithm.CSharp
                 targetGrowthWeight,
                 targetDefensiveWeight,
                 targetCashWeight,
+                FormatOverrideDiagnostics(
+                    preWeakGuardActive,
+                    severeCrashOverrideActive,
+                    sleeveOverride,
+                    overrideReason,
+                    drawdownFromHigh,
+                    baseSleeveTargets,
+                    finalSleeveTargets),
                 plan.SleevesWithinToleranceBands,
                 plan.HasSelectionChange,
                 plan.HasRebalanceTrigger,
@@ -919,6 +1021,37 @@ namespace QuantConnect.Algorithm.CSharp
                 FormatSymbolList(plan.SelectedDefensiveSymbols),
                 FormatSymbolWeights(currentWeights),
                 FormatSymbolWeights(plan.TargetWeights));
+        }
+
+        private string FormatOverrideDiagnostics(
+            bool preWeakGuardActive,
+            bool severeCrashOverrideActive,
+            string sleeveOverride,
+            string overrideReason,
+            decimal drawdownFromHigh,
+            SleeveTargets baseSleeveTargets,
+            SleeveTargets finalSleeveTargets)
+        {
+            return string.Format(
+                CultureInfo.InvariantCulture,
+                "PreWeakGuardActive={0} SevereCrashOverrideActive={1} SleeveOverride={2} OverrideReason={3} DrawdownFromHigh={4:0.0000} BaseTarget={5} FinalTarget={6}",
+                preWeakGuardActive,
+                severeCrashOverrideActive,
+                sleeveOverride,
+                overrideReason,
+                drawdownFromHigh,
+                FormatSleeveTargets(baseSleeveTargets),
+                FormatSleeveTargets(finalSleeveTargets));
+        }
+
+        private static string FormatSleeveTargets(SleeveTargets targets)
+        {
+            return string.Format(
+                CultureInfo.InvariantCulture,
+                "G{0:0.0000}/D{1:0.0000}/C{2:0.0000}",
+                targets.GrowthTarget,
+                targets.DefensiveTarget,
+                targets.CashTarget);
         }
 
         private static string FormatSymbolPreview(IReadOnlyList<Symbol> symbols)

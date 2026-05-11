@@ -223,7 +223,7 @@ namespace QuantConnect.Tests.Algorithm
         public void PreWeakGuardRequiresEnabledParameter()
         {
             var algorithm = CreateAlgorithm();
-            SetPrivateField(algorithm, "_preWeakGuardEquityHighWaterMark", 100000m);
+            SetPrivateField(algorithm, "_defensiveOverrideEquityHighWaterMark", 100000m);
 
             Assert.That(ShouldApplyPreWeakGuard(algorithm, CreateNeutralDeterioratingSnapshot(), 94000m), Is.False);
         }
@@ -235,7 +235,7 @@ namespace QuantConnect.Tests.Algorithm
             {
                 ["pre-weak-guard-enabled"] = "true"
             });
-            SetPrivateField(algorithm, "_preWeakGuardEquityHighWaterMark", 100000m);
+            SetPrivateField(algorithm, "_defensiveOverrideEquityHighWaterMark", 100000m);
 
             Assert.That(ShouldApplyPreWeakGuard(algorithm, CreateWeakSnapshot(), 94000m), Is.False);
         }
@@ -247,7 +247,7 @@ namespace QuantConnect.Tests.Algorithm
             {
                 ["pre-weak-guard-enabled"] = "true"
             });
-            SetPrivateField(algorithm, "_preWeakGuardEquityHighWaterMark", 100000m);
+            SetPrivateField(algorithm, "_defensiveOverrideEquityHighWaterMark", 100000m);
 
             Assert.That(ShouldApplyPreWeakGuard(algorithm, CreateNeutralDeterioratingSnapshot(), 96000m), Is.False);
         }
@@ -259,7 +259,7 @@ namespace QuantConnect.Tests.Algorithm
             {
                 ["pre-weak-guard-enabled"] = "true"
             });
-            SetPrivateField(algorithm, "_preWeakGuardEquityHighWaterMark", 100000m);
+            SetPrivateField(algorithm, "_defensiveOverrideEquityHighWaterMark", 100000m);
 
             Assert.That(ShouldApplyPreWeakGuard(algorithm, CreateFavorableSnapshot(), 94000m), Is.False);
         }
@@ -271,9 +271,190 @@ namespace QuantConnect.Tests.Algorithm
             {
                 ["pre-weak-guard-enabled"] = "true"
             });
-            SetPrivateField(algorithm, "_preWeakGuardEquityHighWaterMark", 100000m);
+            SetPrivateField(algorithm, "_defensiveOverrideEquityHighWaterMark", 100000m);
 
             Assert.That(ShouldApplyPreWeakGuard(algorithm, CreateNeutralDeterioratingSnapshot(), 94000m), Is.True);
+        }
+
+        [Test]
+        public void DisablesSevereCrashOverrideByDefault()
+        {
+            var algorithm = CreateAlgorithm();
+
+            Assert.That(IsSevereCrashOverrideEnabled(algorithm), Is.False);
+        }
+
+        [Test]
+        public void EnablesSevereCrashOverrideWhenParameterIsTrue()
+        {
+            var algorithm = CreateAlgorithm(new Dictionary<string, string>
+            {
+                ["severe-crash-override-enabled"] = "true"
+            });
+
+            Assert.That(IsSevereCrashOverrideEnabled(algorithm), Is.True);
+        }
+
+        [Test]
+        public void IgnoresInvalidSevereCrashOverrideParameter()
+        {
+            var algorithm = CreateAlgorithm(new Dictionary<string, string>
+            {
+                ["severe-crash-override-enabled"] = "not-a-bool"
+            });
+
+            Assert.That(IsSevereCrashOverrideEnabled(algorithm), Is.False);
+        }
+
+        [Test]
+        public void UsesConfiguredSevereCrashOverrideDrawdownThreshold()
+        {
+            var algorithm = CreateAlgorithm(new Dictionary<string, string>
+            {
+                ["severe-crash-override-enabled"] = "true",
+                ["severe-crash-override-drawdown-threshold"] = "0.12"
+            });
+
+            Assert.That(GetSevereCrashOverrideDrawdownThreshold(algorithm), Is.EqualTo(0.12m));
+        }
+
+        [Test]
+        public void IgnoresInvalidSevereCrashOverrideDrawdownThreshold()
+        {
+            var algorithm = CreateAlgorithm(new Dictionary<string, string>
+            {
+                ["severe-crash-override-enabled"] = "true",
+                ["severe-crash-override-drawdown-threshold"] = "1.25"
+            });
+
+            Assert.That(
+                GetSevereCrashOverrideDrawdownThreshold(algorithm),
+                Is.EqualTo(QuantConnect.Algorithm.CSharp.StrategyConfig.DefaultSevereCrashOverrideDrawdownThreshold));
+        }
+
+        [Test]
+        public void SevereCrashOverrideRequiresEnabledParameter()
+        {
+            var algorithm = CreateAlgorithm();
+            SetPrivateField(algorithm, "_defensiveOverrideEquityHighWaterMark", 100000m);
+
+            Assert.That(ShouldApplySevereCrashOverride(algorithm, CreateWeakSnapshot(), 89000m), Is.False);
+        }
+
+        [Test]
+        public void SevereCrashOverrideRequiresWeakRegime()
+        {
+            var algorithm = CreateAlgorithm(new Dictionary<string, string>
+            {
+                ["severe-crash-override-enabled"] = "true"
+            });
+            SetPrivateField(algorithm, "_defensiveOverrideEquityHighWaterMark", 100000m);
+
+            Assert.That(ShouldApplySevereCrashOverride(algorithm, CreateNeutralSevereSnapshot(), 89000m), Is.False);
+        }
+
+        [Test]
+        public void SevereCrashOverrideRequiresSevereStress()
+        {
+            var algorithm = CreateAlgorithm(new Dictionary<string, string>
+            {
+                ["severe-crash-override-enabled"] = "true"
+            });
+            SetPrivateField(algorithm, "_defensiveOverrideEquityHighWaterMark", 100000m);
+
+            Assert.That(ShouldApplySevereCrashOverride(algorithm, CreateWeakNonSevereSnapshot(), 89000m), Is.False);
+        }
+
+        [Test]
+        public void SevereCrashOverrideRequiresTenPercentDrawdown()
+        {
+            var algorithm = CreateAlgorithm(new Dictionary<string, string>
+            {
+                ["severe-crash-override-enabled"] = "true"
+            });
+            SetPrivateField(algorithm, "_defensiveOverrideEquityHighWaterMark", 100000m);
+
+            Assert.That(ShouldApplySevereCrashOverride(algorithm, CreateWeakSnapshot(), 91000m), Is.False);
+        }
+
+        [Test]
+        public void SevereCrashOverrideRequiresAtLeastTwoWeakSignals()
+        {
+            var algorithm = CreateAlgorithm(new Dictionary<string, string>
+            {
+                ["severe-crash-override-enabled"] = "true"
+            });
+            SetPrivateField(algorithm, "_defensiveOverrideEquityHighWaterMark", 100000m);
+
+            Assert.That(
+                ShouldApplySevereCrashOverride(
+                    algorithm,
+                    CreateWeakSevereSnapshot(
+                        QuantConnect.Algorithm.CSharp.SignalState.Weak,
+                        QuantConnect.Algorithm.CSharp.SignalState.Neutral,
+                        QuantConnect.Algorithm.CSharp.SignalState.Neutral),
+                    89000m),
+                Is.False);
+        }
+
+        [Test]
+        public void SevereCrashOverrideAppliesWhenWeakSevereDrawdownAndTwoSignalsWeak()
+        {
+            var algorithm = CreateAlgorithm(new Dictionary<string, string>
+            {
+                ["severe-crash-override-enabled"] = "true"
+            });
+            SetPrivateField(algorithm, "_defensiveOverrideEquityHighWaterMark", 100000m);
+
+            Assert.That(
+                ShouldApplySevereCrashOverride(
+                    algorithm,
+                    CreateWeakSevereSnapshot(
+                        QuantConnect.Algorithm.CSharp.SignalState.Weak,
+                        QuantConnect.Algorithm.CSharp.SignalState.Weak,
+                        QuantConnect.Algorithm.CSharp.SignalState.Neutral),
+                    89000m),
+                Is.True);
+        }
+
+        [Test]
+        public void PortfolioManagerAppliesSevereCrashOverrideSleeves()
+        {
+            var growthSymbol = QuantConnect.Symbol.Create("AAPL", QuantConnect.SecurityType.Equity, QuantConnect.Market.USA);
+            var defensiveSymbol = QuantConnect.Symbol.Create("SGOV", QuantConnect.SecurityType.Equity, QuantConnect.Market.USA);
+            var plan = BuildWeakPlan(
+                growthSymbol,
+                defensiveSymbol,
+                QuantConnect.Algorithm.CSharp.StrategyConfig.SevereCrashOverrideSleeveTargets);
+
+            Assert.That(plan.SelectedGrowthSymbols, Is.Empty);
+            Assert.That(plan.TargetWeights[growthSymbol], Is.EqualTo(0m));
+            Assert.That(plan.TargetWeights[defensiveSymbol], Is.EqualTo(0.20m));
+            Assert.That(1m - plan.TargetWeights.Values.Sum(), Is.EqualTo(0.80m));
+        }
+
+        [Test]
+        public void FormatsOverrideAttributionDiagnostics()
+        {
+            var algorithm = CreateAlgorithm();
+
+            var diagnostics = FormatOverrideDiagnostics(
+                algorithm,
+                preWeakGuardActive: true,
+                severeCrashOverrideActive: true,
+                sleeveOverride: "severe-crash",
+                overrideReason: "weak-severe-dd10-signals2",
+                drawdownFromHigh: 0.1234m,
+                baseSleeveTargets: QuantConnect.Algorithm.CSharp.StrategyConfig.SleeveTargetsByRegime[QuantConnect.Algorithm.CSharp.RiskRegime.Weak],
+                finalSleeveTargets: QuantConnect.Algorithm.CSharp.StrategyConfig.SevereCrashOverrideSleeveTargets);
+
+            Assert.That(diagnostics, Does.Contain("PreWeakGuardActive=True"));
+            Assert.That(diagnostics, Does.Contain("SevereCrashOverrideActive=True"));
+            Assert.That(diagnostics, Does.Contain("SleeveOverride=severe-crash"));
+            Assert.That(diagnostics, Does.Contain("OverrideReason=weak-severe-dd10-signals2"));
+            Assert.That(diagnostics, Does.Contain("DrawdownFromHigh=0.1234"));
+            Assert.That(diagnostics, Does.Contain("BaseTarget=G0.1000/D0.4000/C0.5000"));
+            Assert.That(diagnostics, Does.Contain("FinalTarget=G0.0000/D0.2000/C0.8000"));
         }
 
         private static QuantConnect.Algorithm.CSharp.AegisGrowthAllocation CreateAlgorithm(
@@ -326,6 +507,24 @@ namespace QuantConnect.Tests.Algorithm
             return (decimal)field.GetValue(algorithm);
         }
 
+        private static bool IsSevereCrashOverrideEnabled(QuantConnect.Algorithm.CSharp.AegisGrowthAllocation algorithm)
+        {
+            var field = typeof(QuantConnect.Algorithm.CSharp.AegisGrowthAllocation)
+                .GetField("_severeCrashOverrideEnabled", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+
+            Assert.That(field, Is.Not.Null);
+            return (bool)field.GetValue(algorithm);
+        }
+
+        private static decimal GetSevereCrashOverrideDrawdownThreshold(QuantConnect.Algorithm.CSharp.AegisGrowthAllocation algorithm)
+        {
+            var field = typeof(QuantConnect.Algorithm.CSharp.AegisGrowthAllocation)
+                .GetField("_severeCrashOverrideDrawdownThreshold", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+
+            Assert.That(field, Is.Not.Null);
+            return (decimal)field.GetValue(algorithm);
+        }
+
         private static void SetPrivateField<T>(
             QuantConnect.Algorithm.CSharp.AegisGrowthAllocation algorithm,
             string name,
@@ -350,6 +549,46 @@ namespace QuantConnect.Tests.Algorithm
             return (bool)method.Invoke(algorithm, new object[] { regimeSnapshot, totalPortfolioValue });
         }
 
+        private static bool ShouldApplySevereCrashOverride(
+            QuantConnect.Algorithm.CSharp.AegisGrowthAllocation algorithm,
+            QuantConnect.Algorithm.CSharp.RegimeSnapshot regimeSnapshot,
+            decimal totalPortfolioValue)
+        {
+            var method = typeof(QuantConnect.Algorithm.CSharp.AegisGrowthAllocation)
+                .GetMethod("ShouldApplySevereCrashOverride", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+
+            Assert.That(method, Is.Not.Null);
+            return (bool)method.Invoke(algorithm, new object[] { regimeSnapshot, totalPortfolioValue });
+        }
+
+        private static string FormatOverrideDiagnostics(
+            QuantConnect.Algorithm.CSharp.AegisGrowthAllocation algorithm,
+            bool preWeakGuardActive,
+            bool severeCrashOverrideActive,
+            string sleeveOverride,
+            string overrideReason,
+            decimal drawdownFromHigh,
+            QuantConnect.Algorithm.CSharp.SleeveTargets baseSleeveTargets,
+            QuantConnect.Algorithm.CSharp.SleeveTargets finalSleeveTargets)
+        {
+            var method = typeof(QuantConnect.Algorithm.CSharp.AegisGrowthAllocation)
+                .GetMethod("FormatOverrideDiagnostics", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+
+            Assert.That(method, Is.Not.Null);
+            return (string)method.Invoke(
+                algorithm,
+                new object[]
+                {
+                    preWeakGuardActive,
+                    severeCrashOverrideActive,
+                    sleeveOverride,
+                    overrideReason,
+                    drawdownFromHigh,
+                    baseSleeveTargets,
+                    finalSleeveTargets
+                });
+        }
+
         private static QuantConnect.Algorithm.CSharp.RegimeSnapshot CreateNeutralDeterioratingSnapshot()
         {
             return new QuantConnect.Algorithm.CSharp.RegimeSnapshot(
@@ -369,6 +608,48 @@ namespace QuantConnect.Tests.Algorithm
                 QuantConnect.Algorithm.CSharp.RiskRegime.Neutral,
                 QuantConnect.Algorithm.CSharp.RiskRegime.Weak,
                 QuantConnect.Algorithm.CSharp.RiskRegime.Weak,
+                QuantConnect.Algorithm.CSharp.SignalState.Weak,
+                QuantConnect.Algorithm.CSharp.SignalState.Weak,
+                QuantConnect.Algorithm.CSharp.SignalState.Weak,
+                severeStress: true,
+                upgradeConfirmationCount: 0);
+        }
+
+        private static QuantConnect.Algorithm.CSharp.RegimeSnapshot CreateWeakNonSevereSnapshot()
+        {
+            return new QuantConnect.Algorithm.CSharp.RegimeSnapshot(
+                QuantConnect.Algorithm.CSharp.RiskRegime.Neutral,
+                QuantConnect.Algorithm.CSharp.RiskRegime.Weak,
+                QuantConnect.Algorithm.CSharp.RiskRegime.Weak,
+                QuantConnect.Algorithm.CSharp.SignalState.Weak,
+                QuantConnect.Algorithm.CSharp.SignalState.Weak,
+                QuantConnect.Algorithm.CSharp.SignalState.Weak,
+                severeStress: false,
+                upgradeConfirmationCount: 0);
+        }
+
+        private static QuantConnect.Algorithm.CSharp.RegimeSnapshot CreateWeakSevereSnapshot(
+            QuantConnect.Algorithm.CSharp.SignalState trendState,
+            QuantConnect.Algorithm.CSharp.SignalState breadthState,
+            QuantConnect.Algorithm.CSharp.SignalState stressState)
+        {
+            return new QuantConnect.Algorithm.CSharp.RegimeSnapshot(
+                QuantConnect.Algorithm.CSharp.RiskRegime.Neutral,
+                QuantConnect.Algorithm.CSharp.RiskRegime.Weak,
+                QuantConnect.Algorithm.CSharp.RiskRegime.Weak,
+                trendState,
+                breadthState,
+                stressState,
+                severeStress: true,
+                upgradeConfirmationCount: 0);
+        }
+
+        private static QuantConnect.Algorithm.CSharp.RegimeSnapshot CreateNeutralSevereSnapshot()
+        {
+            return new QuantConnect.Algorithm.CSharp.RegimeSnapshot(
+                QuantConnect.Algorithm.CSharp.RiskRegime.Neutral,
+                QuantConnect.Algorithm.CSharp.RiskRegime.Neutral,
+                QuantConnect.Algorithm.CSharp.RiskRegime.Neutral,
                 QuantConnect.Algorithm.CSharp.SignalState.Weak,
                 QuantConnect.Algorithm.CSharp.SignalState.Weak,
                 QuantConnect.Algorithm.CSharp.SignalState.Weak,
