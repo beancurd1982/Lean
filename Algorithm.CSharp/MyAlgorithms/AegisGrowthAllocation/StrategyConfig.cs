@@ -19,7 +19,9 @@ namespace QuantConnect.Algorithm.CSharp
         public const string PreWeakGuardParameter = "pre-weak-guard-enabled";
         public const string PreWeakGuardDrawdownThresholdParameter = "pre-weak-guard-drawdown-threshold";
         public const string SevereCrashOverrideParameter = "severe-crash-override-enabled";
-        public const string SevereCrashOverrideDrawdownThresholdParameter = "severe-crash-override-drawdown-threshold";
+        public const string SevereCrashOverrideDrawdownThresholdParameter = "sev-crash-dd-entry";
+        public const string SevereCrashOverrideExitDrawdownThresholdParameter = "sev-crash-dd-exit";
+        public const string SevereCrashOverrideRecoveryConfirmationWeeksParameter = "sev-crash-recovery-wks";
         public const string WeakStressThresholdParameter = "weak-stress-threshold";
         public const string FavorableBreadthThresholdParameter = "favorable-breadth-threshold";
         public const string UpgradeConfirmationWeeksParameter = "upgrade-confirmation-weeks";
@@ -71,8 +73,10 @@ namespace QuantConnect.Algorithm.CSharp
         public const decimal SevereStressThreshold = 30m;
         public const decimal DefaultPreWeakGuardDrawdownThreshold = 0.05m;
         public const decimal DefaultSevereCrashOverrideDrawdownThreshold = 0.10m;
+        public const decimal DefaultSevereCrashOverrideExitDrawdownThreshold = 0.07m;
 
         public const int DefaultUpgradeConfirmationWeeks = 1;
+        public const int DefaultSevereCrashOverrideRecoveryConfirmationWeeks = 2;
 
         public static decimal FavorableBreadthThreshold { get; private set; } = DefaultFavorableBreadthThreshold;
         public static decimal WeakStressThreshold { get; private set; } = DefaultWeakStressThreshold;
@@ -136,15 +140,15 @@ namespace QuantConnect.Algorithm.CSharp
             cashMax: 0.55m);
 
         public static readonly SleeveTargets SevereCrashOverrideSleeveTargets = new SleeveTargets(
-            growthTarget: 0.00m,
-            defensiveTarget: 0.20m,
-            cashTarget: 0.80m,
+            growthTarget: 0.05m,
+            defensiveTarget: 0.35m,
+            cashTarget: 0.60m,
             growthMin: 0.00m,
-            growthMax: 0.05m,
-            defensiveMin: 0.00m,
-            defensiveMax: 0.25m,
-            cashMin: 0.75m,
-            cashMax: 1.00m);
+            growthMax: 0.10m,
+            defensiveMin: 0.30m,
+            defensiveMax: 0.40m,
+            cashMin: 0.55m,
+            cashMax: 0.65m);
 
         public static readonly IReadOnlyDictionary<RiskRegime, int> GrowthHoldingCountByRegime =
             new Dictionary<RiskRegime, int>

@@ -312,7 +312,7 @@ namespace QuantConnect.Tests.Algorithm
             var algorithm = CreateAlgorithm(new Dictionary<string, string>
             {
                 ["severe-crash-override-enabled"] = "true",
-                ["severe-crash-override-drawdown-threshold"] = "0.12"
+                ["sev-crash-dd-entry"] = "0.12"
             });
 
             Assert.That(GetSevereCrashOverrideDrawdownThreshold(algorithm), Is.EqualTo(0.12m));
@@ -324,12 +324,64 @@ namespace QuantConnect.Tests.Algorithm
             var algorithm = CreateAlgorithm(new Dictionary<string, string>
             {
                 ["severe-crash-override-enabled"] = "true",
-                ["severe-crash-override-drawdown-threshold"] = "1.25"
+                ["sev-crash-dd-entry"] = "1.25"
             });
 
             Assert.That(
                 GetSevereCrashOverrideDrawdownThreshold(algorithm),
                 Is.EqualTo(QuantConnect.Algorithm.CSharp.StrategyConfig.DefaultSevereCrashOverrideDrawdownThreshold));
+        }
+
+        [Test]
+        public void UsesConfiguredSevereCrashOverrideExitDrawdownThreshold()
+        {
+            var algorithm = CreateAlgorithm(new Dictionary<string, string>
+            {
+                ["severe-crash-override-enabled"] = "true",
+                ["sev-crash-dd-exit"] = "0.06"
+            });
+
+            Assert.That(GetSevereCrashOverrideExitDrawdownThreshold(algorithm), Is.EqualTo(0.06m));
+        }
+
+        [Test]
+        public void IgnoresInvalidSevereCrashOverrideExitDrawdownThreshold()
+        {
+            var algorithm = CreateAlgorithm(new Dictionary<string, string>
+            {
+                ["severe-crash-override-enabled"] = "true",
+                ["sev-crash-dd-exit"] = "0.15"
+            });
+
+            Assert.That(
+                GetSevereCrashOverrideExitDrawdownThreshold(algorithm),
+                Is.EqualTo(QuantConnect.Algorithm.CSharp.StrategyConfig.DefaultSevereCrashOverrideExitDrawdownThreshold));
+        }
+
+        [Test]
+        public void UsesConfiguredSevereCrashOverrideRecoveryConfirmationWeeks()
+        {
+            var algorithm = CreateAlgorithm(new Dictionary<string, string>
+            {
+                ["severe-crash-override-enabled"] = "true",
+                ["sev-crash-recovery-wks"] = "3"
+            });
+
+            Assert.That(GetSevereCrashOverrideRecoveryConfirmationWeeks(algorithm), Is.EqualTo(3));
+        }
+
+        [Test]
+        public void IgnoresInvalidSevereCrashOverrideRecoveryConfirmationWeeks()
+        {
+            var algorithm = CreateAlgorithm(new Dictionary<string, string>
+            {
+                ["severe-crash-override-enabled"] = "true",
+                ["sev-crash-recovery-wks"] = "0"
+            });
+
+            Assert.That(
+                GetSevereCrashOverrideRecoveryConfirmationWeeks(algorithm),
+                Is.EqualTo(QuantConnect.Algorithm.CSharp.StrategyConfig.DefaultSevereCrashOverrideRecoveryConfirmationWeeks));
         }
 
         [Test]
@@ -418,6 +470,75 @@ namespace QuantConnect.Tests.Algorithm
         }
 
         [Test]
+        public void SevereCrashModeEntersWhenEntryConditionIsMet()
+        {
+            var algorithm = CreateAlgorithm(new Dictionary<string, string>
+            {
+                ["severe-crash-override-enabled"] = "true"
+            });
+            SetPrivateField(algorithm, "_defensiveOverrideEquityHighWaterMark", 100000m);
+
+            Assert.That(UpdateSevereCrashMode(algorithm, CreateWeakSnapshot(), 89000m), Is.True);
+            Assert.That(IsSevereCrashModeActive(algorithm), Is.True);
+            Assert.That(GetSevereCrashModeState(algorithm), Is.EqualTo("enter"));
+            Assert.That(GetSevereCrashRecoveryWeeks(algorithm), Is.EqualTo(0));
+        }
+
+        [Test]
+        public void SevereCrashModeHoldsWhenRecoveryIsUnconfirmed()
+        {
+            var algorithm = CreateAlgorithm(new Dictionary<string, string>
+            {
+                ["severe-crash-override-enabled"] = "true"
+            });
+            SetPrivateField(algorithm, "_defensiveOverrideEquityHighWaterMark", 100000m);
+
+            Assert.That(UpdateSevereCrashMode(algorithm, CreateWeakSnapshot(), 89000m), Is.True);
+            Assert.That(UpdateSevereCrashMode(algorithm, CreateWeakNonSevereSnapshot(), 89000m), Is.True);
+
+            Assert.That(IsSevereCrashModeActive(algorithm), Is.True);
+            Assert.That(GetSevereCrashModeState(algorithm), Is.EqualTo("hold"));
+            Assert.That(GetSevereCrashExitReason(algorithm), Is.EqualTo("none"));
+        }
+
+        [Test]
+        public void SevereCrashModeExitsWhenDrawdownRecoversBelowExitThreshold()
+        {
+            var algorithm = CreateAlgorithm(new Dictionary<string, string>
+            {
+                ["severe-crash-override-enabled"] = "true"
+            });
+            SetPrivateField(algorithm, "_defensiveOverrideEquityHighWaterMark", 100000m);
+
+            Assert.That(UpdateSevereCrashMode(algorithm, CreateWeakSnapshot(), 89000m), Is.True);
+            Assert.That(UpdateSevereCrashMode(algorithm, CreateWeakNonSevereSnapshot(), 94000m), Is.False);
+
+            Assert.That(IsSevereCrashModeActive(algorithm), Is.False);
+            Assert.That(GetSevereCrashModeState(algorithm), Is.EqualTo("exit"));
+            Assert.That(GetSevereCrashExitReason(algorithm), Is.EqualTo("drawdown-recovered"));
+        }
+
+        [Test]
+        public void SevereCrashModeExitsAfterConsecutiveRecoveredRegimeWeeks()
+        {
+            var algorithm = CreateAlgorithm(new Dictionary<string, string>
+            {
+                ["severe-crash-override-enabled"] = "true"
+            });
+            SetPrivateField(algorithm, "_defensiveOverrideEquityHighWaterMark", 100000m);
+
+            Assert.That(UpdateSevereCrashMode(algorithm, CreateWeakSnapshot(), 89000m), Is.True);
+            Assert.That(UpdateSevereCrashMode(algorithm, CreateNeutralSnapshot(), 89000m), Is.True);
+            Assert.That(GetSevereCrashRecoveryWeeks(algorithm), Is.EqualTo(1));
+
+            Assert.That(UpdateSevereCrashMode(algorithm, CreateNeutralSnapshot(), 89000m), Is.False);
+            Assert.That(IsSevereCrashModeActive(algorithm), Is.False);
+            Assert.That(GetSevereCrashModeState(algorithm), Is.EqualTo("exit"));
+            Assert.That(GetSevereCrashExitReason(algorithm), Is.EqualTo("regime-recovered"));
+            Assert.That(GetSevereCrashRecoveryWeeks(algorithm), Is.EqualTo(2));
+        }
+
+        [Test]
         public void PortfolioManagerAppliesSevereCrashOverrideSleeves()
         {
             var growthSymbol = QuantConnect.Symbol.Create("AAPL", QuantConnect.SecurityType.Equity, QuantConnect.Market.USA);
@@ -427,10 +548,10 @@ namespace QuantConnect.Tests.Algorithm
                 defensiveSymbol,
                 QuantConnect.Algorithm.CSharp.StrategyConfig.SevereCrashOverrideSleeveTargets);
 
-            Assert.That(plan.SelectedGrowthSymbols, Is.Empty);
-            Assert.That(plan.TargetWeights[growthSymbol], Is.EqualTo(0m));
-            Assert.That(plan.TargetWeights[defensiveSymbol], Is.EqualTo(0.20m));
-            Assert.That(1m - plan.TargetWeights.Values.Sum(), Is.EqualTo(0.80m));
+            Assert.That(plan.SelectedGrowthSymbols, Is.EqualTo(new[] { growthSymbol }));
+            Assert.That(plan.TargetWeights[growthSymbol], Is.EqualTo(0.05m));
+            Assert.That(plan.TargetWeights[defensiveSymbol], Is.EqualTo(0.35m));
+            Assert.That(1m - plan.TargetWeights.Values.Sum(), Is.EqualTo(0.60m));
         }
 
         [Test]
@@ -446,7 +567,10 @@ namespace QuantConnect.Tests.Algorithm
                 overrideReason: "weak-severe-dd10-signals2",
                 drawdownFromHigh: 0.1234m,
                 baseSleeveTargets: QuantConnect.Algorithm.CSharp.StrategyConfig.SleeveTargetsByRegime[QuantConnect.Algorithm.CSharp.RiskRegime.Weak],
-                finalSleeveTargets: QuantConnect.Algorithm.CSharp.StrategyConfig.SevereCrashOverrideSleeveTargets);
+                finalSleeveTargets: QuantConnect.Algorithm.CSharp.StrategyConfig.SevereCrashOverrideSleeveTargets,
+                severeCrashModeState: "hold",
+                severeCrashRecoveryWeeks: 1,
+                severeCrashExitReason: "none");
 
             Assert.That(diagnostics, Does.Contain("PreWeakGuardActive=True"));
             Assert.That(diagnostics, Does.Contain("SevereCrashOverrideActive=True"));
@@ -454,7 +578,10 @@ namespace QuantConnect.Tests.Algorithm
             Assert.That(diagnostics, Does.Contain("OverrideReason=weak-severe-dd10-signals2"));
             Assert.That(diagnostics, Does.Contain("DrawdownFromHigh=0.1234"));
             Assert.That(diagnostics, Does.Contain("BaseTarget=G0.1000/D0.4000/C0.5000"));
-            Assert.That(diagnostics, Does.Contain("FinalTarget=G0.0000/D0.2000/C0.8000"));
+            Assert.That(diagnostics, Does.Contain("FinalTarget=G0.0500/D0.3500/C0.6000"));
+            Assert.That(diagnostics, Does.Contain("SevereCrashModeState=hold"));
+            Assert.That(diagnostics, Does.Contain("SevereCrashRecoveryWeeks=1"));
+            Assert.That(diagnostics, Does.Contain("SevereCrashExitReason=none"));
         }
 
         private static QuantConnect.Algorithm.CSharp.AegisGrowthAllocation CreateAlgorithm(
@@ -525,6 +652,60 @@ namespace QuantConnect.Tests.Algorithm
             return (decimal)field.GetValue(algorithm);
         }
 
+        private static decimal GetSevereCrashOverrideExitDrawdownThreshold(QuantConnect.Algorithm.CSharp.AegisGrowthAllocation algorithm)
+        {
+            var field = typeof(QuantConnect.Algorithm.CSharp.AegisGrowthAllocation)
+                .GetField("_severeCrashOverrideExitDrawdownThreshold", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+
+            Assert.That(field, Is.Not.Null);
+            return (decimal)field.GetValue(algorithm);
+        }
+
+        private static int GetSevereCrashOverrideRecoveryConfirmationWeeks(QuantConnect.Algorithm.CSharp.AegisGrowthAllocation algorithm)
+        {
+            var field = typeof(QuantConnect.Algorithm.CSharp.AegisGrowthAllocation)
+                .GetField("_severeCrashOverrideRecoveryConfirmationWeeks", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+
+            Assert.That(field, Is.Not.Null);
+            return (int)field.GetValue(algorithm);
+        }
+
+        private static bool IsSevereCrashModeActive(QuantConnect.Algorithm.CSharp.AegisGrowthAllocation algorithm)
+        {
+            var field = typeof(QuantConnect.Algorithm.CSharp.AegisGrowthAllocation)
+                .GetField("_severeCrashModeActive", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+
+            Assert.That(field, Is.Not.Null);
+            return (bool)field.GetValue(algorithm);
+        }
+
+        private static int GetSevereCrashRecoveryWeeks(QuantConnect.Algorithm.CSharp.AegisGrowthAllocation algorithm)
+        {
+            var field = typeof(QuantConnect.Algorithm.CSharp.AegisGrowthAllocation)
+                .GetField("_severeCrashRecoveryWeeks", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+
+            Assert.That(field, Is.Not.Null);
+            return (int)field.GetValue(algorithm);
+        }
+
+        private static string GetSevereCrashModeState(QuantConnect.Algorithm.CSharp.AegisGrowthAllocation algorithm)
+        {
+            var field = typeof(QuantConnect.Algorithm.CSharp.AegisGrowthAllocation)
+                .GetField("_severeCrashModeState", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+
+            Assert.That(field, Is.Not.Null);
+            return (string)field.GetValue(algorithm);
+        }
+
+        private static string GetSevereCrashExitReason(QuantConnect.Algorithm.CSharp.AegisGrowthAllocation algorithm)
+        {
+            var field = typeof(QuantConnect.Algorithm.CSharp.AegisGrowthAllocation)
+                .GetField("_severeCrashExitReason", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+
+            Assert.That(field, Is.Not.Null);
+            return (string)field.GetValue(algorithm);
+        }
+
         private static void SetPrivateField<T>(
             QuantConnect.Algorithm.CSharp.AegisGrowthAllocation algorithm,
             string name,
@@ -561,6 +742,18 @@ namespace QuantConnect.Tests.Algorithm
             return (bool)method.Invoke(algorithm, new object[] { regimeSnapshot, totalPortfolioValue });
         }
 
+        private static bool UpdateSevereCrashMode(
+            QuantConnect.Algorithm.CSharp.AegisGrowthAllocation algorithm,
+            QuantConnect.Algorithm.CSharp.RegimeSnapshot regimeSnapshot,
+            decimal totalPortfolioValue)
+        {
+            var method = typeof(QuantConnect.Algorithm.CSharp.AegisGrowthAllocation)
+                .GetMethod("UpdateSevereCrashMode", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+
+            Assert.That(method, Is.Not.Null);
+            return (bool)method.Invoke(algorithm, new object[] { regimeSnapshot, totalPortfolioValue });
+        }
+
         private static string FormatOverrideDiagnostics(
             QuantConnect.Algorithm.CSharp.AegisGrowthAllocation algorithm,
             bool preWeakGuardActive,
@@ -569,7 +762,10 @@ namespace QuantConnect.Tests.Algorithm
             string overrideReason,
             decimal drawdownFromHigh,
             QuantConnect.Algorithm.CSharp.SleeveTargets baseSleeveTargets,
-            QuantConnect.Algorithm.CSharp.SleeveTargets finalSleeveTargets)
+            QuantConnect.Algorithm.CSharp.SleeveTargets finalSleeveTargets,
+            string severeCrashModeState = "none",
+            int severeCrashRecoveryWeeks = 0,
+            string severeCrashExitReason = "none")
         {
             var method = typeof(QuantConnect.Algorithm.CSharp.AegisGrowthAllocation)
                 .GetMethod("FormatOverrideDiagnostics", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
@@ -585,7 +781,10 @@ namespace QuantConnect.Tests.Algorithm
                     overrideReason,
                     drawdownFromHigh,
                     baseSleeveTargets,
-                    finalSleeveTargets
+                    finalSleeveTargets,
+                    severeCrashModeState,
+                    severeCrashRecoveryWeeks,
+                    severeCrashExitReason
                 });
         }
 
@@ -612,6 +811,19 @@ namespace QuantConnect.Tests.Algorithm
                 QuantConnect.Algorithm.CSharp.SignalState.Weak,
                 QuantConnect.Algorithm.CSharp.SignalState.Weak,
                 severeStress: true,
+                upgradeConfirmationCount: 0);
+        }
+
+        private static QuantConnect.Algorithm.CSharp.RegimeSnapshot CreateNeutralSnapshot()
+        {
+            return new QuantConnect.Algorithm.CSharp.RegimeSnapshot(
+                QuantConnect.Algorithm.CSharp.RiskRegime.Weak,
+                QuantConnect.Algorithm.CSharp.RiskRegime.Neutral,
+                QuantConnect.Algorithm.CSharp.RiskRegime.Neutral,
+                QuantConnect.Algorithm.CSharp.SignalState.Neutral,
+                QuantConnect.Algorithm.CSharp.SignalState.Neutral,
+                QuantConnect.Algorithm.CSharp.SignalState.Neutral,
+                severeStress: false,
                 upgradeConfirmationCount: 0);
         }
 

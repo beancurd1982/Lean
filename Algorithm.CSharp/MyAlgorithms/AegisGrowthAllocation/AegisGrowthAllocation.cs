@@ -37,6 +37,12 @@ namespace QuantConnect.Algorithm.CSharp
         private bool _severeCrashOverrideEnabled;
         private decimal _preWeakGuardDrawdownThreshold = StrategyConfig.DefaultPreWeakGuardDrawdownThreshold;
         private decimal _severeCrashOverrideDrawdownThreshold = StrategyConfig.DefaultSevereCrashOverrideDrawdownThreshold;
+        private decimal _severeCrashOverrideExitDrawdownThreshold = StrategyConfig.DefaultSevereCrashOverrideExitDrawdownThreshold;
+        private int _severeCrashOverrideRecoveryConfirmationWeeks = StrategyConfig.DefaultSevereCrashOverrideRecoveryConfirmationWeeks;
+        private bool _severeCrashModeActive;
+        private int _severeCrashRecoveryWeeks;
+        private string _severeCrashModeState = "none";
+        private string _severeCrashExitReason = "none";
         private decimal _defensiveOverrideEquityHighWaterMark;
         private static readonly TimeSpan UsaRegularMarketOpenTime = new TimeSpan(9, 30, 0);
 
@@ -60,6 +66,14 @@ namespace QuantConnect.Algorithm.CSharp
                     StrategyConfig.SevereCrashOverrideDrawdownThresholdParameter,
                     StrategyConfig.DefaultSevereCrashOverrideDrawdownThreshold,
                     value => value > 0m && value < 1m);
+                _severeCrashOverrideExitDrawdownThreshold = ParseDecimalParameter(
+                    StrategyConfig.SevereCrashOverrideExitDrawdownThresholdParameter,
+                    StrategyConfig.DefaultSevereCrashOverrideExitDrawdownThreshold,
+                    value => value > 0m && value < _severeCrashOverrideDrawdownThreshold);
+                _severeCrashOverrideRecoveryConfirmationWeeks = ParseIntParameter(
+                    StrategyConfig.SevereCrashOverrideRecoveryConfirmationWeeksParameter,
+                    StrategyConfig.DefaultSevereCrashOverrideRecoveryConfirmationWeeks,
+                    value => value >= 1 && value <= 8);
             }
 
             _marketSymbol = AddEquity(StrategyConfig.MarketTicker, Resolution.Daily).Symbol;
@@ -244,13 +258,15 @@ namespace QuantConnect.Algorithm.CSharp
             var sleeveTargetsOverride = (SleeveTargets)null;
             var sleeveOverride = "none";
             var overrideReason = "none";
-            var severeCrashOverrideActive = ShouldApplySevereCrashOverride(regimeSnapshot, totalPortfolioValue);
+            var severeCrashOverrideActive = UpdateSevereCrashMode(regimeSnapshot, totalPortfolioValue);
             var preWeakGuardActive = false;
             if (severeCrashOverrideActive)
             {
                 sleeveTargetsOverride = StrategyConfig.SevereCrashOverrideSleeveTargets;
                 sleeveOverride = "severe-crash";
-                overrideReason = "weak-severe-dd10-signals2";
+                overrideReason = _severeCrashModeState == "hold"
+                    ? "severe-crash-hysteresis-hold"
+                    : "weak-severe-dd10-signals2";
             }
             else if (ShouldApplyWeakStressOverlay(regimeSnapshot))
             {
@@ -304,7 +320,10 @@ namespace QuantConnect.Algorithm.CSharp
                     overrideReason,
                     drawdownFromHigh,
                     baseSleeveTargets,
-                    finalSleeveTargets));
+                    finalSleeveTargets,
+                    _severeCrashModeState,
+                    _severeCrashRecoveryWeeks,
+                    _severeCrashExitReason));
             }
         }
 
@@ -676,6 +695,67 @@ namespace QuantConnect.Algorithm.CSharp
             return CountWeakSignals(regimeSnapshot) >= 2;
         }
 
+        private bool UpdateSevereCrashMode(RegimeSnapshot regimeSnapshot, decimal totalPortfolioValue)
+        {
+            _severeCrashModeState = "none";
+            _severeCrashExitReason = "none";
+
+            if (!_severeCrashOverrideEnabled)
+            {
+                _severeCrashModeActive = false;
+                _severeCrashRecoveryWeeks = 0;
+                return false;
+            }
+
+            if (!_severeCrashModeActive)
+            {
+                _severeCrashRecoveryWeeks = 0;
+                if (!ShouldApplySevereCrashOverride(regimeSnapshot, totalPortfolioValue))
+                {
+                    return false;
+                }
+
+                _severeCrashModeActive = true;
+                _severeCrashModeState = "enter";
+                return true;
+            }
+
+            var drawdown = CalculateDrawdownFromHigh(totalPortfolioValue);
+            if (drawdown < _severeCrashOverrideExitDrawdownThreshold)
+            {
+                _severeCrashModeActive = false;
+                _severeCrashRecoveryWeeks = 0;
+                _severeCrashModeState = "exit";
+                _severeCrashExitReason = "drawdown-recovered";
+                return false;
+            }
+
+            if (IsSevereCrashRecoveredRegime(regimeSnapshot.ActiveRegime))
+            {
+                _severeCrashRecoveryWeeks++;
+                if (_severeCrashRecoveryWeeks >= _severeCrashOverrideRecoveryConfirmationWeeks)
+                {
+                    _severeCrashModeActive = false;
+                    _severeCrashModeState = "exit";
+                    _severeCrashExitReason = "regime-recovered";
+                    return false;
+                }
+            }
+            else
+            {
+                _severeCrashRecoveryWeeks = 0;
+            }
+
+            _severeCrashModeState = "hold";
+            return true;
+        }
+
+        private static bool IsSevereCrashRecoveredRegime(RiskRegime regime)
+        {
+            return regime == RiskRegime.Neutral ||
+                   regime == RiskRegime.Favorable;
+        }
+
         private static int CountWeakSignals(RegimeSnapshot regimeSnapshot)
         {
             var count = 0;
@@ -964,7 +1044,10 @@ namespace QuantConnect.Algorithm.CSharp
             string overrideReason,
             decimal drawdownFromHigh,
             SleeveTargets baseSleeveTargets,
-            SleeveTargets finalSleeveTargets)
+            SleeveTargets finalSleeveTargets,
+            string severeCrashModeState,
+            int severeCrashRecoveryWeeks,
+            string severeCrashExitReason)
         {
             var currentCashWeight = Math.Max(0m, 1m - plan.CurrentGrowthWeight - plan.CurrentDefensiveWeight);
             var targetGrowthWeight = plan.TargetWeights
@@ -1006,7 +1089,10 @@ namespace QuantConnect.Algorithm.CSharp
                     overrideReason,
                     drawdownFromHigh,
                     baseSleeveTargets,
-                    finalSleeveTargets),
+                    finalSleeveTargets,
+                    severeCrashModeState,
+                    severeCrashRecoveryWeeks,
+                    severeCrashExitReason),
                 plan.SleevesWithinToleranceBands,
                 plan.HasSelectionChange,
                 plan.HasRebalanceTrigger,
@@ -1030,18 +1116,24 @@ namespace QuantConnect.Algorithm.CSharp
             string overrideReason,
             decimal drawdownFromHigh,
             SleeveTargets baseSleeveTargets,
-            SleeveTargets finalSleeveTargets)
+            SleeveTargets finalSleeveTargets,
+            string severeCrashModeState,
+            int severeCrashRecoveryWeeks,
+            string severeCrashExitReason)
         {
             return string.Format(
                 CultureInfo.InvariantCulture,
-                "PreWeakGuardActive={0} SevereCrashOverrideActive={1} SleeveOverride={2} OverrideReason={3} DrawdownFromHigh={4:0.0000} BaseTarget={5} FinalTarget={6}",
+                "PreWeakGuardActive={0} SevereCrashOverrideActive={1} SleeveOverride={2} OverrideReason={3} DrawdownFromHigh={4:0.0000} BaseTarget={5} FinalTarget={6} SevereCrashModeState={7} SevereCrashRecoveryWeeks={8} SevereCrashExitReason={9}",
                 preWeakGuardActive,
                 severeCrashOverrideActive,
                 sleeveOverride,
                 overrideReason,
                 drawdownFromHigh,
                 FormatSleeveTargets(baseSleeveTargets),
-                FormatSleeveTargets(finalSleeveTargets));
+                FormatSleeveTargets(finalSleeveTargets),
+                severeCrashModeState,
+                severeCrashRecoveryWeeks,
+                severeCrashExitReason);
         }
 
         private static string FormatSleeveTargets(SleeveTargets targets)
