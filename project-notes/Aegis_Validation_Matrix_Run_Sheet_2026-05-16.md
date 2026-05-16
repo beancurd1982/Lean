@@ -304,3 +304,606 @@ Review result:
 Verification:
 - `git -c safe.directory=D:/Projects/Git/Lean-1 diff --check -- project-notes/Aegis_Validation_Matrix_Run_Sheet_2026-05-16.md`
   - passed.
+
+## Step 13: Phase 1 Execution Checklist
+
+Date:
+- 2026-05-16
+
+Status:
+- Phase 1 is ready to run.
+- Use run numbers `21` through `45`.
+- Upload each completed run as:
+  - `<run-number>.json`
+  - `<run-number>_logs.txt`
+  - `<run-number>_orders.csv`
+- Codex will normalize names after upload.
+
+Common parameter for every run:
+- `crisis-diagnostics=true`
+
+### Runs `21-25`: `A-default-off`
+
+Parameters:
+- `weak-stress-overlay-enabled=false`
+- `pre-weak-guard-enabled=false`
+- `severe-crash-override-enabled=false`
+
+| Run | Window | `backtest-start` | `backtest-end` |
+| --- | --- | --- | --- |
+| `21` | `W1-2008-crash` | `2007-10-01` | `2008-12-31` |
+| `22` | `W2-2009-rebound` | `2009-01-01` | `2009-12-31` |
+| `23` | `W3-2010-chop` | `2010-01-01` | `2010-12-31` |
+| `24` | `W4-2020-covid` | `2019-07-01` | `2020-12-31` |
+| `25` | `W5-2021-22-bear` | `2021-01-01` | `2022-12-31` |
+
+### Runs `26-30`: `B-weak-stress-only`
+
+Parameters:
+- `weak-stress-overlay-enabled=true`
+- `pre-weak-guard-enabled=false`
+- `severe-crash-override-enabled=false`
+
+| Run | Window | `backtest-start` | `backtest-end` |
+| --- | --- | --- | --- |
+| `26` | `W1-2008-crash` | `2007-10-01` | `2008-12-31` |
+| `27` | `W2-2009-rebound` | `2009-01-01` | `2009-12-31` |
+| `28` | `W3-2010-chop` | `2010-01-01` | `2010-12-31` |
+| `29` | `W4-2020-covid` | `2019-07-01` | `2020-12-31` |
+| `30` | `W5-2021-22-bear` | `2021-01-01` | `2022-12-31` |
+
+### Runs `31-35`: `C-pre-weak-only`
+
+Parameters:
+- `weak-stress-overlay-enabled=false`
+- `pre-weak-guard-enabled=true`
+- `severe-crash-override-enabled=false`
+
+| Run | Window | `backtest-start` | `backtest-end` |
+| --- | --- | --- | --- |
+| `31` | `W1-2008-crash` | `2007-10-01` | `2008-12-31` |
+| `32` | `W2-2009-rebound` | `2009-01-01` | `2009-12-31` |
+| `33` | `W3-2010-chop` | `2010-01-01` | `2010-12-31` |
+| `34` | `W4-2020-covid` | `2019-07-01` | `2020-12-31` |
+| `35` | `W5-2021-22-bear` | `2021-01-01` | `2022-12-31` |
+
+### Runs `36-40`: `D-stateful-severe-only`
+
+Parameters:
+- `weak-stress-overlay-enabled=false`
+- `pre-weak-guard-enabled=false`
+- `severe-crash-override-enabled=true`
+- `sev-crash-dd-entry=0.10`
+- `sev-crash-dd-exit=0.07`
+- `sev-crash-recovery-wks=2`
+
+| Run | Window | `backtest-start` | `backtest-end` |
+| --- | --- | --- | --- |
+| `36` | `W1-2008-crash` | `2007-10-01` | `2008-12-31` |
+| `37` | `W2-2009-rebound` | `2009-01-01` | `2009-12-31` |
+| `38` | `W3-2010-chop` | `2010-01-01` | `2010-12-31` |
+| `39` | `W4-2020-covid` | `2019-07-01` | `2020-12-31` |
+| `40` | `W5-2021-22-bear` | `2021-01-01` | `2022-12-31` |
+
+### Runs `41-45`: `E-pre-weak-plus-stateful-severe`
+
+Parameters:
+- `weak-stress-overlay-enabled=false`
+- `pre-weak-guard-enabled=true`
+- `severe-crash-override-enabled=true`
+- `sev-crash-dd-entry=0.10`
+- `sev-crash-dd-exit=0.07`
+- `sev-crash-recovery-wks=2`
+
+| Run | Window | `backtest-start` | `backtest-end` |
+| --- | --- | --- | --- |
+| `41` | `W1-2008-crash` | `2007-10-01` | `2008-12-31` |
+| `42` | `W2-2009-rebound` | `2009-01-01` | `2009-12-31` |
+| `43` | `W3-2010-chop` | `2010-01-01` | `2010-12-31` |
+| `44` | `W4-2020-covid` | `2019-07-01` | `2020-12-31` |
+| `45` | `W5-2021-22-bear` | `2021-01-01` | `2022-12-31` |
+
+Next step:
+- Run `21` first and confirm the parameter screen before submitting if anything looks uncertain.
+
+## Step 14: Phase 1 Run 21 Received
+
+Date:
+- 2026-05-16
+
+Uploaded files:
+- `21.json`
+- `21_logs.txt`
+- `21_orders.csv`
+
+Normalized files:
+- `Algorithm.CSharp/MyAlgorithms/AegisGrowthAllocation/CrisisBackTestLogs/21__2007-10-01_to_2008-12-31__AegisGrowthAllocation__A-default-off__overview.json`
+- `Algorithm.CSharp/MyAlgorithms/AegisGrowthAllocation/CrisisBackTestLogs/21__2007-10-01_to_2008-12-31__AegisGrowthAllocation__A-default-off__logs.txt`
+- `Algorithm.CSharp/MyAlgorithms/AegisGrowthAllocation/CrisisBackTestLogs/21__2007-10-01_to_2008-12-31__AegisGrowthAllocation__A-default-off__orders.csv`
+
+Validation:
+- Status: `Completed`
+- Runtime error: `False`
+- Start: `2007-10-01T00:00:00Z`
+- End: `2008-12-31T23:59:59Z`
+- Parameters matched `A-default-off`.
+
+Metrics:
+- Net Profit: `-16.860%`
+- Compounding Annual Return: `-13.691%`
+- Drawdown: `20.300%`
+- Sharpe Ratio: `-1.46`
+- Sortino Ratio: `-1.423`
+- Total Orders: `144`
+- Total Fees: `$350.54`
+- End Equity: `24942.03`
+- Portfolio Turnover: `2.96%`
+
+Next run:
+- `22`: `A-default-off`, `2009-01-01` to `2009-12-31`.
+
+## Step 15: Phase 1 Run 22 Received
+
+Date:
+- 2026-05-16
+
+Uploaded files:
+- `22.json`
+- `22_logs.txt`
+- `22_orders.csv`
+
+Normalized files:
+- `Algorithm.CSharp/MyAlgorithms/AegisGrowthAllocation/CrisisBackTestLogs/22__2009-01-01_to_2009-12-31__AegisGrowthAllocation__A-default-off__overview.json`
+- `Algorithm.CSharp/MyAlgorithms/AegisGrowthAllocation/CrisisBackTestLogs/22__2009-01-01_to_2009-12-31__AegisGrowthAllocation__A-default-off__logs.txt`
+- `Algorithm.CSharp/MyAlgorithms/AegisGrowthAllocation/CrisisBackTestLogs/22__2009-01-01_to_2009-12-31__AegisGrowthAllocation__A-default-off__orders.csv`
+
+Validation:
+- Status: `Completed`
+- Runtime error: `False`
+- Start: `2009-01-01T00:00:00Z`
+- End: `2009-12-31T23:59:59Z`
+- Parameters matched `A-default-off`.
+
+Metrics:
+- Net Profit: `17.084%`
+- Compounding Annual Return: `17.101%`
+- Drawdown: `4.300%`
+- Sharpe Ratio: `1.633`
+- Sortino Ratio: `1.722`
+- Total Orders: `89`
+- Total Fees: `$176.25`
+- End Equity: `35125.25`
+- Portfolio Turnover: `1.97%`
+- Win Rate: `67%`
+- Profit-Loss Ratio: `1.40`
+
+Initial comparison:
+- Run `22` effectively matches prior 2009 runs `7`, `12`, and `17`.
+- The earlier weak-stress run `2` had lower drawdown (`2.800%`) and fewer orders, but lower return (`13.556%`).
+
+Next run:
+- `23`: `A-default-off`, `2010-01-01` to `2010-12-31`.
+
+## Step 16: Phase 1 Run 23 Received
+
+Date:
+- 2026-05-16
+
+Uploaded files:
+- `23.json`
+- `23_logs.txt`
+- `23_orders.csv`
+
+Normalized files:
+- `Algorithm.CSharp/MyAlgorithms/AegisGrowthAllocation/CrisisBackTestLogs/23__2010-01-01_to_2010-12-31__AegisGrowthAllocation__A-default-off__overview.json`
+- `Algorithm.CSharp/MyAlgorithms/AegisGrowthAllocation/CrisisBackTestLogs/23__2010-01-01_to_2010-12-31__AegisGrowthAllocation__A-default-off__logs.txt`
+- `Algorithm.CSharp/MyAlgorithms/AegisGrowthAllocation/CrisisBackTestLogs/23__2010-01-01_to_2010-12-31__AegisGrowthAllocation__A-default-off__orders.csv`
+
+Validation:
+- Status: `Completed`
+- Runtime error: `False`
+- Start: `2010-01-01T00:00:00Z`
+- End: `2010-12-31T23:59:59Z`
+- Parameters matched `A-default-off`.
+
+Metrics:
+- Net Profit: `9.326%`
+- Compounding Annual Return: `9.335%`
+- Drawdown: `10.800%`
+- Sharpe Ratio: `0.639`
+- Sortino Ratio: `0.735`
+- Total Orders: `185`
+- Total Fees: `$419.39`
+- End Equity: `32797.84`
+- Portfolio Turnover: `4.17%`
+- Win Rate: `51%`
+- Profit-Loss Ratio: `1.16`
+
+Initial comparison:
+- Run `23` effectively matches prior 2010 severe/stateful runs `13` and `18`.
+- Prior pre-weak run `8` remains better in 2010: `10.729%` net profit, `10.200%` drawdown, and `0.749` Sharpe.
+- Prior weak-stress run `3` had slightly lower drawdown than default but lower return.
+
+Next run:
+- `24`: `A-default-off`, `2019-07-01` to `2020-12-31`.
+
+## Step 17: Phase 1 Run 24 Received
+
+Date:
+- 2026-05-16
+
+Uploaded files:
+- `24.json`
+- `24_logs.txt`
+- `24_orders.csv`
+
+Normalized files:
+- `Algorithm.CSharp/MyAlgorithms/AegisGrowthAllocation/CrisisBackTestLogs/24__2019-07-01_to_2020-12-31__AegisGrowthAllocation__A-default-off__overview.json`
+- `Algorithm.CSharp/MyAlgorithms/AegisGrowthAllocation/CrisisBackTestLogs/24__2019-07-01_to_2020-12-31__AegisGrowthAllocation__A-default-off__logs.txt`
+- `Algorithm.CSharp/MyAlgorithms/AegisGrowthAllocation/CrisisBackTestLogs/24__2019-07-01_to_2020-12-31__AegisGrowthAllocation__A-default-off__orders.csv`
+
+Validation:
+- Status: `Completed`
+- Runtime error: `False`
+- Start: `2019-07-01T00:00:00Z`
+- End: `2020-12-31T23:59:59Z`
+- Parameters matched `A-default-off`.
+
+Metrics:
+- Net Profit: `45.966%`
+- Compounding Annual Return: `28.546%`
+- Drawdown: `13.500%`
+- Sharpe Ratio: `1.44`
+- Sortino Ratio: `1.401`
+- Total Orders: `198`
+- Total Fees: `$214.87`
+- End Equity: `43789.74`
+- Portfolio Turnover: `2.96%`
+- Win Rate: `71%`
+- Profit-Loss Ratio: `1.36`
+
+Initial comparison:
+- Run `24` is close to prior pre-weak run `9`, but still slightly lower: `45.966%` net versus `46.848%`, Sharpe `1.44` versus `1.49`.
+- Prior weak-stress run `4` still has the best drawdown (`10.900%`) but meaningfully lower return (`37.717%`).
+- Prior severe/stateful severe runs `14` and `19` lag default on 2020 return.
+
+Next run:
+- `25`: `A-default-off`, `2021-01-01` to `2022-12-31`.
+
+## Step 18: Phase 1 Run 25 Received
+
+Date:
+- 2026-05-16
+
+Uploaded files:
+- `25.json`
+- `25_logs.txt`
+- `25_orders.csv`
+
+Normalized files:
+- `Algorithm.CSharp/MyAlgorithms/AegisGrowthAllocation/CrisisBackTestLogs/25__2021-01-01_to_2022-12-31__AegisGrowthAllocation__A-default-off__overview.json`
+- `Algorithm.CSharp/MyAlgorithms/AegisGrowthAllocation/CrisisBackTestLogs/25__2021-01-01_to_2022-12-31__AegisGrowthAllocation__A-default-off__logs.txt`
+- `Algorithm.CSharp/MyAlgorithms/AegisGrowthAllocation/CrisisBackTestLogs/25__2021-01-01_to_2022-12-31__AegisGrowthAllocation__A-default-off__orders.csv`
+
+Validation:
+- Status: `Completed`
+- Runtime error: `False`
+- Start: `2021-01-01T00:00:00Z`
+- End: `2022-12-31T23:59:59Z`
+- Parameters matched `A-default-off`.
+
+Metrics:
+- Net Profit: `14.186%`
+- Compounding Annual Return: `6.871%`
+- Drawdown: `16.500%`
+- Sharpe Ratio: `0.454`
+- Sortino Ratio: `0.555`
+- Total Orders: `303`
+- Total Fees: `$303.69`
+- End Equity: `34255.83`
+- Portfolio Turnover: `3.25%`
+- Win Rate: `61%`
+- Profit-Loss Ratio: `1.00`
+
+Initial comparison:
+- Prior pre-weak run `10` remains clearly better for 2021-22: `18.003%` net, `13.800%` drawdown, and `0.609` Sharpe.
+- Prior weak-stress run `5` is very close to default return but has lower drawdown and fewer orders.
+- Prior severe/stateful severe runs `15` and `20` both lag default in this window.
+
+Completed `A-default-off` baseline summary:
+
+| Run | Window | Net Profit | Drawdown | Sharpe | Orders | Fees |
+| --- | --- | ---: | ---: | ---: | ---: | ---: |
+| `21` | 2008 crash | -16.860% | 20.300% | -1.460 | 144 | $350.54 |
+| `22` | 2009 rebound | 17.084% | 4.300% | 1.633 | 89 | $176.25 |
+| `23` | 2010 chop | 9.326% | 10.800% | 0.639 | 185 | $419.39 |
+| `24` | 2020 Covid | 45.966% | 13.500% | 1.440 | 198 | $214.87 |
+| `25` | 2021-22 bear | 14.186% | 16.500% | 0.454 | 303 | $303.69 |
+
+Aggregate `A-default-off` baseline:
+- Average Net Profit: `13.940%`
+- Average Drawdown: `13.080%`
+- Max Drawdown: `20.300%`
+- Average Sharpe: `0.541`
+- Total Orders: `919`
+- Total Fees: `$1464.74`
+
+Next run:
+- `26`: `B-weak-stress-only`, `2007-10-01` to `2008-12-31`.
+
+## Step 19: Phase 1 Run 26 Received
+
+Date:
+- 2026-05-16
+
+Uploaded files:
+- `26.json`
+- `26_logs.txt`
+- `26_orders.csv`
+
+Normalized files:
+- `Algorithm.CSharp/MyAlgorithms/AegisGrowthAllocation/CrisisBackTestLogs/26__2007-10-01_to_2008-12-31__AegisGrowthAllocation__B-weak-stress-only__overview.json`
+- `Algorithm.CSharp/MyAlgorithms/AegisGrowthAllocation/CrisisBackTestLogs/26__2007-10-01_to_2008-12-31__AegisGrowthAllocation__B-weak-stress-only__logs.txt`
+- `Algorithm.CSharp/MyAlgorithms/AegisGrowthAllocation/CrisisBackTestLogs/26__2007-10-01_to_2008-12-31__AegisGrowthAllocation__B-weak-stress-only__orders.csv`
+
+Validation:
+- Status: `Completed`
+- Runtime error: `False`
+- Start: `2007-10-01T00:00:00Z`
+- End: `2008-12-31T23:59:59Z`
+- Parameters matched `B-weak-stress-only`.
+
+Metrics:
+- Net Profit: `-11.732%`
+- Compounding Annual Return: `-9.472%`
+- Drawdown: `15.400%`
+- Sharpe Ratio: `-1.316`
+- Sortino Ratio: `-1.174`
+- Total Orders: `119`
+- Total Fees: `$266.69`
+- End Equity: `26480.50`
+- Portfolio Turnover: `2.12%`
+- Win Rate: `40%`
+- Profit-Loss Ratio: `0.42`
+
+Diagnostics:
+- Diagnostic weeks: `66`
+- Weak-stress active weeks: `42`
+- First active date: `2008-01-28`
+- Last active date: `2008-12-29`
+- Active target: `G0.0000/D0.2000/C0.8000`
+
+Initial comparison:
+- Run `26` reproduces prior weak-stress run `1` almost exactly.
+- Versus default run `21`, weak-stress improves 2008 materially:
+  - Net Profit: `-11.732%` versus `-16.860%`
+  - Drawdown: `15.400%` versus `20.300%`
+  - Orders: `119` versus `144`
+  - Fees: `$266.69` versus `$350.54`
+- Prior severe run `11` remains slightly better on 2008 return/drawdown, but with more orders and fees.
+
+Next run:
+- `27`: `B-weak-stress-only`, `2009-01-01` to `2009-12-31`.
+
+## Step 20: Phase 1 Run 27 Received
+
+Date:
+- 2026-05-16
+
+Uploaded files:
+- `27.json`
+- `27_logs.txt`
+- `27_orders.csv`
+
+Normalized files:
+- `Algorithm.CSharp/MyAlgorithms/AegisGrowthAllocation/CrisisBackTestLogs/27__2009-01-01_to_2009-12-31__AegisGrowthAllocation__B-weak-stress-only__overview.json`
+- `Algorithm.CSharp/MyAlgorithms/AegisGrowthAllocation/CrisisBackTestLogs/27__2009-01-01_to_2009-12-31__AegisGrowthAllocation__B-weak-stress-only__logs.txt`
+- `Algorithm.CSharp/MyAlgorithms/AegisGrowthAllocation/CrisisBackTestLogs/27__2009-01-01_to_2009-12-31__AegisGrowthAllocation__B-weak-stress-only__orders.csv`
+
+Validation:
+- Status: `Completed`
+- Runtime error: `False`
+- Start: `2009-01-01T00:00:00Z`
+- End: `2009-12-31T23:59:59Z`
+- Parameters matched `B-weak-stress-only`.
+
+Metrics:
+- Net Profit: `13.554%`
+- Compounding Annual Return: `13.566%`
+- Drawdown: `2.800%`
+- Sharpe Ratio: `1.451`
+- Sortino Ratio: `1.233`
+- Total Orders: `75`
+- Total Fees: `$128.33`
+- End Equity: `34066.09`
+- Portfolio Turnover: `1.56%`
+- Win Rate: `59%`
+- Profit-Loss Ratio: `1.49`
+
+Diagnostics:
+- Diagnostic weeks: `52`
+- Weak-stress active weeks: `27`
+- First active date: `2009-01-05`
+- Active target: `G0.0000/D0.2000/C0.8000`
+
+Initial comparison:
+- Run `27` reproduces prior weak-stress run `2` almost exactly.
+- Versus default run `22`, weak-stress cuts drawdown from `4.300%` to `2.800%` and lowers orders/fees, but gives up about `3.53` net-profit points.
+- This confirms the weak-stress overlay is defensive but meaningfully reduces rebound participation in 2009.
+
+Next run:
+- `28`: `B-weak-stress-only`, `2010-01-01` to `2010-12-31`.
+
+## Step 21: Phase 1 Run 28 Received
+
+Date:
+- 2026-05-16
+
+Uploaded files:
+- `28.json`
+- `28_logs.txt`
+- `28_orders.csv`
+
+Normalized files:
+- `Algorithm.CSharp/MyAlgorithms/AegisGrowthAllocation/CrisisBackTestLogs/28__2010-01-01_to_2010-12-31__AegisGrowthAllocation__B-weak-stress-only__overview.json`
+- `Algorithm.CSharp/MyAlgorithms/AegisGrowthAllocation/CrisisBackTestLogs/28__2010-01-01_to_2010-12-31__AegisGrowthAllocation__B-weak-stress-only__logs.txt`
+- `Algorithm.CSharp/MyAlgorithms/AegisGrowthAllocation/CrisisBackTestLogs/28__2010-01-01_to_2010-12-31__AegisGrowthAllocation__B-weak-stress-only__orders.csv`
+
+Validation:
+- Status: `Completed`
+- Runtime error: `False`
+- Start: `2010-01-01T00:00:00Z`
+- End: `2010-12-31T23:59:59Z`
+- Parameters matched `B-weak-stress-only`.
+
+Metrics:
+- Net Profit: `8.084%`
+- Compounding Annual Return: `8.091%`
+- Drawdown: `10.700%`
+- Sharpe Ratio: `0.587`
+- Sortino Ratio: `0.635`
+- Total Orders: `179`
+- Total Fees: `$390.42`
+- End Equity: `32425.18`
+- Portfolio Turnover: `3.69%`
+- Win Rate: `48%`
+- Profit-Loss Ratio: `1.24`
+
+Diagnostics:
+- Diagnostic weeks: `52`
+- Weak-stress active weeks: `9`
+- First active date: `2010-05-10`
+- Last active date: `2010-07-12`
+- Active target: `G0.0000/D0.2000/C0.8000`
+
+Initial comparison:
+- Run `28` reproduces prior weak-stress run `3` almost exactly.
+- Versus default run `23`, weak-stress slightly reduces drawdown and trading cost but lowers net profit and Sharpe.
+- Prior pre-weak run `8` remains clearly better in 2010 on net profit, drawdown, and Sharpe.
+
+Next run:
+- `29`: `B-weak-stress-only`, `2019-07-01` to `2020-12-31`.
+
+## Step 22: Phase 1 Run 29 Received
+
+Date:
+- 2026-05-16
+
+Uploaded files:
+- `29.json`
+- `29_logs.txt`
+- `29_orders.csv`
+
+Normalized files:
+- `Algorithm.CSharp/MyAlgorithms/AegisGrowthAllocation/CrisisBackTestLogs/29__2019-07-01_to_2020-12-31__AegisGrowthAllocation__B-weak-stress-only__overview.json`
+- `Algorithm.CSharp/MyAlgorithms/AegisGrowthAllocation/CrisisBackTestLogs/29__2019-07-01_to_2020-12-31__AegisGrowthAllocation__B-weak-stress-only__logs.txt`
+- `Algorithm.CSharp/MyAlgorithms/AegisGrowthAllocation/CrisisBackTestLogs/29__2019-07-01_to_2020-12-31__AegisGrowthAllocation__B-weak-stress-only__orders.csv`
+
+Validation:
+- Status: `Completed`
+- Runtime error: `False`
+- Start: `2019-07-01T00:00:00Z`
+- End: `2020-12-31T23:59:59Z`
+- Parameters matched `B-weak-stress-only`.
+
+Metrics:
+- Net Profit: `37.705%`
+- Compounding Annual Return: `23.668%`
+- Drawdown: `10.900%`
+- Sharpe Ratio: `1.316`
+- Sortino Ratio: `1.215`
+- Total Orders: `185`
+- Total Fees: `$201.48`
+- End Equity: `41311.40`
+- Portfolio Turnover: `2.52%`
+- Win Rate: `66%`
+- Profit-Loss Ratio: `1.89`
+
+Diagnostics:
+- Diagnostic weeks: `79`
+- Weak-stress active weeks: `19`
+- First active date: `2020-03-02`
+- Last active date: `2020-11-09`
+- Active target: `G0.0000/D0.2000/C0.8000`
+
+Initial comparison:
+- Run `29` reproduces prior weak-stress run `4` almost exactly.
+- Versus default run `24`, weak-stress lowers drawdown from `13.500%` to `10.900%`, reduces orders and fees, but gives up about `8.26` net-profit points.
+- Prior pre-weak run `9` remains the best 2020 return/Sharpe result, while weak-stress remains best drawdown.
+
+Next run:
+- `30`: `B-weak-stress-only`, `2021-01-01` to `2022-12-31`.
+
+## Step 23: Phase 1 Run 30 Received
+
+Date:
+- 2026-05-16
+
+Uploaded files:
+- `30.json`
+- `30_logs.txt`
+- `30_orders.csv`
+
+Normalized files:
+- `Algorithm.CSharp/MyAlgorithms/AegisGrowthAllocation/CrisisBackTestLogs/30__2021-01-01_to_2022-12-31__AegisGrowthAllocation__B-weak-stress-only__overview.json`
+- `Algorithm.CSharp/MyAlgorithms/AegisGrowthAllocation/CrisisBackTestLogs/30__2021-01-01_to_2022-12-31__AegisGrowthAllocation__B-weak-stress-only__logs.txt`
+- `Algorithm.CSharp/MyAlgorithms/AegisGrowthAllocation/CrisisBackTestLogs/30__2021-01-01_to_2022-12-31__AegisGrowthAllocation__B-weak-stress-only__orders.csv`
+
+Validation:
+- Status: `Completed`
+- Runtime error: `False`
+- Start: `2021-01-01T00:00:00Z`
+- End: `2022-12-31T23:59:59Z`
+- Parameters matched `B-weak-stress-only`.
+
+Metrics:
+- Net Profit: `14.189%`
+- Compounding Annual Return: `6.872%`
+- Drawdown: `15.900%`
+- Sharpe Ratio: `0.474`
+- Sortino Ratio: `0.531`
+- Total Orders: `290`
+- Total Fees: `$290.48`
+- End Equity: `34256.75`
+- Portfolio Turnover: `2.84%`
+- Win Rate: `60%`
+- Profit-Loss Ratio: `1.13`
+
+Diagnostics:
+- Diagnostic weeks: `83`
+- Weak-stress active weeks: `19`
+- First active date: `2022-01-31`
+- Last active date: `2022-08-01`
+- Active target: `G0.0000/D0.2000/C0.8000`
+
+Initial comparison:
+- Run `30` reproduces prior weak-stress run `5` almost exactly.
+- Versus default run `25`, weak-stress gives almost the same return, improves drawdown from `16.500%` to `15.900%`, improves Sharpe from `0.454` to `0.474`, and reduces orders/fees.
+- Prior pre-weak run `10` remains much better for 2021-22.
+- Prior stateful severe run `20` remains worse than weak-stress and default.
+
+Completed `B-weak-stress-only` summary:
+
+| Run | Window | Net Profit | Drawdown | Sharpe | Orders | Fees |
+| --- | --- | ---: | ---: | ---: | ---: | ---: |
+| `26` | 2008 crash | -11.732% | 15.400% | -1.316 | 119 | $266.69 |
+| `27` | 2009 rebound | 13.554% | 2.800% | 1.451 | 75 | $128.33 |
+| `28` | 2010 chop | 8.084% | 10.700% | 0.587 | 179 | $390.42 |
+| `29` | 2020 Covid | 37.705% | 10.900% | 1.316 | 185 | $201.48 |
+| `30` | 2021-22 bear | 14.189% | 15.900% | 0.474 | 290 | $290.48 |
+
+Aggregate `B-weak-stress-only`:
+- Average Net Profit: `12.360%`
+- Average Drawdown: `11.140%`
+- Max Drawdown: `15.900%`
+- Average Sharpe: `0.502`
+- Total Orders: `848`
+- Total Fees: `$1277.40`
+
+Early Phase 1 read after `A` and `B`:
+- Weak-stress improves drawdown and cost versus default across the crisis set.
+- Weak-stress gives up too much rebound/2020 return to be the lead return-preserving candidate.
+- Its role is more likely a drawdown-control reference than a final standalone winner.
+
+Next run:
+- `31`: `C-pre-weak-only`, `2007-10-01` to `2008-12-31`.
