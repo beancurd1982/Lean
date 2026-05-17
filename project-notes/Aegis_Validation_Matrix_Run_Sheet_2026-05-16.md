@@ -907,3 +907,474 @@ Early Phase 1 read after `A` and `B`:
 
 Next run:
 - `31`: `C-pre-weak-only`, `2007-10-01` to `2008-12-31`.
+
+## Step 24: Phase 1 Run 31 Received
+
+Date:
+- 2026-05-17
+
+Uploaded files:
+- `31.json`
+- `31_logs.txt`
+- `31_orders.csv`
+
+Planned normalization:
+- `31__2007-10-01_to_2008-12-31__AegisGrowthAllocation__C-pre-weak-only__overview.json`
+- `31__2007-10-01_to_2008-12-31__AegisGrowthAllocation__C-pre-weak-only__logs.txt`
+- `31__2007-10-01_to_2008-12-31__AegisGrowthAllocation__C-pre-weak-only__orders.csv`
+
+Analysis status:
+- Complete.
+
+Normalized files:
+- `Algorithm.CSharp/MyAlgorithms/AegisGrowthAllocation/CrisisBackTestLogs/31__2007-10-01_to_2008-12-31__AegisGrowthAllocation__C-pre-weak-only__overview.json`
+- `Algorithm.CSharp/MyAlgorithms/AegisGrowthAllocation/CrisisBackTestLogs/31__2007-10-01_to_2008-12-31__AegisGrowthAllocation__C-pre-weak-only__logs.txt`
+- `Algorithm.CSharp/MyAlgorithms/AegisGrowthAllocation/CrisisBackTestLogs/31__2007-10-01_to_2008-12-31__AegisGrowthAllocation__C-pre-weak-only__orders.csv`
+
+Validation:
+- Status: completed overview artifact parsed successfully.
+- Runtime error: none found in overview status fields.
+- Start: `2007-10-01T00:00:00Z`
+- End: `2008-12-31T23:59:59Z`
+- Parameters matched `C-pre-weak-only`.
+
+Parameters:
+- `backtest-start=2007-10-01`
+- `backtest-end=2008-12-31`
+- `crisis-diagnostics=true`
+- `weak-stress-overlay-enabled=false`
+- `pre-weak-guard-enabled=true`
+- `severe-crash-override-enabled=false`
+
+Metrics:
+- Net Profit: `-16.860%`
+- Compounding Annual Return: `-13.691%`
+- Drawdown: `20.300%`
+- Sharpe Ratio: `-1.46`
+- Sortino Ratio: `-1.423`
+- Total Orders: `144`
+- Total Fees: `$350.54`
+- End Equity: `24942.03`
+- Portfolio Turnover: `2.96%`
+- Win Rate: `45%`
+- Profit-Loss Ratio: `0.42`
+
+Diagnostics:
+- Diagnostic weeks: `66`
+- Pre-weak guard active weeks: `9`
+- First pre-weak active date: `2008-01-14`
+- Last pre-weak active date: `2008-08-25`
+- Severe-stress weeks: `15`
+- First severe-stress date: `2008-09-22`
+- Last severe-stress date: `2008-12-29`
+- All-cash target weeks: `13`
+- First all-cash target date: `2008-02-11`
+- Last all-cash target date: `2008-12-29`
+
+Comparison:
+- Run `31` is statistically identical to run `21` (`A-default-off`) for the same 2008 window.
+- Run `31` orders CSV is byte-identical to run `21`, so the trade path did not change.
+- Versus run `26` (`B-weak-stress-only`), run `31` is materially worse: net profit `-16.860%` vs `-11.732%`, drawdown `20.300%` vs `15.400%`, Sharpe `-1.46` vs `-1.316`, orders `144` vs `119`, fees `$350.54` vs `$266.69`.
+
+Interpretation:
+- `pre-weak-guard-enabled=true` is being recognized by the algorithm, and the diagnostics mark `PreWeakGuardActive=True` for nine weeks.
+- The activation did not produce a different order path because the default 2008 path was already constrained to the same effective target weights during the pre-weak window.
+- Example: on `2008-01-14`, default-off and pre-weak-only both targeted `G0.2400/D0.3000/C0.4600`; pre-weak-only merely changed the diagnostic override reason.
+- This means `C-pre-weak-only` is not an incremental defensive improvement for the 2008 crash window as currently implemented/configured.
+
+Review:
+- No algorithm code was changed during this analysis.
+- File normalization followed the established CrisisBackTestLogs naming convention.
+- Open risk: pre-weak diagnostics can imply an active override even when the resulting target weights are unchanged; this should be considered when interpreting later C runs.
+
+Next run:
+- `32`: `C-pre-weak-only`, `2009-01-01` to `2009-12-31`.
+
+## Step 25: Phase 1 Run 32 Received
+
+Date:
+- 2026-05-17
+
+Uploaded files:
+- `32.json`
+- `32_logs.txt`
+- `32_orders.csv`
+
+Planned normalization:
+- `32__2009-01-01_to_2009-12-31__AegisGrowthAllocation__C-pre-weak-only__overview.json`
+- `32__2009-01-01_to_2009-12-31__AegisGrowthAllocation__C-pre-weak-only__logs.txt`
+- `32__2009-01-01_to_2009-12-31__AegisGrowthAllocation__C-pre-weak-only__orders.csv`
+
+Analysis status:
+- Complete.
+
+Normalized files:
+- `Algorithm.CSharp/MyAlgorithms/AegisGrowthAllocation/CrisisBackTestLogs/32__2009-01-01_to_2009-12-31__AegisGrowthAllocation__C-pre-weak-only__overview.json`
+- `Algorithm.CSharp/MyAlgorithms/AegisGrowthAllocation/CrisisBackTestLogs/32__2009-01-01_to_2009-12-31__AegisGrowthAllocation__C-pre-weak-only__logs.txt`
+- `Algorithm.CSharp/MyAlgorithms/AegisGrowthAllocation/CrisisBackTestLogs/32__2009-01-01_to_2009-12-31__AegisGrowthAllocation__C-pre-weak-only__orders.csv`
+
+Validation:
+- Status: completed overview artifact parsed successfully.
+- Runtime error: none found in overview status fields.
+- Start: `2009-01-01T00:00:00Z`
+- End: `2009-12-31T23:59:59Z`
+- Parameters matched `C-pre-weak-only`.
+
+Parameters:
+- `backtest-start=2009-01-01`
+- `backtest-end=2009-12-31`
+- `crisis-diagnostics=true`
+- `weak-stress-overlay-enabled=false`
+- `pre-weak-guard-enabled=true`
+- `severe-crash-override-enabled=false`
+
+Metrics:
+- Net Profit: `17.084%`
+- Compounding Annual Return: `17.101%`
+- Drawdown: `4.300%`
+- Sharpe Ratio: `1.633`
+- Sortino Ratio: `1.722`
+- Total Orders: `89`
+- Total Fees: `$176.25`
+- End Equity: `35125.25`
+- Portfolio Turnover: `1.97%`
+- Win Rate: `67%`
+- Profit-Loss Ratio: `1.40`
+
+Diagnostics:
+- Diagnostic weeks: `52`
+- Pre-weak guard active weeks: `0`
+- Severe-stress weeks: `24`
+- First severe-stress date: `2009-01-05`
+- Last severe-stress date: `2009-06-22`
+- All-cash target weeks: `5`
+- First all-cash target date: `2009-01-05`
+- Last all-cash target date: `2009-02-02`
+- Weak final-target weeks: `27`
+- First weak final-target date: `2009-01-05`
+- Last weak final-target date: `2009-07-13`
+
+Comparison:
+- Run `32` is statistically identical to run `22` (`A-default-off`) for the same 2009 window.
+- Run `32` orders CSV is byte-identical to run `22`, so the trade path did not change.
+- Versus run `27` (`B-weak-stress-only`), run `32` gives higher return but higher drawdown: net profit `17.084%` vs `13.554%`, drawdown `4.300%` vs `2.800%`, Sharpe `1.633` vs `1.451`, orders `89` vs `75`, fees `$176.25` vs `$128.33`.
+- Prior runs `07`, `12`, and `17` are also effectively identical for this 2009 window.
+
+Interpretation:
+- `C-pre-weak-only` did not activate in 2009 (`PreWeakGuardActive=True` count was zero).
+- For the 2009 rebound, pre-weak-only preserves the default return profile, while weak-stress is more defensive but leaves about `3.53` net-profit points on the table.
+- This is directionally acceptable for a guard candidate only if it activates in actual pre-crash weakness; so far, run `31` shows activation without trade-path impact, and run `32` shows no activation.
+
+Review:
+- No algorithm code was changed during this analysis.
+- File normalization followed the established CrisisBackTestLogs naming convention.
+- Open risk remains: `C-pre-weak-only` may be too weak to materially affect allocation where we need earlier defense, while still being harmless in rebound windows.
+
+Next run:
+- `33`: `C-pre-weak-only`, `2010-01-01` to `2010-12-31`.
+
+## Step 26: Phase 1 Run 33 Received
+
+Date:
+- 2026-05-17
+
+Uploaded files:
+- `33.json`
+- `33_logs.txt`
+- `33_orders.csv`
+
+Planned normalization:
+- `33__2010-01-01_to_2010-12-31__AegisGrowthAllocation__C-pre-weak-only__overview.json`
+- `33__2010-01-01_to_2010-12-31__AegisGrowthAllocation__C-pre-weak-only__logs.txt`
+- `33__2010-01-01_to_2010-12-31__AegisGrowthAllocation__C-pre-weak-only__orders.csv`
+
+Analysis status:
+- Complete.
+
+Normalized files:
+- `Algorithm.CSharp/MyAlgorithms/AegisGrowthAllocation/CrisisBackTestLogs/33__2010-01-01_to_2010-12-31__AegisGrowthAllocation__C-pre-weak-only__overview.json`
+- `Algorithm.CSharp/MyAlgorithms/AegisGrowthAllocation/CrisisBackTestLogs/33__2010-01-01_to_2010-12-31__AegisGrowthAllocation__C-pre-weak-only__logs.txt`
+- `Algorithm.CSharp/MyAlgorithms/AegisGrowthAllocation/CrisisBackTestLogs/33__2010-01-01_to_2010-12-31__AegisGrowthAllocation__C-pre-weak-only__orders.csv`
+
+Validation:
+- Status: completed overview artifact parsed successfully.
+- Runtime error: none found in overview status fields.
+- Start: `2010-01-01T00:00:00Z`
+- End: `2010-12-31T23:59:59Z`
+- Parameters matched `C-pre-weak-only`.
+
+Parameters:
+- `backtest-start=2010-01-01`
+- `backtest-end=2010-12-31`
+- `crisis-diagnostics=true`
+- `weak-stress-overlay-enabled=false`
+- `pre-weak-guard-enabled=true`
+- `severe-crash-override-enabled=false`
+
+Metrics:
+- Net Profit: `10.729%`
+- Compounding Annual Return: `10.739%`
+- Drawdown: `10.200%`
+- Sharpe Ratio: `0.749`
+- Sortino Ratio: `0.870`
+- Total Orders: `190`
+- Total Fees: `$403.37`
+- End Equity: `33218.80`
+- Portfolio Turnover: `4.08%`
+- Win Rate: `51%`
+- Profit-Loss Ratio: `1.24`
+
+Diagnostics:
+- Diagnostic weeks: `52`
+- Pre-weak guard active weeks: `9`
+- First pre-weak active date: `2010-06-21`
+- Last pre-weak active date: `2010-09-07`
+- Severe-stress weeks: `5`
+- First severe-stress date: `2010-05-24`
+- Last severe-stress date: `2010-07-06`
+- All-cash target weeks: `0`
+- Weak final-target weeks: `9`
+- First weak final-target date: `2010-05-10`
+- Last weak final-target date: `2010-07-12`
+
+Comparison:
+- Run `33` is the first `C-pre-weak-only` Phase 1 run with a materially different trade path from default.
+- Versus run `23` (`A-default-off`), run `33` improved net profit from `9.326%` to `10.729%`, reduced drawdown from `10.800%` to `10.200%`, improved Sharpe from `0.639` to `0.749`, and improved Sortino from `0.735` to `0.870`.
+- Cost tradeoff versus run `23`: orders increased from `185` to `190`, while fees decreased from `$419.39` to `$403.37`.
+- Versus run `28` (`B-weak-stress-only`), run `33` is better on return and risk-adjusted return: net profit `10.729%` vs `8.084%`, drawdown `10.200%` vs `10.700%`, Sharpe `0.749` vs `0.587`.
+- Prior pre-weak run `08` is effectively reproduced by run `33`, confirming the new matrix run is consistent with earlier evidence.
+
+Interpretation:
+- `C-pre-weak-only` appears useful in the 2010 choppy recovery window.
+- It activates after the May/June 2010 stress period and improves the outcome without the large return sacrifice seen in weak-stress-only.
+- Combined Phase 1 read so far: pre-weak-only is neutral in 2008 and 2009, but beneficial in 2010. It is not solving the 2008 crash-defense problem, but it may be a return-preserving choppy-market guard.
+
+Review:
+- No algorithm code was changed during this analysis.
+- File normalization followed the established CrisisBackTestLogs naming convention.
+- Open risk: only two remaining C runs will tell whether this guard preserves 2020 and 2021-22 return while avoiding weak-stress drag.
+
+Next run:
+- `34`: `C-pre-weak-only`, `2019-07-01` to `2020-12-31`.
+
+## Step 27: Phase 1 Run 34 Received
+
+Date:
+- 2026-05-17
+
+Uploaded files:
+- `34.json`
+- `34_logs.txt`
+- `34_orders.csv`
+
+Planned normalization:
+- `34__2019-07-01_to_2020-12-31__AegisGrowthAllocation__C-pre-weak-only__overview.json`
+- `34__2019-07-01_to_2020-12-31__AegisGrowthAllocation__C-pre-weak-only__logs.txt`
+- `34__2019-07-01_to_2020-12-31__AegisGrowthAllocation__C-pre-weak-only__orders.csv`
+
+Analysis status:
+- Complete.
+
+Normalized files:
+- `Algorithm.CSharp/MyAlgorithms/AegisGrowthAllocation/CrisisBackTestLogs/34__2019-07-01_to_2020-12-31__AegisGrowthAllocation__C-pre-weak-only__overview.json`
+- `Algorithm.CSharp/MyAlgorithms/AegisGrowthAllocation/CrisisBackTestLogs/34__2019-07-01_to_2020-12-31__AegisGrowthAllocation__C-pre-weak-only__logs.txt`
+- `Algorithm.CSharp/MyAlgorithms/AegisGrowthAllocation/CrisisBackTestLogs/34__2019-07-01_to_2020-12-31__AegisGrowthAllocation__C-pre-weak-only__orders.csv`
+
+Validation:
+- Status: completed overview artifact parsed successfully.
+- Runtime error: none found in overview status fields.
+- Start: `2019-07-01T00:00:00Z`
+- End: `2020-12-31T23:59:59Z`
+- Parameters matched `C-pre-weak-only`.
+
+Parameters:
+- `backtest-start=2019-07-01`
+- `backtest-end=2020-12-31`
+- `crisis-diagnostics=true`
+- `weak-stress-overlay-enabled=false`
+- `pre-weak-guard-enabled=true`
+- `severe-crash-override-enabled=false`
+
+Metrics:
+- Net Profit: `46.839%`
+- Compounding Annual Return: `29.056%`
+- Drawdown: `13.500%`
+- Sharpe Ratio: `1.490`
+- Sortino Ratio: `1.443`
+- Total Orders: `204`
+- Total Fees: `$220.81`
+- End Equity: `44051.61`
+- Portfolio Turnover: `3.05%`
+- Win Rate: `73%`
+- Profit-Loss Ratio: `1.23`
+
+Diagnostics:
+- Diagnostic weeks: `79`
+- Pre-weak guard active weeks: `2`
+- First pre-weak active date: `2020-06-01`
+- Last pre-weak active date: `2020-09-14`
+- Severe-stress weeks: `18`
+- First severe-stress date: `2020-03-02`
+- Last severe-stress date: `2020-11-09`
+- All-cash target weeks: `1`
+- First all-cash target date: `2020-03-23`
+- Last all-cash target date: `2020-03-23`
+- Weak final-target weeks: `19`
+- First weak final-target date: `2020-03-02`
+- Last weak final-target date: `2020-11-09`
+
+Comparison:
+- Versus run `24` (`A-default-off`), run `34` improved net profit from `45.966%` to `46.839%`, improved Sharpe from `1.440` to `1.490`, and improved Sortino from `1.401` to `1.443`.
+- Drawdown was unchanged versus run `24` at `13.500%`.
+- Cost tradeoff versus run `24`: orders increased from `198` to `204`, and fees increased from `$214.87` to `$220.81`.
+- Versus run `29` (`B-weak-stress-only`), run `34` has much higher return but weaker drawdown protection: net profit `46.839%` vs `37.705%`, drawdown `13.500%` vs `10.900%`, Sharpe `1.490` vs `1.316`.
+- Prior pre-weak run `09` is effectively reproduced by run `34`, confirming consistency with earlier evidence.
+- Severe-crash variants `14` and `19` underperformed run `34` on return and Sharpe without improving drawdown.
+
+Interpretation:
+- `C-pre-weak-only` preserves and slightly improves the 2020 return profile.
+- It is not a drawdown reducer for the Covid crash window; the peak drawdown remains the same as default.
+- This strengthens the view that pre-weak-only is a return-preserving/choppy-market guard, not the main crash-defense mechanism.
+- Weak-stress remains the cleanest drawdown reducer for 2020 but at a large return cost of roughly `9.13` net-profit points versus run `34`.
+
+Review:
+- No algorithm code was changed during this analysis.
+- File normalization followed the established CrisisBackTestLogs naming convention.
+- Open risk: if our objective prioritizes drawdown reduction in sudden crashes, `C-pre-weak-only` is insufficient on its own.
+
+Next run:
+- `35`: `C-pre-weak-only`, `2021-01-01` to `2022-12-31`.
+
+## Step 28: Phase 1 Run 35 Received
+
+Date:
+- 2026-05-17
+
+Uploaded files:
+- `35.json`
+- `35_logs.txt`
+- `35_orders.csv`
+
+Planned normalization:
+- `35__2021-01-01_to_2022-12-31__AegisGrowthAllocation__C-pre-weak-only__overview.json`
+- `35__2021-01-01_to_2022-12-31__AegisGrowthAllocation__C-pre-weak-only__logs.txt`
+- `35__2021-01-01_to_2022-12-31__AegisGrowthAllocation__C-pre-weak-only__orders.csv`
+
+Analysis status:
+- Complete.
+
+Normalized files:
+- `Algorithm.CSharp/MyAlgorithms/AegisGrowthAllocation/CrisisBackTestLogs/35__2021-01-01_to_2022-12-31__AegisGrowthAllocation__C-pre-weak-only__overview.json`
+- `Algorithm.CSharp/MyAlgorithms/AegisGrowthAllocation/CrisisBackTestLogs/35__2021-01-01_to_2022-12-31__AegisGrowthAllocation__C-pre-weak-only__logs.txt`
+- `Algorithm.CSharp/MyAlgorithms/AegisGrowthAllocation/CrisisBackTestLogs/35__2021-01-01_to_2022-12-31__AegisGrowthAllocation__C-pre-weak-only__orders.csv`
+
+Validation:
+- Status: completed overview artifact parsed successfully.
+- Runtime error: none found in overview status fields.
+- Start: `2021-01-01T00:00:00Z`
+- End: `2022-12-31T23:59:59Z`
+- Parameters matched `C-pre-weak-only`.
+
+Parameters:
+- `backtest-start=2021-01-01`
+- `backtest-end=2022-12-31`
+- `crisis-diagnostics=true`
+- `weak-stress-overlay-enabled=false`
+- `pre-weak-guard-enabled=true`
+- `severe-crash-override-enabled=false`
+
+Metrics:
+- Net Profit: `18.081%`
+- Compounding Annual Return: `8.681%`
+- Drawdown: `13.700%`
+- Sharpe Ratio: `0.611`
+- Sortino Ratio: `0.775`
+- Total Orders: `305`
+- Total Fees: `$305.76`
+- End Equity: `35424.19`
+- Portfolio Turnover: `3.17%`
+- Win Rate: `62%`
+- Profit-Loss Ratio: `1.09`
+
+Diagnostics:
+- Diagnostic weeks: `83`
+- Pre-weak guard active weeks: `9`
+- First pre-weak active date: `2022-01-18`
+- Last pre-weak active date: `2022-04-25`
+- Severe-stress weeks: `6`
+- First severe-stress date: `2022-01-31`
+- Last severe-stress date: `2022-06-21`
+- All-cash target weeks: `0`
+- Weak final-target weeks: `19`
+- First weak final-target date: `2022-01-31`
+- Last weak final-target date: `2022-08-01`
+
+Comparison:
+- Versus run `25` (`A-default-off`), run `35` materially improved net profit from `14.186%` to `18.081%`, reduced drawdown from `16.500%` to `13.700%`, improved Sharpe from `0.454` to `0.611`, and improved Sortino from `0.555` to `0.775`.
+- Versus run `30` (`B-weak-stress-only`), run `35` also materially improved return and drawdown: net profit `18.081%` vs `14.189%`, drawdown `13.700%` vs `15.900%`, Sharpe `0.611` vs `0.474`.
+- Cost tradeoff versus run `25`: orders increased from `303` to `305`, and fees increased from `$303.69` to `$305.76`.
+- Prior pre-weak run `10` is effectively reproduced by run `35`, confirming consistency with earlier evidence.
+- Severe-crash variants `15` and `20` were materially worse than run `35` on return, drawdown, Sharpe, and Sortino.
+
+Interpretation:
+- `C-pre-weak-only` is clearly beneficial in the 2021-22 bear window.
+- It activates early in the 2022 decline and improves both return and drawdown without the return drag observed in weak-stress-only.
+- This makes pre-weak-only the strongest Phase 1 candidate so far for return-preserving defense in slow/choppy bear-market deterioration.
+- It still does not solve the sudden-crash 2008 drawdown problem.
+
+Completed `C-pre-weak-only` summary:
+
+| Run | Window | Net Profit | Drawdown | Sharpe | Orders | Fees |
+| --- | --- | ---: | ---: | ---: | ---: | ---: |
+| `31` | 2008 crash | -16.860% | 20.300% | -1.460 | 144 | $350.54 |
+| `32` | 2009 rebound | 17.084% | 4.300% | 1.633 | 89 | $176.25 |
+| `33` | 2010 chop | 10.729% | 10.200% | 0.749 | 190 | $403.37 |
+| `34` | 2020 Covid | 46.839% | 13.500% | 1.490 | 204 | $220.81 |
+| `35` | 2021-22 bear | 18.081% | 13.700% | 0.611 | 305 | $305.76 |
+
+Aggregate `C-pre-weak-only`:
+- Average Net Profit: `15.175%`
+- Average Drawdown: `12.400%`
+- Max Drawdown: `20.300%`
+- Average Sharpe: `0.605`
+- Total Orders: `932`
+- Total Fees: `$1456.73`
+
+Aggregate comparison after `A`, `B`, and `C`:
+- `A-default-off`: average net `13.940%`, average drawdown `13.080%`, max drawdown `20.300%`, average Sharpe `0.541`, total orders `919`, total fees `$1464.74`.
+- `B-weak-stress-only`: average net `12.360%`, average drawdown `11.140%`, max drawdown `15.900%`, average Sharpe `0.502`, total orders `848`, total fees `$1277.40`.
+- `C-pre-weak-only`: average net `15.175%`, average drawdown `12.400%`, max drawdown `20.300%`, average Sharpe `0.605`, total orders `932`, total fees `$1456.73`.
+
+Phase 1 read after `C`:
+- `C-pre-weak-only` is the best return-preserving candidate across the five windows.
+- It improves the aggregate average net return and Sharpe versus both `A` and `B`.
+- It does not reduce the worst-case max drawdown because 2008 remains unchanged at `20.300%`.
+- `B-weak-stress-only` is still the cleaner max-drawdown reducer, but it sacrifices too much return in 2009 and 2020.
+- The next useful experiment should combine pre-weak-only with a more selective crash-defense layer, rather than using weak-stress-only globally.
+
+Review:
+- No algorithm code was changed during this analysis.
+- File normalization followed the established CrisisBackTestLogs naming convention.
+- Open risk: Phase 1 has not yet found a solution for the sudden-crash 2008 drawdown without return drag.
+
+Next run:
+- Pause before Phase 2 recommendation, or proceed to the next matrix candidate if already defined in the run sheet.
+
+## Step 29: Commit And Next-Test Recommendation
+
+Date:
+- 2026-05-17
+
+Scope to commit:
+- Normalized `C-pre-weak-only` Phase 1 result files for runs `31` to `35`.
+- Run-sheet analysis for runs `31` to `35`, including aggregate `A`/`B`/`C` comparison.
+
+Pre-commit review:
+- No algorithm code was changed.
+- The changed files are documentation/evidence artifacts only.
+- `git diff --check` completed with only the existing LF-to-CRLF warning for the markdown file.
+
+Next-test recommendation:
+- Prefer testing `E-pre-weak-plus-stateful-severe` next, starting with the 2008 crash window.
+- Rationale: `C-pre-weak-only` is the best return-preserving candidate but does not reduce 2008 max drawdown; the next useful question is whether adding the stateful severe layer improves sudden-crash protection without destroying the C gains.
+- Do not prioritize rerunning `D-stateful-severe-only` unless a fully sequential `36-40` matrix is required, because prior stateful-severe evidence already showed weaker return/risk behavior than `C`.
