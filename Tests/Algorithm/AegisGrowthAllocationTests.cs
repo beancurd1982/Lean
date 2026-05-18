@@ -178,15 +178,26 @@ namespace QuantConnect.Tests.Algorithm
         }
 
         [Test]
-        public void DisablesPreWeakGuardByDefault()
+        public void EnablesPreWeakGuardByDefault()
         {
             var algorithm = CreateAlgorithm();
+
+            Assert.That(IsPreWeakGuardEnabled(algorithm), Is.True);
+        }
+
+        [Test]
+        public void DisablesPreWeakGuardWhenParameterIsFalse()
+        {
+            var algorithm = CreateAlgorithm(new Dictionary<string, string>
+            {
+                ["pre-weak-guard-enabled"] = "false"
+            });
 
             Assert.That(IsPreWeakGuardEnabled(algorithm), Is.False);
         }
 
         [Test]
-        public void EnablesPreWeakGuardWhenParameterIsTrue()
+        public void KeepsPreWeakGuardEnabledWhenParameterIsTrue()
         {
             var algorithm = CreateAlgorithm(new Dictionary<string, string>
             {
@@ -204,7 +215,7 @@ namespace QuantConnect.Tests.Algorithm
                 ["pre-weak-guard-enabled"] = "not-a-bool"
             });
 
-            Assert.That(IsPreWeakGuardEnabled(algorithm), Is.False);
+            Assert.That(IsPreWeakGuardEnabled(algorithm), Is.True);
         }
 
         [Test]
@@ -220,9 +231,12 @@ namespace QuantConnect.Tests.Algorithm
         }
 
         [Test]
-        public void PreWeakGuardRequiresEnabledParameter()
+        public void PreWeakGuardDoesNotApplyWhenDisabled()
         {
-            var algorithm = CreateAlgorithm();
+            var algorithm = CreateAlgorithm(new Dictionary<string, string>
+            {
+                ["pre-weak-guard-enabled"] = "false"
+            });
             SetPrivateField(algorithm, "_defensiveOverrideEquityHighWaterMark", 100000m);
 
             Assert.That(ShouldApplyPreWeakGuard(algorithm, CreateNeutralDeterioratingSnapshot(), 94000m), Is.False);
@@ -548,10 +562,10 @@ namespace QuantConnect.Tests.Algorithm
                 defensiveSymbol,
                 QuantConnect.Algorithm.CSharp.StrategyConfig.SevereCrashOverrideSleeveTargets);
 
-            Assert.That(plan.SelectedGrowthSymbols, Is.EqualTo(new[] { growthSymbol }));
-            Assert.That(plan.TargetWeights[growthSymbol], Is.EqualTo(0.05m));
-            Assert.That(plan.TargetWeights[defensiveSymbol], Is.EqualTo(0.35m));
-            Assert.That(1m - plan.TargetWeights.Values.Sum(), Is.EqualTo(0.60m));
+            Assert.That(plan.SelectedGrowthSymbols, Is.Empty);
+            Assert.That(plan.TargetWeights[growthSymbol], Is.EqualTo(0m));
+            Assert.That(plan.TargetWeights[defensiveSymbol], Is.EqualTo(0.20m));
+            Assert.That(1m - plan.TargetWeights.Values.Sum(), Is.EqualTo(0.80m));
         }
 
         [Test]
@@ -578,7 +592,7 @@ namespace QuantConnect.Tests.Algorithm
             Assert.That(diagnostics, Does.Contain("OverrideReason=weak-severe-dd10-signals2"));
             Assert.That(diagnostics, Does.Contain("DrawdownFromHigh=0.1234"));
             Assert.That(diagnostics, Does.Contain("BaseTarget=G0.1000/D0.4000/C0.5000"));
-            Assert.That(diagnostics, Does.Contain("FinalTarget=G0.0500/D0.3500/C0.6000"));
+            Assert.That(diagnostics, Does.Contain("FinalTarget=G0.0000/D0.2000/C0.8000"));
             Assert.That(diagnostics, Does.Contain("SevereCrashModeState=hold"));
             Assert.That(diagnostics, Does.Contain("SevereCrashRecoveryWeeks=1"));
             Assert.That(diagnostics, Does.Contain("SevereCrashExitReason=none"));

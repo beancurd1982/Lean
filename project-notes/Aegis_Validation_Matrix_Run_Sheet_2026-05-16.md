@@ -1378,3 +1378,717 @@ Next-test recommendation:
 - Prefer testing `E-pre-weak-plus-stateful-severe` next, starting with the 2008 crash window.
 - Rationale: `C-pre-weak-only` is the best return-preserving candidate but does not reduce 2008 max drawdown; the next useful question is whether adding the stateful severe layer improves sudden-crash protection without destroying the C gains.
 - Do not prioritize rerunning `D-stateful-severe-only` unless a fully sequential `36-40` matrix is required, because prior stateful-severe evidence already showed weaker return/risk behavior than `C`.
+
+## Step 30: Phase 1 Run 41 Received
+
+Date:
+- 2026-05-17
+
+Uploaded files:
+- `41.json`
+- `41_logs.txt`
+- `41_orders.csv`
+
+Planned normalization:
+- `41__2007-10-01_to_2008-12-31__AegisGrowthAllocation__E-pre-weak-plus-stateful-severe__overview.json`
+- `41__2007-10-01_to_2008-12-31__AegisGrowthAllocation__E-pre-weak-plus-stateful-severe__logs.txt`
+- `41__2007-10-01_to_2008-12-31__AegisGrowthAllocation__E-pre-weak-plus-stateful-severe__orders.csv`
+
+Analysis status:
+- Complete.
+
+Normalized files:
+- `Algorithm.CSharp/MyAlgorithms/AegisGrowthAllocation/CrisisBackTestLogs/41__2007-10-01_to_2008-12-31__AegisGrowthAllocation__E-pre-weak-plus-stateful-severe__overview.json`
+- `Algorithm.CSharp/MyAlgorithms/AegisGrowthAllocation/CrisisBackTestLogs/41__2007-10-01_to_2008-12-31__AegisGrowthAllocation__E-pre-weak-plus-stateful-severe__logs.txt`
+- `Algorithm.CSharp/MyAlgorithms/AegisGrowthAllocation/CrisisBackTestLogs/41__2007-10-01_to_2008-12-31__AegisGrowthAllocation__E-pre-weak-plus-stateful-severe__orders.csv`
+
+Validation:
+- Status: completed overview artifact parsed successfully.
+- Runtime error: none found in overview status fields.
+- Start: `2007-10-01T00:00:00Z`
+- End: `2008-12-31T23:59:59Z`
+- Parameters matched `E-pre-weak-plus-stateful-severe`.
+
+Parameters:
+- `backtest-start=2007-10-01`
+- `backtest-end=2008-12-31`
+- `crisis-diagnostics=true`
+- `weak-stress-overlay-enabled=false`
+- `pre-weak-guard-enabled=true`
+- `severe-crash-override-enabled=true`
+- `sev-crash-dd-entry=0.10`
+- `sev-crash-dd-exit=0.07`
+- `sev-crash-recovery-wks=2`
+
+Metrics:
+- Net Profit: `-15.010%`
+- Compounding Annual Return: `-12.164%`
+- Drawdown: `18.500%`
+- Sharpe Ratio: `-1.359`
+- Sortino Ratio: `-1.347`
+- Total Orders: `146`
+- Total Fees: `$336.55`
+- End Equity: `25496.90`
+- Portfolio Turnover: `2.91%`
+- Win Rate: `45%`
+- Profit-Loss Ratio: `0.46`
+
+Diagnostics:
+- Diagnostic weeks: `66`
+- Pre-weak guard active weeks: `9`
+- First pre-weak active date: `2008-01-14`
+- Last pre-weak active date: `2008-08-25`
+- Severe-stress signal weeks: `15`
+- First severe-stress signal date: `2008-09-22`
+- Last severe-stress signal date: `2008-12-29`
+- Severe-crash override active weeks: `15`
+- First severe-crash override active date: `2008-09-22`
+- Last severe-crash override active date: `2008-12-29`
+- Severe crash mode states: `none=51`, `enter=1`, `hold=14`
+- Severe crash exit reason count: `0`
+- All-cash target weeks: `13`
+- First all-cash target date: `2008-02-11`
+- Last all-cash target date: `2008-12-29`
+- Weak final-target weeks: `27`
+- First weak final-target date: `2008-01-28`
+- Last weak final-target date: `2008-09-15`
+
+Comparison:
+- Versus run `31` (`C-pre-weak-only`), run `41` improved the 2008 result: net profit `-15.010%` vs `-16.860%`, drawdown `18.500%` vs `20.300%`, Sharpe `-1.359` vs `-1.460`, fees `$336.55` vs `$350.54`.
+- Versus run `26` (`B-weak-stress-only`), run `41` is still materially worse: net profit `-15.010%` vs `-11.732%`, drawdown `18.500%` vs `15.400%`, Sharpe `-1.359` vs `-1.316`, fees `$336.55` vs `$266.69`.
+- Versus run `11` (`severe-crash-override`, older/non-stateful evidence), run `41` is materially worse: net profit `-15.010%` vs `-11.549%`, drawdown `18.500%` vs `15.200%`, Sharpe `-1.359` vs `-1.157`.
+- Versus run `16` (`stateful-severe-crash`), run `41` is effectively the same result: net profit `-15.010%`, drawdown `18.500%`, Sharpe `-1.359`, orders `146`, fees `$336.55`.
+
+Interpretation:
+- `E-pre-weak-plus-stateful-severe` improves over `C`/default in the 2008 crash window but does not solve the sudden-crash drawdown problem.
+- The combined run behaves like the current stateful severe-crash implementation because severe-crash has priority once active.
+- The stateful severe target (`G0.05/D0.35/C0.60`) is not defensive enough to match the better 2008 protection seen in weak-stress-only or the older severe-crash run.
+- Pre-weak helps before the crash, but once the severe layer takes over, the result remains too exposed during the crash leg.
+
+Review:
+- No algorithm code was changed during this analysis.
+- File normalization followed the established CrisisBackTestLogs naming convention.
+- Open risk: continuing runs `42-45` may consume cloud runs without answering the key 2008 defense gap, because run `41` already shows the current combined severe layer is not strong enough.
+
+Next recommendation:
+- Do not continue with `42-45` yet unless a complete matrix is required.
+- Prefer a small code/config experiment that makes the severe-crash layer stricter, then rerun only the 2008 window first.
+
+## Step 31: Multi-Agent Review Of Run 41
+
+Date:
+- 2026-05-17
+
+Review setup:
+- Three read-only sub-agents reviewed the Phase 1 results, run `41`, prior severe-crash references, and relevant code/config paths.
+- No sub-agent edited files.
+
+Shared findings:
+- All three agents agreed that run `41` improved over `C-pre-weak-only`/default in 2008 but was still too weak to justify continuing `42-45` immediately.
+- All three agents identified the same root issue: once severe-crash activates, it has priority over pre-weak, so run `41` behaves like current stateful severe run `16`.
+- All three agents identified severe sleeve strictness as the most likely problem, not the hysteresis entry/exit parameters.
+- The current severe target is `G0.05/D0.35/C0.60`.
+- Older severe evidence used a stricter effective severe target around `G0.00/D0.20/C0.80` and produced a materially better 2008 result.
+
+Agent consensus:
+- Pause current `E-pre-weak-plus-stateful-severe` cloud runs `42-45`.
+- Do not spend more cloud runs on rebound/Covid/2021-22 windows until the severe layer first proves it can improve the 2008 crash window.
+- Make a small severe-crash target experiment and rerun only the 2008 window first.
+
+Final proposal from review:
+- Change `SevereCrashOverrideSleeveTargets` from `G0.05/D0.35/C0.60` to `G0.00/D0.20/C0.80`.
+- Use bands matching the existing weak-stress overlay:
+  - growth min/max: `0.00` / `0.05`
+  - defensive min/max: `0.00` / `0.25`
+  - cash min/max: `0.75` / `1.00`
+- Keep the current hysteresis parameters unchanged for the first test:
+  - `sev-crash-dd-entry=0.10`
+  - `sev-crash-dd-exit=0.07`
+  - `sev-crash-recovery-wks=2`
+
+First validation run after the change:
+- Run only `2007-10-01` to `2008-12-31`.
+- Use `pre-weak-guard-enabled=true`.
+- Use `severe-crash-override-enabled=true`.
+- Success target: approach or beat run `26`/run `11` on 2008 drawdown and net loss while remaining better than run `41`.
+
+Risks:
+- The stricter severe layer may recreate weak-stress cash drag in later recovery windows.
+- If the 2008 rerun passes, test only `2020` and `2021-22` next before expanding to the full matrix.
+
+## Step 32: Stricter Severe-Crash Sleeve Implementation
+
+Date:
+- 2026-05-17
+
+Approved change:
+- Tighten `SevereCrashOverrideSleeveTargets` from `G0.05/D0.35/C0.60` to `G0.00/D0.20/C0.80`.
+- Match the existing weak-stress overlay bands:
+  - growth min/max: `0.00` / `0.05`
+  - defensive min/max: `0.00` / `0.25`
+  - cash min/max: `0.75` / `1.00`
+
+Scope:
+- Code: `Algorithm.CSharp/MyAlgorithms/AegisGrowthAllocation/StrategyConfig.cs`
+- Tests: `Tests/Algorithm/AegisGrowthAllocationTests.cs`
+- No changes to severe-crash entry/exit/recovery parameters.
+
+TDD plan:
+- Update existing severe-crash sleeve tests to expect the stricter target.
+- Run the targeted tests before production-code change to confirm they fail.
+- Apply the minimal `StrategyConfig.cs` change.
+- Rerun targeted tests and project build.
+
+Implementation result:
+- Updated `StrategyConfig.SevereCrashOverrideSleeveTargets` to `G0.00/D0.20/C0.80`.
+- Updated `PortfolioManagerAppliesSevereCrashOverrideSleeves` to expect no growth allocation, `20%` defensive allocation, and `80%` cash.
+- Updated override attribution diagnostic expectation to `FinalTarget=G0.0000/D0.2000/C0.8000`.
+
+Verification:
+- Pre-change RED attempt: `dotnet test Tests/QuantConnect.Tests.csproj --filter AegisGrowthAllocationTests` could not reach test execution because restore attempted NuGet access and failed/timed out in the sandboxed environment.
+- Build: `dotnet build Algorithm.CSharp/QuantConnect.Algorithm.CSharp.csproj -c Debug -nologo --no-restore` passed with warnings only.
+- Targeted tests: `dotnet test Tests/QuantConnect.Tests.csproj --filter AegisGrowthAllocationTests --no-restore --no-build` passed: `43` passed, `0` failed.
+- Diff check: `git diff --check` passed with line-ending warnings only.
+
+Strict code review:
+- Scope is minimal and limited to the severe-crash sleeve target/bands plus matching tests and notes.
+- No entry/exit/recovery behavior changed.
+- No live-state persistence or order lifecycle logic changed.
+- Main behavioral risk: this will move severe-crash mode much closer to weak-stress cash exposure, so later recovery windows may show cash drag.
+- Mitigation: first rerun only the 2008 window; only test `2020` and `2021-22` if the 2008 result materially improves versus run `41`.
+
+## Step 33: Run 46 Strict Severe 2008 Received
+
+Date:
+- 2026-05-17
+
+Uploaded files:
+- `46.json`
+- `46_logs.txt`
+- `46_orders.csv`
+
+Planned normalization:
+- `46__2007-10-01_to_2008-12-31__AegisGrowthAllocation__F-strict-severe-plus-pre-weak__overview.json`
+- `46__2007-10-01_to_2008-12-31__AegisGrowthAllocation__F-strict-severe-plus-pre-weak__logs.txt`
+- `46__2007-10-01_to_2008-12-31__AegisGrowthAllocation__F-strict-severe-plus-pre-weak__orders.csv`
+
+Analysis status:
+- Complete.
+
+Normalized files:
+- `Algorithm.CSharp/MyAlgorithms/AegisGrowthAllocation/CrisisBackTestLogs/46__2007-10-01_to_2008-12-31__AegisGrowthAllocation__F-strict-severe-plus-pre-weak__overview.json`
+- `Algorithm.CSharp/MyAlgorithms/AegisGrowthAllocation/CrisisBackTestLogs/46__2007-10-01_to_2008-12-31__AegisGrowthAllocation__F-strict-severe-plus-pre-weak__logs.txt`
+- `Algorithm.CSharp/MyAlgorithms/AegisGrowthAllocation/CrisisBackTestLogs/46__2007-10-01_to_2008-12-31__AegisGrowthAllocation__F-strict-severe-plus-pre-weak__orders.csv`
+
+Validation:
+- Status: completed overview artifact parsed successfully.
+- Runtime error: none found in overview status fields.
+- Start: `2007-10-01T00:00:00Z`
+- End: `2008-12-31T23:59:59Z`
+- Parameters matched strict severe plus pre-weak.
+- Severe-crash final target confirmed as `G0.0000/D0.2000/C0.8000`.
+
+Parameters:
+- `backtest-start=2007-10-01`
+- `backtest-end=2008-12-31`
+- `crisis-diagnostics=true`
+- `weak-stress-overlay-enabled=false`
+- `pre-weak-guard-enabled=true`
+- `severe-crash-override-enabled=true`
+- `sev-crash-dd-entry=0.10`
+- `sev-crash-dd-exit=0.07`
+- `sev-crash-recovery-wks=2`
+
+Metrics:
+- Net Profit: `-11.548%`
+- Compounding Annual Return: `-9.322%`
+- Drawdown: `15.200%`
+- Sharpe Ratio: `-1.157`
+- Sortino Ratio: `-1.163`
+- Total Orders: `142`
+- Total Fees: `$320.40`
+- End Equity: `26535.55`
+- Portfolio Turnover: `2.85%`
+- Win Rate: `47%`
+- Profit-Loss Ratio: `0.50`
+
+Diagnostics:
+- Diagnostic weeks: `66`
+- Pre-weak guard active weeks: `9`
+- First pre-weak active date: `2008-01-14`
+- Last pre-weak active date: `2008-08-25`
+- Severe-stress signal weeks: `15`
+- First severe-stress signal date: `2008-09-22`
+- Last severe-stress signal date: `2008-12-29`
+- Severe-crash override active weeks: `15`
+- First severe-crash override active date: `2008-09-22`
+- Last severe-crash override active date: `2008-12-29`
+- Strict severe final-target weeks: `15`
+- First strict severe final-target date: `2008-09-22`
+- Last strict severe final-target date: `2008-12-29`
+- Severe crash mode states: `none=51`, `enter=1`, `hold=14`
+- Severe crash exit reason count: `0`
+- All-cash target weeks: `13`
+- First all-cash target date: `2008-02-11`
+- Last all-cash target date: `2008-12-29`
+- Weak final-target weeks: `27`
+- First weak final-target date: `2008-01-28`
+- Last weak final-target date: `2008-09-15`
+
+Comparison:
+- Versus run `41` (`E-pre-weak-plus-stateful-severe` before strict sleeve), run `46` is materially better: net profit `-11.548%` vs `-15.010%`, drawdown `15.200%` vs `18.500%`, Sharpe `-1.157` vs `-1.359`, fees `$320.40` vs `$336.55`.
+- Versus run `26` (`B-weak-stress-only`), run `46` is slightly better on net profit, drawdown, Sharpe, and Sortino, but has more orders/fees: net profit `-11.548%` vs `-11.732%`, drawdown `15.200%` vs `15.400%`, Sharpe `-1.157` vs `-1.316`, fees `$320.40` vs `$266.69`.
+- Versus run `31` (`C-pre-weak-only`) and run `21` (`A-default-off`), run `46` fixes the major 2008 gap: drawdown improves from `20.300%` to `15.200%`, and net profit improves from `-16.860%` to `-11.548%`.
+- Versus run `11` (`severe-crash-override`, older/non-stateful evidence), run `46` effectively reproduces the same headline result while using the current stateful severe mode.
+
+Interpretation:
+- The strict severe sleeve change succeeded in the target window.
+- The problem with run `41` was severe-crash target strictness, not entry/exit hysteresis.
+- Run `46` now meets the first validation goal: it approaches/beats run `26` and run `11` on 2008 drawdown and net loss while remaining materially better than run `41`.
+- The remaining open question is whether this stricter severe mode causes too much cash drag in later windows.
+
+Review:
+- No additional code changes were made during this analysis beyond the already-recorded strict sleeve implementation.
+- File normalization followed the established CrisisBackTestLogs naming convention.
+- Open risk: strict severe may now over-protect in fast-recovery or slower bear windows.
+
+Next recommendation:
+- Do not run the full matrix yet.
+- Run `2020 Covid` next with the same strict severe plus pre-weak settings because it is the most likely window to reveal crash-recovery cash drag.
+- If 2020 is acceptable, run `2021-22` next.
+
+## Step 34: Run 47 Strict Severe 2020 Received
+
+Date:
+- 2026-05-17
+
+Uploaded files:
+- `47.json`
+- `47_logs.txt`
+- `47_orders.csv`
+
+Planned normalization:
+- `47__2019-07-01_to_2020-12-31__AegisGrowthAllocation__F-strict-severe-plus-pre-weak__overview.json`
+- `47__2019-07-01_to_2020-12-31__AegisGrowthAllocation__F-strict-severe-plus-pre-weak__logs.txt`
+- `47__2019-07-01_to_2020-12-31__AegisGrowthAllocation__F-strict-severe-plus-pre-weak__orders.csv`
+
+Analysis status:
+- Complete.
+
+Normalized files:
+- `Algorithm.CSharp/MyAlgorithms/AegisGrowthAllocation/CrisisBackTestLogs/47__2019-07-01_to_2020-12-31__AegisGrowthAllocation__F-strict-severe-plus-pre-weak__overview.json`
+- `Algorithm.CSharp/MyAlgorithms/AegisGrowthAllocation/CrisisBackTestLogs/47__2019-07-01_to_2020-12-31__AegisGrowthAllocation__F-strict-severe-plus-pre-weak__logs.txt`
+- `Algorithm.CSharp/MyAlgorithms/AegisGrowthAllocation/CrisisBackTestLogs/47__2019-07-01_to_2020-12-31__AegisGrowthAllocation__F-strict-severe-plus-pre-weak__orders.csv`
+
+Validation:
+- Status: completed overview artifact parsed successfully.
+- Runtime error: none found in overview status fields.
+- Start: `2019-07-01T00:00:00Z`
+- End: `2020-12-31T23:59:59Z`
+- Parameters matched strict severe plus pre-weak.
+- Severe-crash final target confirmed as `G0.0000/D0.2000/C0.8000`.
+
+Parameters:
+- `backtest-start=2019-07-01`
+- `backtest-end=2020-12-31`
+- `crisis-diagnostics=true`
+- `weak-stress-overlay-enabled=false`
+- `pre-weak-guard-enabled=true`
+- `severe-crash-override-enabled=true`
+- `sev-crash-dd-entry=0.10`
+- `sev-crash-dd-exit=0.07`
+- `sev-crash-recovery-wks=2`
+
+Metrics:
+- Net Profit: `42.499%`
+- Compounding Annual Return: `26.511%`
+- Drawdown: `13.500%`
+- Sharpe Ratio: `1.413`
+- Sortino Ratio: `1.343`
+- Total Orders: `203`
+- Total Fees: `$216.08`
+- End Equity: `42749.82`
+- Portfolio Turnover: `2.85%`
+- Win Rate: `72%`
+- Profit-Loss Ratio: `1.18`
+
+Diagnostics:
+- Diagnostic weeks: `79`
+- Pre-weak guard active weeks: `3`
+- First pre-weak active date: `2020-07-13`
+- Last pre-weak active date: `2020-09-14`
+- Severe-stress signal weeks: `18`
+- First severe-stress signal date: `2020-03-02`
+- Last severe-stress signal date: `2020-11-09`
+- Severe-crash override active weeks: `11`
+- First severe-crash override active date: `2020-03-23`
+- Last severe-crash override active date: `2020-06-01`
+- Strict severe final-target weeks: `11`
+- First strict severe final-target date: `2020-03-23`
+- Last strict severe final-target date: `2020-06-01`
+- Severe crash mode states: `none=67`, `enter=1`, `hold=10`, `exit=1`
+- Severe crash exit reasons: `regime-recovered=1`
+- All-cash target weeks: `3`
+- First all-cash target date: `2020-03-23`
+- Last all-cash target date: `2020-04-06`
+- Weak final-target weeks: `9`
+- First weak final-target date: `2020-03-02`
+- Last weak final-target date: `2020-11-09`
+
+Comparison:
+- Versus run `34` (`C-pre-weak-only`), run `47` is worse on return and risk-adjusted return with no drawdown improvement: net profit `42.499%` vs `46.839%`, drawdown `13.500%` vs `13.500%`, Sharpe `1.413` vs `1.490`, Sortino `1.343` vs `1.443`.
+- Versus run `24` (`A-default-off`), run `47` also gives up return with no drawdown improvement: net profit `42.499%` vs `45.966%`, drawdown unchanged at `13.500%`.
+- Versus run `29` (`B-weak-stress-only`), run `47` has higher return but worse drawdown: net profit `42.499%` vs `37.705%`, drawdown `13.500%` vs `10.900%`.
+- Versus prior severe variants, run `47` is better than run `14` but worse than run `19`: net profit `42.499%` vs `41.980%` and `43.911%`; Sharpe `1.413` vs `1.337` and `1.392`.
+
+Interpretation:
+- Run `47` confirms the main risk from strict severe: cash drag during fast crash/recovery.
+- The strict severe layer was active from `2020-03-23` through `2020-06-01`, which likely reduced recovery participation.
+- It did not reduce the headline 2020 drawdown versus `C` or default, so the 2020 tradeoff is unfavorable compared with `C-pre-weak-only`.
+- However, it still preserves more return than weak-stress-only and has better Sharpe than weak-stress-only.
+
+Review:
+- No additional code changes were made during this analysis.
+- File normalization followed the established CrisisBackTestLogs naming convention.
+- Open risk: strict severe is useful for 2008, but too blunt for 2020 unless activation is made more selective or exit faster.
+
+Next recommendation:
+- Run `2021-22` next with the same strict severe plus pre-weak settings before changing code again.
+- Reason: we need to know whether strict severe hurts the slower bear-market window where `C-pre-weak-only` was strongest.
+- If `2021-22` also gives up too much return versus run `35`, then the next design should make strict severe activation more selective rather than globally changing the severe target.
+
+## Step 35: Run 48 Strict Severe 2021-22 Received
+
+Date:
+- 2026-05-17
+
+Uploaded files:
+- `48.json`
+- `48_logs.txt`
+- `48_orders.csv`
+
+Planned normalization:
+- `48__2021-01-01_to_2022-12-31__AegisGrowthAllocation__F-strict-severe-plus-pre-weak__overview.json`
+- `48__2021-01-01_to_2022-12-31__AegisGrowthAllocation__F-strict-severe-plus-pre-weak__logs.txt`
+- `48__2021-01-01_to_2022-12-31__AegisGrowthAllocation__F-strict-severe-plus-pre-weak__orders.csv`
+
+Analysis status:
+- Complete.
+
+Normalized files:
+- `Algorithm.CSharp/MyAlgorithms/AegisGrowthAllocation/CrisisBackTestLogs/48__2021-01-01_to_2022-12-31__AegisGrowthAllocation__F-strict-severe-plus-pre-weak__overview.json`
+- `Algorithm.CSharp/MyAlgorithms/AegisGrowthAllocation/CrisisBackTestLogs/48__2021-01-01_to_2022-12-31__AegisGrowthAllocation__F-strict-severe-plus-pre-weak__logs.txt`
+- `Algorithm.CSharp/MyAlgorithms/AegisGrowthAllocation/CrisisBackTestLogs/48__2021-01-01_to_2022-12-31__AegisGrowthAllocation__F-strict-severe-plus-pre-weak__orders.csv`
+
+Validation:
+- Status: completed overview artifact parsed successfully.
+- Runtime error: none found in overview status fields.
+- Start: `2021-01-01T00:00:00Z`
+- End: `2022-12-31T23:59:59Z`
+- Parameters matched strict severe plus pre-weak.
+- Severe-crash final target confirmed as `G0.0000/D0.2000/C0.8000`.
+
+Parameters:
+- `backtest-start=2021-01-01`
+- `backtest-end=2022-12-31`
+- `crisis-diagnostics=true`
+- `weak-stress-overlay-enabled=false`
+- `pre-weak-guard-enabled=true`
+- `severe-crash-override-enabled=true`
+- `sev-crash-dd-entry=0.10`
+- `sev-crash-dd-exit=0.07`
+- `sev-crash-recovery-wks=2`
+
+Metrics:
+- Net Profit: `15.719%`
+- Compounding Annual Return: `7.587%`
+- Drawdown: `14.800%`
+- Sharpe Ratio: `0.538`
+- Sortino Ratio: `0.649`
+- Total Orders: `307`
+- Total Fees: `$307.75`
+- End Equity: `34715.55`
+- Portfolio Turnover: `2.98%`
+- Win Rate: `60%`
+- Profit-Loss Ratio: `1.17`
+
+Diagnostics:
+- Diagnostic weeks: `82`
+- Pre-weak guard active weeks: `9`
+- First pre-weak active date: `2022-01-18`
+- Last pre-weak active date: `2022-04-25`
+- Severe-stress signal weeks: `6`
+- First severe-stress signal date: `2022-01-31`
+- Last severe-stress signal date: `2022-06-21`
+- Severe-crash override active weeks: `11`
+- First severe-crash override active date: `2022-05-16`
+- Last severe-crash override active date: `2022-07-25`
+- Strict severe final-target weeks: `11`
+- First strict severe final-target date: `2022-05-16`
+- Last strict severe final-target date: `2022-07-25`
+- Severe crash mode states: `none=71`, `enter=1`, `hold=10`
+- Severe crash exit reason count: `0`
+- All-cash target weeks: `0`
+- Weak final-target weeks: `7`
+- First weak final-target date: `2022-01-31`
+- Last weak final-target date: `2022-05-09`
+
+Comparison:
+- Versus run `35` (`C-pre-weak-only`), run `48` is worse on return, drawdown, Sharpe, and Sortino: net profit `15.719%` vs `18.081%`, drawdown `14.800%` vs `13.700%`, Sharpe `0.538` vs `0.611`, Sortino `0.649` vs `0.775`.
+- Versus run `25` (`A-default-off`), run `48` is better: net profit `15.719%` vs `14.186%`, drawdown `14.800%` vs `16.500%`, Sharpe `0.538` vs `0.454`.
+- Versus run `30` (`B-weak-stress-only`), run `48` is better on return, drawdown, Sharpe, and Sortino: net profit `15.719%` vs `14.189%`, drawdown `14.800%` vs `15.900%`, Sharpe `0.538` vs `0.474`.
+- Versus prior severe variants, run `48` is materially better than runs `15` and `20`, but still meaningfully worse than `C-pre-weak-only`.
+
+Interpretation:
+- Run `48` confirms the same pattern as run `47`: strict severe helps versus default/weak-stress/severe variants but gives up too much versus `C-pre-weak-only`.
+- In 2021-22, strict severe activates late (`2022-05-16`) and remains active through `2022-07-25`, after pre-weak had already done useful risk reduction.
+- This suggests the strict severe layer is good for 2008-style crisis protection but too blunt as a general severe mode.
+
+Partial `F-strict-severe-plus-pre-weak` read:
+- Run `46` fixes 2008: net `-11.548%`, drawdown `15.200%`.
+- Run `47` hurts 2020 versus `C`: net `42.499%` vs `46.839%`, drawdown unchanged.
+- Run `48` hurts 2021-22 versus `C`: net `15.719%` vs `18.081%`, drawdown worse.
+- Across tested windows `46-48`, strict severe average net is `15.557%`, average drawdown is `14.500%`, max drawdown is `15.200%`, and average Sharpe is `0.265`.
+
+Review:
+- No additional code changes were made during this analysis.
+- File normalization followed the established CrisisBackTestLogs naming convention.
+- Open risk: the current strict severe target solves one crash window but degrades the best return-preserving behavior in later crisis windows.
+
+Next recommendation:
+- Stop running more `F` windows for now.
+- The evidence favors a selective strict-severe trigger rather than a globally stricter severe target.
+- Candidate next design: keep `C-pre-weak-only` behavior as the primary mode, and allow strict severe only in true systemic crash conditions similar to 2008, for example when weak regime + severe stress + at least `10%` drawdown + breadth near zero or VIX well above the current threshold.
+
+## Step 36: Defensive Optimization History Check
+
+Scope:
+- Check whether defensive optimization started at result `20` or before it.
+- Sources reviewed: git history, project notes, and normalized `CrisisBackTestLogs` filenames.
+
+Finding:
+- Defensive optimization started before result `20`.
+- Result `20` belongs to the `stateful-severe-crash` batch (`16-20`), which was already the fourth defensive experiment batch after weak-stress, pre-weak, and severe-crash override.
+- The first actual defensive optimization code experiment was commit `25a99698c` (`feat: add Aegis weak stress overlay`), which produced/used result batch `1-5`.
+- The broader defensive work started even earlier with crisis diagnostics in commit `6b14431fe` (`feat: add Aegis crisis diagnostics`) and the agent debate documented in `Aegis_Defensive_Optimization_Agent_Debate_2026-05-09.md`.
+
+Timeline:
+- `6b14431fe`: added `crisis-diagnostics` to understand crisis-window behavior before changing defensive logic.
+- `25a99698c`: added `weak-stress-overlay-enabled`; this is the first defensive behavior optimization experiment and maps to result files `1-5`.
+- `df813174b`: added `pre-weak-guard-enabled`; maps to result files `6-10`.
+- `b6377f5a0`: added `severe-crash-override-enabled`; maps to result files `11-15`.
+- `c62980486`: added stateful severe-crash mode; maps to result files `16-20`.
+- `77a83a1d0` and later: created the validation matrix and reran cleaner comparison batches `21-35`, then follow-up `41`, `46-48`.
+
+Review:
+- No code changes were made for this history check.
+- The historical interpretation is consistent across commit messages, implementation notes, and normalized result-file names.
+- Open risk: result numbering can be misleading because later validation batches (`21-35`) intentionally reran baseline/variant comparisons after several defensive features already existed.
+
+## Step 37: Proposed All-Defensive-Off Comparison Round
+
+Scope:
+- Evaluate whether another baseline comparison round should be run with all defensive optimization switches disabled.
+- This is intended to compare the current best defensive variants against the original/default behavior on the same crisis windows.
+
+Finding:
+- The defensive behavior changes are gated by parameters:
+  - `weak-stress-overlay-enabled`
+  - `pre-weak-guard-enabled`
+  - `severe-crash-override-enabled`
+- Setting all three to `false` disables the defensive optimization layers for trading behavior.
+- `crisis-diagnostics=true` can remain enabled because it adds logs only and does not change target allocation logic.
+
+Recommended baseline setup:
+- Use the same five crisis windows as the validation matrix.
+- Set all defensive switches to `false`.
+- Label the next result batch as a fresh all-off control round, not as a new defensive variant.
+
+Open question:
+- If the goal is "original behavior with current code and all defense gates off", parameter-only is enough.
+- If the goal is "exact historical code before defensive optimization commits existed", that requires checking out or branching from an older commit and is a different, heavier comparison.
+
+Review:
+- No code changes were made.
+- Recommendation is to use the parameter-only comparison first because it is safer, faster, and directly comparable to current cloud code.
+
+## Step 38: Runs 49-53 All-Defensive-Off Upload Intake
+
+Date:
+- 2026-05-17
+
+Uploaded files:
+- `49.json`, `49_logs.txt`, `49_orders.csv`
+- `50.json`, `50_logs.txt`, `50_orders.csv`
+- `51.json`, `51_logs.txt`, `51_orders.csv`
+- `52.json`, `52_logs.txt`, `52_orders.csv`
+- `53.json`, `53_logs.txt`, `53_orders.csv`
+
+Planned normalization:
+- Use variant label `G-current-all-defensive-off`.
+- Map run windows:
+  - `49`: `2007-10-01` to `2008-12-31`
+  - `50`: `2009-01-01` to `2009-12-31`
+  - `51`: `2010-01-01` to `2010-12-31`
+  - `52`: `2019-07-01` to `2020-12-31`
+  - `53`: `2021-01-01` to `2022-12-31`
+
+Analysis status:
+- Complete.
+
+Normalized files:
+- `49__2007-10-01_to_2008-12-31__AegisGrowthAllocation__G-current-all-defensive-off__overview.json`
+- `49__2007-10-01_to_2008-12-31__AegisGrowthAllocation__G-current-all-defensive-off__logs.txt`
+- `49__2007-10-01_to_2008-12-31__AegisGrowthAllocation__G-current-all-defensive-off__orders.csv`
+- `50__2009-01-01_to_2009-12-31__AegisGrowthAllocation__G-current-all-defensive-off__overview.json`
+- `50__2009-01-01_to_2009-12-31__AegisGrowthAllocation__G-current-all-defensive-off__logs.txt`
+- `50__2009-01-01_to_2009-12-31__AegisGrowthAllocation__G-current-all-defensive-off__orders.csv`
+- `51__2010-01-01_to_2010-12-31__AegisGrowthAllocation__G-current-all-defensive-off__overview.json`
+- `51__2010-01-01_to_2010-12-31__AegisGrowthAllocation__G-current-all-defensive-off__logs.txt`
+- `51__2010-01-01_to_2010-12-31__AegisGrowthAllocation__G-current-all-defensive-off__orders.csv`
+- `52__2019-07-01_to_2020-12-31__AegisGrowthAllocation__G-current-all-defensive-off__overview.json`
+- `52__2019-07-01_to_2020-12-31__AegisGrowthAllocation__G-current-all-defensive-off__logs.txt`
+- `52__2019-07-01_to_2020-12-31__AegisGrowthAllocation__G-current-all-defensive-off__orders.csv`
+- `53__2021-01-01_to_2022-12-31__AegisGrowthAllocation__G-current-all-defensive-off__overview.json`
+- `53__2021-01-01_to_2022-12-31__AegisGrowthAllocation__G-current-all-defensive-off__logs.txt`
+- `53__2021-01-01_to_2022-12-31__AegisGrowthAllocation__G-current-all-defensive-off__orders.csv`
+
+Parameter validation:
+- All five runs completed without runtime errors.
+- All five runs used:
+  - `crisis-diagnostics=true`
+  - `weak-stress-overlay-enabled=false`
+  - `pre-weak-guard-enabled=false`
+  - `severe-crash-override-enabled=false`
+- Diagnostic logs confirm no defensive override activation:
+  - run `49`: `PreWeakGuardActive=True` count `0`, `SevereCrashOverrideActive=True` count `0`, non-none `SleeveOverride` count `0`
+  - run `50`: `PreWeakGuardActive=True` count `0`, `SevereCrashOverrideActive=True` count `0`, non-none `SleeveOverride` count `0`
+  - run `51`: `PreWeakGuardActive=True` count `0`, `SevereCrashOverrideActive=True` count `0`, non-none `SleeveOverride` count `0`
+  - run `52`: `PreWeakGuardActive=True` count `0`, `SevereCrashOverrideActive=True` count `0`, non-none `SleeveOverride` count `0`
+  - run `53`: `PreWeakGuardActive=True` count `0`, `SevereCrashOverrideActive=True` count `0`, non-none `SleeveOverride` count `0`
+
+Metrics:
+- Run `49` (`2007-10-01` to `2008-12-31`): net `-16.860%`, CAGR `-13.691%`, drawdown `20.300%`, Sharpe `-1.460`, Sortino `-1.423`, orders `144`, fees `$350.54`.
+- Run `50` (`2009-01-01` to `2009-12-31`): net `17.084%`, CAGR `17.101%`, drawdown `4.300%`, Sharpe `1.633`, Sortino `1.722`, orders `89`, fees `$176.25`.
+- Run `51` (`2010-01-01` to `2010-12-31`): net `9.326%`, CAGR `9.335%`, drawdown `10.800%`, Sharpe `0.639`, Sortino `0.735`, orders `185`, fees `$419.39`.
+- Run `52` (`2019-07-01` to `2020-12-31`): net `45.966%`, CAGR `28.546%`, drawdown `13.500%`, Sharpe `1.440`, Sortino `1.401`, orders `198`, fees `$214.87`.
+- Run `53` (`2021-01-01` to `2022-12-31`): net `14.186%`, CAGR `6.871%`, drawdown `16.500%`, Sharpe `0.454`, Sortino `0.555`, orders `303`, fees `$303.69`.
+
+Aggregate `G-current-all-defensive-off`:
+- Average net profit: `13.940%`
+- Average drawdown: `13.080%`
+- Max drawdown: `20.300%`
+- Average Sharpe: `0.541`
+- Average Sortino: `0.598`
+- Total orders: `919`
+- Total fees: `$1464.74`
+
+Comparison to earlier `A-default-off`:
+- Runs `49-53` exactly match runs `21-25` on headline metrics, orders, and fees.
+- This confirms that current-code all-defensive-off behavior is equivalent to the prior `A-default-off` baseline.
+
+Comparison to best results so far:
+- `2007-10-01` to `2008-12-31`: best so far is run `46` (`F-strict-severe-plus-pre-weak`) with net `-11.548%` and drawdown `15.200%`; this improves all-off by `5.312` net-profit points and `5.100` drawdown points.
+- `2009-01-01` to `2009-12-31`: best return remains all-off / `C-pre-weak-only` at net `17.084%`; weak-stress has the best drawdown (`2.800%`) but gives up return.
+- `2010-01-01` to `2010-12-31`: best so far is run `33` (`C-pre-weak-only`) with net `10.729%` and drawdown `10.200%`; this improves all-off by `1.403` net-profit points and `0.600` drawdown points.
+- `2019-07-01` to `2020-12-31`: best return is run `34` (`C-pre-weak-only`) with net `46.839%`, improving all-off by `0.873` points with unchanged drawdown; weak-stress has lower drawdown (`10.900%`) but gives up too much return.
+- `2021-01-01` to `2022-12-31`: best so far is run `35` (`C-pre-weak-only`) with net `18.081%` and drawdown `13.700%`; this improves all-off by `3.895` net-profit points and `2.800` drawdown points.
+
+Interpretation:
+- The all-off rerun is a valid baseline and confirms no hidden defensive behavior remains active when the three switches are false.
+- The best single current configuration across the five windows remains `C-pre-weak-only`: better average return and better average drawdown than all-off, but it does not fix 2008 max drawdown.
+- The best crash protection result is still strict severe plus pre-weak in 2008, but strict severe is too blunt for 2020 and 2021-22.
+- The evidence supports the same strategic direction as before: keep pre-weak as the primary defensive improvement and make strict severe selective, not always-on whenever severe-crash mode is enabled.
+
+Review:
+- No code changes were made during this analysis.
+- File normalization followed the established CrisisBackTestLogs naming convention.
+- Open risk: per-window "best so far" is not the same as one deployable rule; a mixed best-by-window table can overstate what a single live algorithm would achieve unless the severe trigger is made selective and validated.
+
+## Step 39: Live Default Parameter Recommendation
+
+Date:
+- 2026-05-18
+
+Scope:
+- Identify the best current parameter combination for a paper/live default before deploying the improved algorithm to Interactive Brokers paper.
+
+Recommendation:
+- Use `C-pre-weak-only` as the current live-ready default.
+- Default values should be:
+  - `crisis-diagnostics=false`
+  - `weak-stress-overlay-enabled=false`
+  - `pre-weak-guard-enabled=true`
+  - `severe-crash-override-enabled=false`
+  - `pre-weak-guard-drawdown-threshold=0.05`
+  - keep severe-crash numeric defaults unchanged but inactive: `sev-crash-dd-entry=0.10`, `sev-crash-dd-exit=0.07`, `sev-crash-recovery-wks=2`
+
+Reason:
+- `C-pre-weak-only` is the best single broad configuration across the five crisis windows tested.
+- It improved aggregate average net profit versus all-off from `13.940%` to `15.175%`.
+- It improved aggregate average drawdown versus all-off from `13.080%` to `12.400%`.
+- It materially improved 2021-22 versus all-off: net `18.081%` vs `14.186%`, drawdown `13.700%` vs `16.500%`.
+- It improved 2010 and slightly improved 2020 while not hurting 2009.
+
+Rejected as live default for now:
+- `weak-stress-overlay-enabled=true`: reduces drawdown but sacrifices too much return in 2009 and 2020.
+- `severe-crash-override-enabled=true`: strict severe improves 2008 but is too blunt and causes cash-drag risk in 2020 and 2021-22.
+
+Live-trading risk:
+- This change affects live/paper target allocation behavior because pre-weak guard would become active by default.
+- Explicit user approval is required before changing code defaults.
+
+Review:
+- No code changes were made in this step.
+- Current code still defaults all defensive switches to `false`; this note records the recommended change only.
+
+## Step 40: Approved Pre-Weak Live Default Change
+
+Date:
+- 2026-05-18
+
+Approval:
+- User approved applying the live default recommendation.
+
+Implementation scope:
+- Change default behavior so `pre-weak-guard-enabled` defaults to `true`.
+- Keep `weak-stress-overlay-enabled` default `false`.
+- Keep `severe-crash-override-enabled` default `false`.
+- Keep `crisis-diagnostics` default `false`.
+- Keep numeric thresholds unchanged.
+
+TDD plan:
+- Update the existing default-parameter test to expect pre-weak guard enabled by default.
+- Run the focused test before production-code change and confirm it fails for the expected reason.
+- Apply the minimal production-code change.
+- Rerun focused tests and build checks.
+
+Live-trading risk:
+- This changes paper/live target allocation behavior when the user does not explicitly set `pre-weak-guard-enabled`.
+- The change is intentional based on the `C-pre-weak-only` crisis-window results.
+
+TDD red attempt:
+- Updated tests to expect `pre-weak-guard-enabled` default `true`, explicit `false` disable support, and invalid values falling back to the default.
+- Initial no-build test run passed against a stale compiled test assembly and was not valid RED evidence.
+- Build-enabled focused test run timed out before returning test results.
+- Test-project-only build also timed out before returning output.
+- Proceeding with the minimal code change because the intended failing assertion is clear, but verification must use a later successful build/test run.
+
+Implementation:
+- Added `StrategyConfig.DefaultPreWeakGuardEnabled = true`.
+- Initialized `_preWeakGuardEnabled` from `StrategyConfig.DefaultPreWeakGuardEnabled` so live/paper mode gets the improved default.
+- Changed backtest parameter parsing so absent or invalid `pre-weak-guard-enabled` falls back to the same default.
+- Updated tests to prove explicit `pre-weak-guard-enabled=false` still disables the guard.
+
+Verification:
+- `dotnet build Algorithm.CSharp/QuantConnect.Algorithm.CSharp.csproj -c Debug -nologo --no-restore` passed with existing repo/package warnings only.
+- `dotnet test Tests/QuantConnect.Tests.csproj --filter AegisGrowthAllocationTests --no-restore` passed: `44` passed, `0` failed.
+- `git diff --check` passed with line-ending warnings only.
+
+Strict code review:
+- No blocking issues found.
+- The default change is intentionally narrow: only pre-weak guard default changed to enabled.
+- Weak-stress overlay, severe-crash override, and crisis diagnostics remain disabled by default.
+- Explicit `pre-weak-guard-enabled=false` still disables pre-weak in backtests.
+- Live/paper mode receives the improved default because the backing field is initialized to `StrategyConfig.DefaultPreWeakGuardEnabled` before the backtest-only parameter parsing block.
+- Remaining risk: this changes live/paper allocation behavior during deteriorating neutral/favorable regimes; this is the intended risk tradeoff from the approved `C-pre-weak-only` results.

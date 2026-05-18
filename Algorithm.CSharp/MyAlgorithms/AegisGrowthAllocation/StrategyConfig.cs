@@ -71,6 +71,7 @@ namespace QuantConnect.Algorithm.CSharp
         public const decimal FavorableStressThreshold = 18m;
         public const decimal DefaultWeakStressThreshold = 27m;
         public const decimal SevereStressThreshold = 30m;
+        public const bool DefaultPreWeakGuardEnabled = true;
         public const decimal DefaultPreWeakGuardDrawdownThreshold = 0.05m;
         public const decimal DefaultSevereCrashOverrideDrawdownThreshold = 0.10m;
         public const decimal DefaultSevereCrashOverrideExitDrawdownThreshold = 0.07m;
@@ -140,15 +141,15 @@ namespace QuantConnect.Algorithm.CSharp
             cashMax: 0.55m);
 
         public static readonly SleeveTargets SevereCrashOverrideSleeveTargets = new SleeveTargets(
-            growthTarget: 0.05m,
-            defensiveTarget: 0.35m,
-            cashTarget: 0.60m,
+            growthTarget: 0.00m,
+            defensiveTarget: 0.20m,
+            cashTarget: 0.80m,
             growthMin: 0.00m,
-            growthMax: 0.10m,
-            defensiveMin: 0.30m,
-            defensiveMax: 0.40m,
-            cashMin: 0.55m,
-            cashMax: 0.65m);
+            growthMax: 0.05m,
+            defensiveMin: 0.00m,
+            defensiveMax: 0.25m,
+            cashMin: 0.75m,
+            cashMax: 1.00m);
 
         public static readonly IReadOnlyDictionary<RiskRegime, int> GrowthHoldingCountByRegime =
             new Dictionary<RiskRegime, int>

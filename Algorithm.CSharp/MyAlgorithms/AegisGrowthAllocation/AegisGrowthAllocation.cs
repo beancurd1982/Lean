@@ -33,7 +33,7 @@ namespace QuantConnect.Algorithm.CSharp
         private AegisLiveState _loadedLiveState;
         private bool _crisisDiagnosticsEnabled;
         private bool _weakStressOverlayEnabled;
-        private bool _preWeakGuardEnabled;
+        private bool _preWeakGuardEnabled = StrategyConfig.DefaultPreWeakGuardEnabled;
         private bool _severeCrashOverrideEnabled;
         private decimal _preWeakGuardDrawdownThreshold = StrategyConfig.DefaultPreWeakGuardDrawdownThreshold;
         private decimal _severeCrashOverrideDrawdownThreshold = StrategyConfig.DefaultSevereCrashOverrideDrawdownThreshold;
@@ -56,7 +56,9 @@ namespace QuantConnect.Algorithm.CSharp
                 SetCash(30000);
                 _crisisDiagnosticsEnabled = ParseBooleanParameter(StrategyConfig.CrisisDiagnosticsParameter, false);
                 _weakStressOverlayEnabled = ParseBooleanParameter(StrategyConfig.WeakStressOverlayParameter, false);
-                _preWeakGuardEnabled = ParseBooleanParameter(StrategyConfig.PreWeakGuardParameter, false);
+                _preWeakGuardEnabled = ParseBooleanParameter(
+                    StrategyConfig.PreWeakGuardParameter,
+                    StrategyConfig.DefaultPreWeakGuardEnabled);
                 _severeCrashOverrideEnabled = ParseBooleanParameter(StrategyConfig.SevereCrashOverrideParameter, false);
                 _preWeakGuardDrawdownThreshold = ParseDecimalParameter(
                     StrategyConfig.PreWeakGuardDrawdownThresholdParameter,
