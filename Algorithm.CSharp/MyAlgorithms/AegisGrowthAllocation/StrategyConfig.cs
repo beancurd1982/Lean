@@ -29,8 +29,8 @@ namespace QuantConnect.Algorithm.CSharp
         public const string HoldStabilityBonusParameter = "hold-stability-bonus";
         public const string GrowthAtrEligibilityLimitParameter = "growth-atr-eligibility-limit";
         public const string RebalanceToleranceBandScaleParameter = "tolerance-band-scale";
-        public const string LiveStateKey = "AegisGrowthAllocation_LiveState_V1";
-        public const int LiveStateSchemaVersion = 1;
+        public const string LiveStateKey = "AegisGrowthAllocation_LiveState_V2";
+        public const int LiveStateSchemaVersion = 2;
         public const decimal LiveStateQuantityTolerance = 0.0001m;
         public static readonly DateTime DefaultBacktestStartDate = new DateTime(2018, 1, 1);
         public static readonly TimeSpan WeeklyDecisionTime = new TimeSpan(10, 0, 0);

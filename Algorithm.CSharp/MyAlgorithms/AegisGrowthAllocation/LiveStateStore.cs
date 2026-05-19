@@ -46,14 +46,12 @@ namespace QuantConnect.Algorithm.CSharp
                     return null;
                 }
 
-                state.LastPlannedTargetWeights ??= new Dictionary<string, decimal>();
-                state.BrokerHoldingsByTicker ??= new Dictionary<string, decimal>();
-                state.OpenOrders ??= new List<AegisOpenOrderState>();
+                NormalizeState(state);
 
                 _lastSavedFingerprint = BuildFingerprint(state);
 
                 _algorithm.Debug(
-                    $"[AEGIS-LIVE] {_algorithm.Time}: state restored. Holdings={state.BrokerHoldingsByTicker.Count} OpenOrders={state.OpenOrders.Count} LastReview={state.LastCompletedWeeklyReviewUtc?.ToString("u") ?? "none"}");
+                    $"[AEGIS-LIVE] {_algorithm.Time}: state restored. Holdings={state.BrokerHoldingsByTicker.Count} OpenOrders={state.OpenOrders.Count} LastReview={state.LastCompletedWeeklyReviewUtc?.ToString("u") ?? "none"} DefensiveHighWater={state.DefensiveOverrideEquityHighWaterMark:0.##} SevereActive={state.SevereCrashModeActive} SevereState={state.SevereCrashModeState} SevereWeeks={state.SevereCrashRecoveryWeeks} SevereExit={state.SevereCrashExitReason}");
                 return state;
             }
             catch (Exception ex)
@@ -73,9 +71,7 @@ namespace QuantConnect.Algorithm.CSharp
 
             state.SchemaVersion = StrategyConfig.LiveStateSchemaVersion;
             state.SavedAtUtc = _algorithm.UtcTime;
-            state.LastPlannedTargetWeights ??= new Dictionary<string, decimal>();
-            state.BrokerHoldingsByTicker ??= new Dictionary<string, decimal>();
-            state.OpenOrders ??= new List<AegisOpenOrderState>();
+            NormalizeState(state);
 
             try
             {
@@ -89,12 +85,27 @@ namespace QuantConnect.Algorithm.CSharp
                 _algorithm.ObjectStore.SaveJson(StrategyConfig.LiveStateKey, state);
                 _lastSavedFingerprint = fingerprint;
                 _algorithm.Debug(
-                    $"[AEGIS-LIVE] {_algorithm.Time}: state saved. Holdings={state.BrokerHoldingsByTicker.Count} OpenOrders={state.OpenOrders.Count} Reason={reason ?? "unspecified"}");
+                    $"[AEGIS-LIVE] {_algorithm.Time}: state saved. Holdings={state.BrokerHoldingsByTicker.Count} OpenOrders={state.OpenOrders.Count} DefensiveHighWater={state.DefensiveOverrideEquityHighWaterMark:0.##} SevereActive={state.SevereCrashModeActive} SevereState={state.SevereCrashModeState} SevereWeeks={state.SevereCrashRecoveryWeeks} SevereExit={state.SevereCrashExitReason} Reason={reason ?? "unspecified"}");
             }
             catch (Exception ex)
             {
                 _algorithm.Error($"[AEGIS-LIVE] {_algorithm.Time}: save error: {ex.Message}");
             }
+        }
+
+        private static void NormalizeState(AegisLiveState state)
+        {
+            state.LastPlannedTargetWeights ??= new Dictionary<string, decimal>();
+            state.BrokerHoldingsByTicker ??= new Dictionary<string, decimal>();
+            state.OpenOrders ??= new List<AegisOpenOrderState>();
+            state.DefensiveOverrideEquityHighWaterMark = Math.Max(0m, state.DefensiveOverrideEquityHighWaterMark);
+            state.SevereCrashRecoveryWeeks = Math.Max(0, state.SevereCrashRecoveryWeeks);
+            state.SevereCrashModeState = string.IsNullOrWhiteSpace(state.SevereCrashModeState)
+                ? "none"
+                : state.SevereCrashModeState;
+            state.SevereCrashExitReason = string.IsNullOrWhiteSpace(state.SevereCrashExitReason)
+                ? "none"
+                : state.SevereCrashExitReason;
         }
 
         private static string BuildFingerprint(AegisLiveState state)
@@ -105,6 +116,11 @@ namespace QuantConnect.Algorithm.CSharp
             builder.Append("upgrade=").Append(state.UpgradeConfirmationCount).Append('|');
             builder.Append("reserve=").Append(state.UndeployedReserve.ToString("0.########", System.Globalization.CultureInfo.InvariantCulture)).Append('|');
             builder.Append("review=").Append(state.LastCompletedWeeklyReviewUtc?.ToString("o") ?? string.Empty).Append('|');
+            builder.Append("defHwm=").Append(state.DefensiveOverrideEquityHighWaterMark.ToString("0.########", System.Globalization.CultureInfo.InvariantCulture)).Append('|');
+            builder.Append("sevActive=").Append(state.SevereCrashModeActive).Append('|');
+            builder.Append("sevWeeks=").Append(state.SevereCrashRecoveryWeeks).Append('|');
+            builder.Append("sevState=").Append(state.SevereCrashModeState ?? string.Empty).Append('|');
+            builder.Append("sevExit=").Append(state.SevereCrashExitReason ?? string.Empty).Append('|');
 
             foreach (var holding in (state.BrokerHoldingsByTicker ?? new Dictionary<string, decimal>()).OrderBy(kvp => kvp.Key, StringComparer.Ordinal))
             {
@@ -139,6 +155,11 @@ namespace QuantConnect.Algorithm.CSharp
         public int UpgradeConfirmationCount { get; set; }
         public decimal UndeployedReserve { get; set; }
         public DateTime? LastCompletedWeeklyReviewUtc { get; set; }
+        public decimal DefensiveOverrideEquityHighWaterMark { get; set; }
+        public bool SevereCrashModeActive { get; set; }
+        public int SevereCrashRecoveryWeeks { get; set; }
+        public string SevereCrashModeState { get; set; } = "none";
+        public string SevereCrashExitReason { get; set; } = "none";
         public Dictionary<string, decimal> LastPlannedTargetWeights { get; set; } = new Dictionary<string, decimal>();
         public Dictionary<string, decimal> BrokerHoldingsByTicker { get; set; } = new Dictionary<string, decimal>();
         public List<AegisOpenOrderState> OpenOrders { get; set; } = new List<AegisOpenOrderState>();

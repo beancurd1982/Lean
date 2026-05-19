@@ -553,6 +553,73 @@ namespace QuantConnect.Tests.Algorithm
         }
 
         [Test]
+        public void BuildPersistedStateIncludesDefensiveRuntimeState()
+        {
+            var algorithm = CreateAlgorithm();
+            SetPrivateField(algorithm, "_defensiveOverrideEquityHighWaterMark", 123456.78m);
+            SetPrivateField(algorithm, "_severeCrashModeActive", true);
+            SetPrivateField(algorithm, "_severeCrashRecoveryWeeks", 3);
+            SetPrivateField(algorithm, "_severeCrashModeState", "hold");
+            SetPrivateField(algorithm, "_severeCrashExitReason", "none");
+
+            var state = BuildPersistedState(algorithm);
+
+            Assert.That(state.DefensiveOverrideEquityHighWaterMark, Is.EqualTo(123456.78m));
+            Assert.That(state.SevereCrashModeActive, Is.True);
+            Assert.That(state.SevereCrashRecoveryWeeks, Is.EqualTo(3));
+            Assert.That(state.SevereCrashModeState, Is.EqualTo("hold"));
+            Assert.That(state.SevereCrashExitReason, Is.EqualTo("none"));
+        }
+
+        [Test]
+        public void RestorePersistedRuntimeStateRestoresDefensiveRuntimeState()
+        {
+            var algorithm = CreateAlgorithm();
+            var state = new QuantConnect.Algorithm.CSharp.AegisLiveState
+            {
+                SchemaVersion = QuantConnect.Algorithm.CSharp.StrategyConfig.LiveStateSchemaVersion,
+                DefensiveOverrideEquityHighWaterMark = 98765.43m,
+                SevereCrashModeActive = true,
+                SevereCrashRecoveryWeeks = 2,
+                SevereCrashModeState = "hold",
+                SevereCrashExitReason = "none"
+            };
+
+            RestorePersistedRuntimeState(algorithm, state);
+
+            Assert.That(GetDefensiveOverrideEquityHighWaterMark(algorithm), Is.EqualTo(98765.43m));
+            Assert.That(IsSevereCrashModeActive(algorithm), Is.True);
+            Assert.That(GetSevereCrashRecoveryWeeks(algorithm), Is.EqualTo(2));
+            Assert.That(GetSevereCrashModeState(algorithm), Is.EqualTo("hold"));
+            Assert.That(GetSevereCrashExitReason(algorithm), Is.EqualTo("none"));
+        }
+
+        [Test]
+        public void LiveStateFingerprintChangesWhenDefensiveRuntimeStateChanges()
+        {
+            var baseline = new QuantConnect.Algorithm.CSharp.AegisLiveState
+            {
+                SchemaVersion = QuantConnect.Algorithm.CSharp.StrategyConfig.LiveStateSchemaVersion,
+                DefensiveOverrideEquityHighWaterMark = 100000m,
+                SevereCrashModeActive = true,
+                SevereCrashRecoveryWeeks = 1,
+                SevereCrashModeState = "hold",
+                SevereCrashExitReason = "none"
+            };
+            var changed = new QuantConnect.Algorithm.CSharp.AegisLiveState
+            {
+                SchemaVersion = QuantConnect.Algorithm.CSharp.StrategyConfig.LiveStateSchemaVersion,
+                DefensiveOverrideEquityHighWaterMark = 99000m,
+                SevereCrashModeActive = true,
+                SevereCrashRecoveryWeeks = 1,
+                SevereCrashModeState = "hold",
+                SevereCrashExitReason = "none"
+            };
+
+            Assert.That(BuildLiveStateFingerprint(changed), Is.Not.EqualTo(BuildLiveStateFingerprint(baseline)));
+        }
+
+        [Test]
         public void PortfolioManagerAppliesSevereCrashOverrideSleeves()
         {
             var growthSymbol = QuantConnect.Symbol.Create("AAPL", QuantConnect.SecurityType.Equity, QuantConnect.Market.USA);
@@ -718,6 +785,45 @@ namespace QuantConnect.Tests.Algorithm
 
             Assert.That(field, Is.Not.Null);
             return (string)field.GetValue(algorithm);
+        }
+
+        private static decimal GetDefensiveOverrideEquityHighWaterMark(QuantConnect.Algorithm.CSharp.AegisGrowthAllocation algorithm)
+        {
+            var field = typeof(QuantConnect.Algorithm.CSharp.AegisGrowthAllocation)
+                .GetField("_defensiveOverrideEquityHighWaterMark", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+
+            Assert.That(field, Is.Not.Null);
+            return (decimal)field.GetValue(algorithm);
+        }
+
+        private static QuantConnect.Algorithm.CSharp.AegisLiveState BuildPersistedState(
+            QuantConnect.Algorithm.CSharp.AegisGrowthAllocation algorithm)
+        {
+            var method = typeof(QuantConnect.Algorithm.CSharp.AegisGrowthAllocation)
+                .GetMethod("BuildPersistedState", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+
+            Assert.That(method, Is.Not.Null);
+            return (QuantConnect.Algorithm.CSharp.AegisLiveState)method.Invoke(algorithm, Array.Empty<object>());
+        }
+
+        private static void RestorePersistedRuntimeState(
+            QuantConnect.Algorithm.CSharp.AegisGrowthAllocation algorithm,
+            QuantConnect.Algorithm.CSharp.AegisLiveState state)
+        {
+            var method = typeof(QuantConnect.Algorithm.CSharp.AegisGrowthAllocation)
+                .GetMethod("RestorePersistedRuntimeState", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+
+            Assert.That(method, Is.Not.Null);
+            method.Invoke(algorithm, new object[] { state });
+        }
+
+        private static string BuildLiveStateFingerprint(QuantConnect.Algorithm.CSharp.AegisLiveState state)
+        {
+            var method = typeof(QuantConnect.Algorithm.CSharp.LiveStateStore)
+                .GetMethod("BuildFingerprint", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic);
+
+            Assert.That(method, Is.Not.Null);
+            return (string)method.Invoke(null, new object[] { state });
         }
 
         private static void SetPrivateField<T>(

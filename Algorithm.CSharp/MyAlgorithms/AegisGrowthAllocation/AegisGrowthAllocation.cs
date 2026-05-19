@@ -815,6 +815,15 @@ namespace QuantConnect.Algorithm.CSharp
                         return symbol;
                     },
                     kvp => kvp.Value);
+            _defensiveOverrideEquityHighWaterMark = Math.Max(0m, state.DefensiveOverrideEquityHighWaterMark);
+            _severeCrashModeActive = state.SevereCrashModeActive;
+            _severeCrashRecoveryWeeks = Math.Max(0, state.SevereCrashRecoveryWeeks);
+            _severeCrashModeState = string.IsNullOrWhiteSpace(state.SevereCrashModeState)
+                ? "none"
+                : state.SevereCrashModeState;
+            _severeCrashExitReason = string.IsNullOrWhiteSpace(state.SevereCrashExitReason)
+                ? "none"
+                : state.SevereCrashExitReason;
         }
 
         private void ReconcileLiveStartup()
@@ -871,6 +880,11 @@ namespace QuantConnect.Algorithm.CSharp
                 UpgradeConfirmationCount = _regimeModel.UpgradeConfirmationCount,
                 UndeployedReserve = _undeployedCapitalReserve,
                 LastCompletedWeeklyReviewUtc = _lastCompletedWeeklyReviewUtc,
+                DefensiveOverrideEquityHighWaterMark = _defensiveOverrideEquityHighWaterMark,
+                SevereCrashModeActive = _severeCrashModeActive,
+                SevereCrashRecoveryWeeks = _severeCrashRecoveryWeeks,
+                SevereCrashModeState = _severeCrashModeState,
+                SevereCrashExitReason = _severeCrashExitReason,
                 LastPlannedTargetWeights = _lastPlannedTargetWeights
                     .ToDictionary(kvp => kvp.Key.Value, kvp => kvp.Value, StringComparer.Ordinal),
                 BrokerHoldingsByTicker = CaptureBrokerHoldingsByTicker(),
