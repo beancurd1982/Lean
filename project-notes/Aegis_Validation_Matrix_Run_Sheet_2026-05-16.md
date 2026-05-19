@@ -2092,3 +2092,25 @@ Strict code review:
 - Explicit `pre-weak-guard-enabled=false` still disables pre-weak in backtests.
 - Live/paper mode receives the improved default because the backing field is initialized to `StrategyConfig.DefaultPreWeakGuardEnabled` before the backtest-only parameter parsing block.
 - Remaining risk: this changes live/paper allocation behavior during deteriorating neutral/favorable regimes; this is the intended risk tradeoff from the approved `C-pre-weak-only` results.
+
+## Step 41: Pre-Defensive-Optimization Repo Version Check
+
+Date:
+- 2026-05-18
+
+Scope:
+- Identify the repository version immediately before Aegis defensive optimization work started.
+
+Git history finding:
+- First crisis/defensive-support commit: `6b14431fe` (`feat: add Aegis crisis diagnostics`).
+- Its parent is `60cafe46e`, which is the repo version immediately before the crisis diagnostics and defensive optimization sequence began.
+- First behavior-changing defensive optimization commit: `25a99698c` (`feat: add Aegis weak stress overlay`).
+- Its parent is `4b914b05`, which is the repo version immediately before behavior-changing defensive optimization began, but after crisis diagnostics/log analysis had already been added.
+
+Recommended interpretation:
+- Use `60cafe46e` if the target is "before all defensive optimization work, including diagnostics."
+- Use `4b914b05` if the target is "before defensive trading behavior changes, but with diagnostics work already present."
+
+Review:
+- No code changes were made.
+- The distinction matters because diagnostics did not change allocation behavior, but it was part of the defensive optimization project workflow.
