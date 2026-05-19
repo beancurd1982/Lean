@@ -44,6 +44,7 @@ namespace QuantConnect.Algorithm.CSharp
         private string _severeCrashModeState = "none";
         private string _severeCrashExitReason = "none";
         private decimal _defensiveOverrideEquityHighWaterMark;
+        private readonly DiagnosticAttributionTracker _diagnosticAttributionTracker = new DiagnosticAttributionTracker();
         private static readonly TimeSpan UsaRegularMarketOpenTime = new TimeSpan(9, 30, 0);
 
         public override void Initialize()
@@ -175,6 +176,11 @@ namespace QuantConnect.Algorithm.CSharp
 
         public override void OnEndOfAlgorithm()
         {
+            if (_crisisDiagnosticsEnabled)
+            {
+                Debug(FormatCompactCrisisDiagnosticSummary());
+            }
+
             if (LiveMode)
             {
                 SaveLiveState("Algorithm end");
@@ -249,7 +255,6 @@ namespace QuantConnect.Algorithm.CSharp
                 defensiveSnapshots,
                 regimeSnapshot.ActiveRegime);
 
-            var reserveBeforeReview = _undeployedCapitalReserve;
             var totalPortfolioValue = Portfolio.TotalPortfolioValue;
             if (_crisisDiagnosticsEnabled || _preWeakGuardEnabled || _severeCrashOverrideEnabled)
             {
@@ -258,29 +263,19 @@ namespace QuantConnect.Algorithm.CSharp
             var drawdownFromHigh = CalculateDrawdownFromHigh(totalPortfolioValue);
             var baseSleeveTargets = StrategyConfig.SleeveTargetsByRegime[regimeSnapshot.ActiveRegime];
             var sleeveTargetsOverride = (SleeveTargets)null;
-            var sleeveOverride = "none";
-            var overrideReason = "none";
             var severeCrashOverrideActive = UpdateSevereCrashMode(regimeSnapshot, totalPortfolioValue);
             var preWeakGuardActive = false;
             if (severeCrashOverrideActive)
             {
                 sleeveTargetsOverride = StrategyConfig.SevereCrashOverrideSleeveTargets;
-                sleeveOverride = "severe-crash";
-                overrideReason = _severeCrashModeState == "hold"
-                    ? "severe-crash-hysteresis-hold"
-                    : "weak-severe-dd10-signals2";
             }
             else if (ShouldApplyWeakStressOverlay(regimeSnapshot))
             {
                 sleeveTargetsOverride = StrategyConfig.WeakStressOverlaySleeveTargets;
-                sleeveOverride = "weak-stress";
-                overrideReason = "weak-stress-overlay";
             }
             else if (ShouldApplyPreWeakGuard(regimeSnapshot, totalPortfolioValue))
             {
                 sleeveTargetsOverride = StrategyConfig.PreWeakGuardSleeveTargets;
-                sleeveOverride = "pre-weak";
-                overrideReason = "pre-weak-drawdown-signal";
                 preWeakGuardActive = true;
             }
 
@@ -306,26 +301,20 @@ namespace QuantConnect.Algorithm.CSharp
             RefreshTrackedOpenOrdersFromBroker();
             SaveLiveState("Weekly review");
 
-            Debug(FormatWeeklySummary(plan, regimeSnapshot));
             if (_crisisDiagnosticsEnabled)
             {
-                Debug(FormatCrisisDiagnostics(
-                    plan,
-                    regimeSnapshot,
-                    currentWeights,
-                    breadth,
-                    vixAverage5,
-                    reserveBeforeReview,
+                RecordCrisisDiagnosticObservation(
+                    Time.Date,
+                    totalPortfolioValue,
+                    regimeSnapshot.ActiveRegime,
                     preWeakGuardActive,
                     severeCrashOverrideActive,
-                    sleeveOverride,
-                    overrideReason,
                     drawdownFromHigh,
-                    baseSleeveTargets,
-                    finalSleeveTargets,
-                    _severeCrashModeState,
-                    _severeCrashRecoveryWeeks,
-                    _severeCrashExitReason));
+                    finalSleeveTargets);
+            }
+            else
+            {
+                Debug(FormatWeeklySummary(plan, regimeSnapshot));
             }
         }
 
@@ -1152,6 +1141,30 @@ namespace QuantConnect.Algorithm.CSharp
                 severeCrashExitReason);
         }
 
+        private void RecordCrisisDiagnosticObservation(
+            DateTime date,
+            decimal equity,
+            RiskRegime activeRegime,
+            bool preWeakGuardActive,
+            bool severeCrashOverrideActive,
+            decimal drawdownFromHigh,
+            SleeveTargets finalSleeveTargets)
+        {
+            _diagnosticAttributionTracker.Record(
+                date,
+                equity,
+                activeRegime,
+                preWeakGuardActive,
+                severeCrashOverrideActive,
+                drawdownFromHigh,
+                finalSleeveTargets);
+        }
+
+        private string FormatCompactCrisisDiagnosticSummary()
+        {
+            return _diagnosticAttributionTracker.FormatSummary();
+        }
+
         private static string FormatSleeveTargets(SleeveTargets targets)
         {
             return string.Format(
@@ -1202,6 +1215,159 @@ namespace QuantConnect.Algorithm.CSharp
                 weights
                     .OrderBy(pair => pair.Key.Value, StringComparer.Ordinal)
                     .Select(pair => string.Format(CultureInfo.InvariantCulture, "{0}:{1:0.0000}", pair.Key.Value, pair.Value)));
+        }
+
+        private sealed class DiagnosticAttributionTracker
+        {
+            private readonly List<DiagnosticObservation> _observations = new List<DiagnosticObservation>();
+
+            public void Record(
+                DateTime date,
+                decimal equity,
+                RiskRegime activeRegime,
+                bool preWeakGuardActive,
+                bool severeCrashOverrideActive,
+                decimal drawdownFromHigh,
+                SleeveTargets finalSleeveTargets)
+            {
+                if (equity <= 0m)
+                {
+                    return;
+                }
+
+                var newIndex = _observations.Count;
+                for (var index = 0; index < _observations.Count; index++)
+                {
+                    var weeksForward = newIndex - index;
+                    var forwardReturn = equity / _observations[index].Equity - 1m;
+                    if (weeksForward == 1)
+                    {
+                        _observations[index].NextReturn = forwardReturn;
+                    }
+                    else if (weeksForward == 4)
+                    {
+                        _observations[index].Forward4WeekReturn = forwardReturn;
+                    }
+                    else if (weeksForward == 8)
+                    {
+                        _observations[index].Forward8WeekReturn = forwardReturn;
+                    }
+                    else if (weeksForward == 12)
+                    {
+                        _observations[index].Forward12WeekReturn = forwardReturn;
+                    }
+                }
+
+                _observations.Add(new DiagnosticObservation
+                {
+                    Date = date,
+                    Equity = equity,
+                    ActiveRegime = activeRegime,
+                    PreWeakGuardActive = preWeakGuardActive,
+                    SevereCrashOverrideActive = severeCrashOverrideActive,
+                    DrawdownFromHigh = Math.Max(0m, drawdownFromHigh),
+                    FinalGrowthTarget = finalSleeveTargets.GrowthTarget,
+                    FinalDefensiveTarget = finalSleeveTargets.DefensiveTarget,
+                    FinalCashTarget = finalSleeveTargets.CashTarget
+                });
+            }
+
+            public string FormatSummary()
+            {
+                var preWeak = _observations.Where(observation => observation.PreWeakGuardActive).ToList();
+                var nonPreWeak = _observations.Where(observation => !observation.PreWeakGuardActive).ToList();
+                var severeCrash = _observations.Where(observation => observation.SevereCrashOverrideActive).ToList();
+                var weakRegime = _observations.Where(observation => observation.ActiveRegime == RiskRegime.Weak).ToList();
+
+                return string.Format(
+                    CultureInfo.InvariantCulture,
+                    "[AEGIS-DIAG-SUMMARY] Weeks={0} Start={1} End={2} PreWeakWeeks={3} NonPreWeakWeeks={4} SevereCrashWeeks={5} WeakRegimeWeeks={6} PreWeakAvgDrawdown={7} NonPreWeakAvgDrawdown={8} SevereCrashAvgDrawdown={9} PreWeakNextReturnAvg={10} NonPreWeakNextReturnAvg={11} PreWeakFwd4Avg={12} PreWeakFwd8Avg={13} PreWeakFwd12Avg={14} PreWeakFwd4WinRate={15} PreWeakAvgTarget=G{16}/D{17}/C{18} NonPreWeakAvgTarget=G{19}/D{20}/C{21}",
+                    _observations.Count,
+                    _observations.Count == 0 ? "none" : _observations[0].Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+                    _observations.Count == 0 ? "none" : _observations[_observations.Count - 1].Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+                    preWeak.Count,
+                    nonPreWeak.Count,
+                    severeCrash.Count,
+                    weakRegime.Count,
+                    FormatDecimal(Average(preWeak, observation => observation.DrawdownFromHigh)),
+                    FormatDecimal(Average(nonPreWeak, observation => observation.DrawdownFromHigh)),
+                    FormatDecimal(Average(severeCrash, observation => observation.DrawdownFromHigh)),
+                    FormatDecimal(AverageNullable(preWeak, observation => observation.NextReturn)),
+                    FormatDecimal(AverageNullable(nonPreWeak, observation => observation.NextReturn)),
+                    FormatDecimal(AverageNullable(preWeak, observation => observation.Forward4WeekReturn)),
+                    FormatDecimal(AverageNullable(preWeak, observation => observation.Forward8WeekReturn)),
+                    FormatDecimal(AverageNullable(preWeak, observation => observation.Forward12WeekReturn)),
+                    FormatDecimal(WinRate(preWeak, observation => observation.Forward4WeekReturn)),
+                    FormatDecimal(Average(preWeak, observation => observation.FinalGrowthTarget)),
+                    FormatDecimal(Average(preWeak, observation => observation.FinalDefensiveTarget)),
+                    FormatDecimal(Average(preWeak, observation => observation.FinalCashTarget)),
+                    FormatDecimal(Average(nonPreWeak, observation => observation.FinalGrowthTarget)),
+                    FormatDecimal(Average(nonPreWeak, observation => observation.FinalDefensiveTarget)),
+                    FormatDecimal(Average(nonPreWeak, observation => observation.FinalCashTarget)));
+            }
+
+            private static decimal? Average(
+                IReadOnlyCollection<DiagnosticObservation> observations,
+                Func<DiagnosticObservation, decimal> selector)
+            {
+                return observations.Count == 0
+                    ? null
+                    : observations.Average(selector);
+            }
+
+            private static decimal? AverageNullable(
+                IEnumerable<DiagnosticObservation> observations,
+                Func<DiagnosticObservation, decimal?> selector)
+            {
+                var values = observations
+                    .Select(selector)
+                    .Where(value => value.HasValue)
+                    .Select(value => value.Value)
+                    .ToList();
+
+                return values.Count == 0
+                    ? null
+                    : values.Average();
+            }
+
+            private static decimal? WinRate(
+                IEnumerable<DiagnosticObservation> observations,
+                Func<DiagnosticObservation, decimal?> selector)
+            {
+                var values = observations
+                    .Select(selector)
+                    .Where(value => value.HasValue)
+                    .Select(value => value.Value)
+                    .ToList();
+
+                return values.Count == 0
+                    ? null
+                    : values.Count(value => value > 0m) / (decimal)values.Count;
+            }
+
+            private static string FormatDecimal(decimal? value)
+            {
+                return value.HasValue
+                    ? value.Value.ToString("0.0000", CultureInfo.InvariantCulture)
+                    : "n/a";
+            }
+        }
+
+        private sealed class DiagnosticObservation
+        {
+            public DateTime Date { get; set; }
+            public decimal Equity { get; set; }
+            public RiskRegime ActiveRegime { get; set; }
+            public bool PreWeakGuardActive { get; set; }
+            public bool SevereCrashOverrideActive { get; set; }
+            public decimal DrawdownFromHigh { get; set; }
+            public decimal FinalGrowthTarget { get; set; }
+            public decimal FinalDefensiveTarget { get; set; }
+            public decimal FinalCashTarget { get; set; }
+            public decimal? NextReturn { get; set; }
+            public decimal? Forward4WeekReturn { get; set; }
+            public decimal? Forward8WeekReturn { get; set; }
+            public decimal? Forward12WeekReturn { get; set; }
         }
 
         private sealed class AssetState

@@ -665,6 +665,88 @@ namespace QuantConnect.Tests.Algorithm
             Assert.That(diagnostics, Does.Contain("SevereCrashExitReason=none"));
         }
 
+        [Test]
+        public void FormatsCompactCrisisDiagnosticSummaryWithForwardReturns()
+        {
+            var algorithm = CreateAlgorithm(new Dictionary<string, string>
+            {
+                ["crisis-diagnostics"] = "true"
+            });
+
+            RecordCrisisDiagnosticObservation(
+                algorithm,
+                new DateTime(2022, 1, 3),
+                100000m,
+                QuantConnect.Algorithm.CSharp.RiskRegime.Neutral,
+                preWeakGuardActive: true,
+                severeCrashOverrideActive: false,
+                drawdownFromHigh: 0.05m,
+                finalSleeveTargets: QuantConnect.Algorithm.CSharp.StrategyConfig.PreWeakGuardSleeveTargets);
+            RecordCrisisDiagnosticObservation(
+                algorithm,
+                new DateTime(2022, 1, 10),
+                101000m,
+                QuantConnect.Algorithm.CSharp.RiskRegime.Neutral,
+                preWeakGuardActive: false,
+                severeCrashOverrideActive: false,
+                drawdownFromHigh: 0.01m,
+                finalSleeveTargets: QuantConnect.Algorithm.CSharp.StrategyConfig.SleeveTargetsByRegime[QuantConnect.Algorithm.CSharp.RiskRegime.Neutral]);
+            RecordCrisisDiagnosticObservation(
+                algorithm,
+                new DateTime(2022, 1, 17),
+                102000m,
+                QuantConnect.Algorithm.CSharp.RiskRegime.Neutral,
+                preWeakGuardActive: false,
+                severeCrashOverrideActive: false,
+                drawdownFromHigh: 0.02m,
+                finalSleeveTargets: QuantConnect.Algorithm.CSharp.StrategyConfig.SleeveTargetsByRegime[QuantConnect.Algorithm.CSharp.RiskRegime.Neutral]);
+            RecordCrisisDiagnosticObservation(
+                algorithm,
+                new DateTime(2022, 1, 24),
+                103000m,
+                QuantConnect.Algorithm.CSharp.RiskRegime.Neutral,
+                preWeakGuardActive: false,
+                severeCrashOverrideActive: false,
+                drawdownFromHigh: 0.01m,
+                finalSleeveTargets: QuantConnect.Algorithm.CSharp.StrategyConfig.SleeveTargetsByRegime[QuantConnect.Algorithm.CSharp.RiskRegime.Neutral]);
+            RecordCrisisDiagnosticObservation(
+                algorithm,
+                new DateTime(2022, 1, 31),
+                104000m,
+                QuantConnect.Algorithm.CSharp.RiskRegime.Favorable,
+                preWeakGuardActive: false,
+                severeCrashOverrideActive: true,
+                drawdownFromHigh: 0.12m,
+                finalSleeveTargets: QuantConnect.Algorithm.CSharp.StrategyConfig.SevereCrashOverrideSleeveTargets);
+
+            var summary = FormatCompactCrisisDiagnosticSummary(algorithm);
+
+            Assert.That(summary, Does.Contain("[AEGIS-DIAG-SUMMARY]"));
+            Assert.That(summary, Does.Contain("Weeks=5"));
+            Assert.That(summary, Does.Contain("PreWeakWeeks=1"));
+            Assert.That(summary, Does.Contain("SevereCrashWeeks=1"));
+            Assert.That(summary, Does.Contain("PreWeakAvgDrawdown=0.0500"));
+            Assert.That(summary, Does.Contain("PreWeakNextReturnAvg=0.0100"));
+            Assert.That(summary, Does.Contain("PreWeakFwd4Avg=0.0400"));
+            Assert.That(summary, Does.Contain("NonPreWeakWeeks=4"));
+        }
+
+        [Test]
+        public void FormatsCompactCrisisDiagnosticSummaryWhenNoObservationsExist()
+        {
+            var algorithm = CreateAlgorithm(new Dictionary<string, string>
+            {
+                ["crisis-diagnostics"] = "true"
+            });
+
+            var summary = FormatCompactCrisisDiagnosticSummary(algorithm);
+
+            Assert.That(summary, Does.Contain("[AEGIS-DIAG-SUMMARY]"));
+            Assert.That(summary, Does.Contain("Weeks=0"));
+            Assert.That(summary, Does.Contain("PreWeakWeeks=0"));
+            Assert.That(summary, Does.Contain("SevereCrashWeeks=0"));
+        }
+
         private static QuantConnect.Algorithm.CSharp.AegisGrowthAllocation CreateAlgorithm(
             IReadOnlyDictionary<string, string> parameters = null)
         {
@@ -906,6 +988,44 @@ namespace QuantConnect.Tests.Algorithm
                     severeCrashRecoveryWeeks,
                     severeCrashExitReason
                 });
+        }
+
+        private static void RecordCrisisDiagnosticObservation(
+            QuantConnect.Algorithm.CSharp.AegisGrowthAllocation algorithm,
+            DateTime date,
+            decimal equity,
+            QuantConnect.Algorithm.CSharp.RiskRegime activeRegime,
+            bool preWeakGuardActive,
+            bool severeCrashOverrideActive,
+            decimal drawdownFromHigh,
+            QuantConnect.Algorithm.CSharp.SleeveTargets finalSleeveTargets)
+        {
+            var method = typeof(QuantConnect.Algorithm.CSharp.AegisGrowthAllocation)
+                .GetMethod("RecordCrisisDiagnosticObservation", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+
+            Assert.That(method, Is.Not.Null);
+            method.Invoke(
+                algorithm,
+                new object[]
+                {
+                    date,
+                    equity,
+                    activeRegime,
+                    preWeakGuardActive,
+                    severeCrashOverrideActive,
+                    drawdownFromHigh,
+                    finalSleeveTargets
+                });
+        }
+
+        private static string FormatCompactCrisisDiagnosticSummary(
+            QuantConnect.Algorithm.CSharp.AegisGrowthAllocation algorithm)
+        {
+            var method = typeof(QuantConnect.Algorithm.CSharp.AegisGrowthAllocation)
+                .GetMethod("FormatCompactCrisisDiagnosticSummary", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+
+            Assert.That(method, Is.Not.Null);
+            return (string)method.Invoke(algorithm, Array.Empty<object>());
         }
 
         private static QuantConnect.Algorithm.CSharp.RegimeSnapshot CreateNeutralDeterioratingSnapshot()

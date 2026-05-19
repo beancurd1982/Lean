@@ -130,3 +130,67 @@ Analysis target after upload:
 - Identify false positives in non-crisis periods.
 - Measure 4-week, 8-week, and 12-week forward behavior after pre-weak activation.
 - Decide whether Phase 4 should tune pre-weak, redesign severe-crash behavior, or start universe validation.
+
+## Step 4: Start Compact Diagnostic Summary Implementation
+
+Date:
+- 2026-05-19
+
+Scope:
+- Implement compact attribution diagnostics after Phase 3 showed the verbose weekly `[AEGIS-DIAG]` log is truncated by QuantConnect's 100KB log cap.
+
+Design decision:
+- Keep `crisis-diagnostics=true` as the switch.
+- Aggregate weekly attribution in memory.
+- Emit one compact `[AEGIS-DIAG-SUMMARY]` block at algorithm end.
+- Stop emitting the verbose weekly `[AEGIS-DIAG]` line during diagnostics runs, because it prevents the end-of-run summary from appearing in full-period backtests.
+- Keep the existing formatting helper available for focused local/unit diagnostics, but do not use it in the weekly cloud log path.
+
+Planned files touched:
+- `Algorithm.CSharp/MyAlgorithms/AegisGrowthAllocation/AegisGrowthAllocation.cs`
+- `Tests/Algorithm/AegisGrowthAllocationTests.cs`
+- `project-notes/Aegis_Defensive_State_Persistence_Implementation_2026-05-19.md`
+
+Risk:
+- This changes diagnostic logging behavior only. It must not change allocations, orders, or default trading behavior.
+
+## Step 5: Complete Compact Diagnostic Summary Implementation
+
+Date:
+- 2026-05-19
+
+Implementation summary:
+- Added an in-memory diagnostic attribution tracker to `AegisGrowthAllocation`.
+- When `crisis-diagnostics=true`, weekly reviews now record compact observations instead of emitting the verbose weekly `[AEGIS-DIAG]` line.
+- `OnEndOfAlgorithm()` now emits one `[AEGIS-DIAG-SUMMARY]` line with:
+  - observation count and date range
+  - pre-weak, non-pre-weak, severe-crash, and weak-regime week counts
+  - average drawdowns
+  - next-week, 4-week, 8-week, and 12-week forward returns where available
+  - pre-weak 4-week win rate
+  - average final sleeve targets for pre-weak and non-pre-weak weeks
+- Normal weekly `[AEGIS]` summaries still emit when `crisis-diagnostics=false`.
+
+Files touched:
+- `Algorithm.CSharp/MyAlgorithms/AegisGrowthAllocation/AegisGrowthAllocation.cs`
+- `Tests/Algorithm/AegisGrowthAllocationTests.cs`
+- `project-notes/Aegis_Defensive_State_Persistence_Implementation_2026-05-19.md`
+
+Verification:
+- `git diff --check` passed.
+- `dotnet build Algorithm.CSharp/QuantConnect.Algorithm.CSharp.csproj -c Debug -nologo --no-restore` passed.
+- `dotnet build Tests/QuantConnect.Tests.csproj --no-restore -nologo` passed.
+- Targeted tests passed through `dotnet vstest`:
+  - `FormatsCompactCrisisDiagnosticSummaryWithForwardReturns`
+  - `FormatsCompactCrisisDiagnosticSummaryWhenNoObservationsExist`
+- The test host still reports the known missing SGX map-file path and Python.NET finalizer issue after the targeted tests complete, but the two targeted tests passed before that post-run crash message.
+
+Strict review:
+- No allocation target constants were changed.
+- No order placement logic was changed.
+- No live-state persistence fields or save/load behavior were changed.
+- The diagnostic tracker records current total portfolio value and final sleeve targets at weekly review time, which is appropriate for attribution but should not be treated as exact post-fill execution PnL.
+- The final 1/4/8/12-week forward return windows are intentionally omitted from averages when insufficient future observations exist.
+
+Open risk:
+- QuantConnect may still truncate logs if the platform emits substantial non-strategy messages before algorithm end. The new diagnostic path minimizes strategy-level logs, but the next cloud backtest must confirm the final `[AEGIS-DIAG-SUMMARY]` appears in the downloaded log.
