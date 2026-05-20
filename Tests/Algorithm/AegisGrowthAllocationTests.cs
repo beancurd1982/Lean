@@ -291,6 +291,90 @@ namespace QuantConnect.Tests.Algorithm
         }
 
         [Test]
+        public void UsesDefaultStressBandParameters()
+        {
+            CreateAlgorithm();
+
+            Assert.That(
+                QuantConnect.Algorithm.CSharp.StrategyConfig.WeakStressThreshold,
+                Is.EqualTo(QuantConnect.Algorithm.CSharp.StrategyConfig.DefaultWeakStressThreshold));
+            Assert.That(
+                QuantConnect.Algorithm.CSharp.StrategyConfig.SevereStressThreshold,
+                Is.EqualTo(QuantConnect.Algorithm.CSharp.StrategyConfig.DefaultSevereStressThreshold));
+        }
+
+        [Test]
+        public void UsesConfiguredStressBandParameters()
+        {
+            CreateAlgorithm(new Dictionary<string, string>
+            {
+                ["weak-stress-threshold"] = "32",
+                ["severe-stress-gap"] = "4"
+            });
+
+            Assert.That(QuantConnect.Algorithm.CSharp.StrategyConfig.WeakStressThreshold, Is.EqualTo(32m));
+            Assert.That(QuantConnect.Algorithm.CSharp.StrategyConfig.SevereStressThreshold, Is.EqualTo(36m));
+        }
+
+        [Test]
+        public void InvalidStressBandFallsBackToDefaults()
+        {
+            CreateAlgorithm(new Dictionary<string, string>
+            {
+                ["weak-stress-threshold"] = "32",
+                ["severe-stress-gap"] = "1"
+            });
+
+            Assert.That(
+                QuantConnect.Algorithm.CSharp.StrategyConfig.WeakStressThreshold,
+                Is.EqualTo(QuantConnect.Algorithm.CSharp.StrategyConfig.DefaultWeakStressThreshold));
+            Assert.That(
+                QuantConnect.Algorithm.CSharp.StrategyConfig.SevereStressThreshold,
+                Is.EqualTo(QuantConnect.Algorithm.CSharp.StrategyConfig.DefaultSevereStressThreshold));
+        }
+
+        [Test]
+        public void ComputedSevereStressAboveMaximumFallsBackToDefaults()
+        {
+            CreateAlgorithm(new Dictionary<string, string>
+            {
+                ["weak-stress-threshold"] = "40",
+                ["severe-stress-gap"] = "8"
+            });
+
+            Assert.That(
+                QuantConnect.Algorithm.CSharp.StrategyConfig.WeakStressThreshold,
+                Is.EqualTo(QuantConnect.Algorithm.CSharp.StrategyConfig.DefaultWeakStressThreshold));
+            Assert.That(
+                QuantConnect.Algorithm.CSharp.StrategyConfig.SevereStressThreshold,
+                Is.EqualTo(QuantConnect.Algorithm.CSharp.StrategyConfig.DefaultSevereStressThreshold));
+        }
+
+        [Test]
+        public void RegimeModelUsesConfiguredSevereStressThreshold()
+        {
+            CreateAlgorithm(new Dictionary<string, string>
+            {
+                ["weak-stress-threshold"] = "32",
+                ["severe-stress-gap"] = "4"
+            });
+
+            var neutralStress = new QuantConnect.Algorithm.CSharp.RegimeModel().Update(
+                new QuantConnect.Algorithm.CSharp.RegimeInputs(100m, 100m, 100m, 0.50m, 31m));
+            var weakStress = new QuantConnect.Algorithm.CSharp.RegimeModel().Update(
+                new QuantConnect.Algorithm.CSharp.RegimeInputs(100m, 100m, 100m, 0.50m, 33m));
+            var severeStress = new QuantConnect.Algorithm.CSharp.RegimeModel().Update(
+                new QuantConnect.Algorithm.CSharp.RegimeInputs(100m, 100m, 100m, 0.50m, 36m));
+
+            Assert.That(neutralStress.StressState, Is.EqualTo(QuantConnect.Algorithm.CSharp.SignalState.Neutral));
+            Assert.That(neutralStress.SevereStress, Is.False);
+            Assert.That(weakStress.StressState, Is.EqualTo(QuantConnect.Algorithm.CSharp.SignalState.Weak));
+            Assert.That(weakStress.SevereStress, Is.False);
+            Assert.That(severeStress.StressState, Is.EqualTo(QuantConnect.Algorithm.CSharp.SignalState.Weak));
+            Assert.That(severeStress.SevereStress, Is.True);
+        }
+
+        [Test]
         public void DisablesSevereCrashOverrideByDefault()
         {
             var algorithm = CreateAlgorithm();

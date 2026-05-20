@@ -170,6 +170,7 @@ namespace QuantConnect.Tests.Algorithm
             QuantConnect.Algorithm.CSharp.StrategyConfig.ConfigureRuntimeParameters(
                 QuantConnect.Algorithm.CSharp.StrategyConfig.DefaultFavorableBreadthThreshold,
                 QuantConnect.Algorithm.CSharp.StrategyConfig.DefaultWeakStressThreshold,
+                QuantConnect.Algorithm.CSharp.StrategyConfig.DefaultSevereStressGap,
                 QuantConnect.Algorithm.CSharp.StrategyConfig.DefaultUpgradeConfirmationWeeks,
                 QuantConnect.Algorithm.CSharp.StrategyConfig.DefaultGrowthAtrEligibilityLimit,
                 QuantConnect.Algorithm.CSharp.StrategyConfig.DefaultReplacementScoreGap,

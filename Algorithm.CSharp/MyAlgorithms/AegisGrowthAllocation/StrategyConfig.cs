@@ -23,6 +23,7 @@ namespace QuantConnect.Algorithm.CSharp
         public const string SevereCrashOverrideExitDrawdownThresholdParameter = "sev-crash-dd-exit";
         public const string SevereCrashOverrideRecoveryConfirmationWeeksParameter = "sev-crash-recovery-wks";
         public const string WeakStressThresholdParameter = "weak-stress-threshold";
+        public const string SevereStressGapParameter = "severe-stress-gap";
         public const string FavorableBreadthThresholdParameter = "favorable-breadth-threshold";
         public const string UpgradeConfirmationWeeksParameter = "upgrade-confirmation-weeks";
         public const string ReplacementScoreGapParameter = "replacement-score-gap";
@@ -70,7 +71,10 @@ namespace QuantConnect.Algorithm.CSharp
 
         public const decimal FavorableStressThreshold = 18m;
         public const decimal DefaultWeakStressThreshold = 27m;
-        public const decimal SevereStressThreshold = 30m;
+        public const decimal DefaultSevereStressGap = 3m;
+        public const decimal DefaultSevereStressThreshold = DefaultWeakStressThreshold + DefaultSevereStressGap;
+        public const decimal MaxWeakStressThreshold = 40m;
+        public const decimal MaxSevereStressThreshold = 45m;
         public const bool DefaultPreWeakGuardEnabled = true;
         public const decimal DefaultPreWeakGuardDrawdownThreshold = 0.05m;
         public const decimal DefaultSevereCrashOverrideDrawdownThreshold = 0.10m;
@@ -81,6 +85,8 @@ namespace QuantConnect.Algorithm.CSharp
 
         public static decimal FavorableBreadthThreshold { get; private set; } = DefaultFavorableBreadthThreshold;
         public static decimal WeakStressThreshold { get; private set; } = DefaultWeakStressThreshold;
+        public static decimal SevereStressGap { get; private set; } = DefaultSevereStressGap;
+        public static decimal SevereStressThreshold { get; private set; } = DefaultSevereStressThreshold;
         public static int UpgradeConfirmationWeeks { get; private set; } = DefaultUpgradeConfirmationWeeks;
 
         public static readonly IReadOnlyDictionary<RiskRegime, SleeveTargets> SleeveTargetsByRegime =
@@ -214,6 +220,8 @@ namespace QuantConnect.Algorithm.CSharp
         {
             FavorableBreadthThreshold = DefaultFavorableBreadthThreshold;
             WeakStressThreshold = DefaultWeakStressThreshold;
+            SevereStressGap = DefaultSevereStressGap;
+            SevereStressThreshold = DefaultSevereStressThreshold;
             UpgradeConfirmationWeeks = DefaultUpgradeConfirmationWeeks;
             GrowthAtrEligibilityLimit = DefaultGrowthAtrEligibilityLimit;
             ReplacementScoreGap = DefaultReplacementScoreGap;
@@ -224,6 +232,7 @@ namespace QuantConnect.Algorithm.CSharp
         public static void ConfigureRuntimeParameters(
             decimal favorableBreadthThreshold,
             decimal weakStressThreshold,
+            decimal severeStressGap,
             int upgradeConfirmationWeeks,
             decimal growthAtrEligibilityLimit,
             decimal replacementScoreGap,
@@ -232,6 +241,8 @@ namespace QuantConnect.Algorithm.CSharp
         {
             FavorableBreadthThreshold = favorableBreadthThreshold;
             WeakStressThreshold = weakStressThreshold;
+            SevereStressGap = severeStressGap;
+            SevereStressThreshold = weakStressThreshold + severeStressGap;
             UpgradeConfirmationWeeks = upgradeConfirmationWeeks;
             GrowthAtrEligibilityLimit = growthAtrEligibilityLimit;
             ReplacementScoreGap = replacementScoreGap;

@@ -139,7 +139,7 @@ namespace QuantConnect.Algorithm.CSharp
                 WeeklyReview);
 
             Debug(
-                $"AegisGrowthAllocation initialized. GrowthUniverse={StrategyConfig.GrowthTickers.Count} DefensiveUniverse={StrategyConfig.DefensiveTickers.Count} UndeployedReserve={_undeployedCapitalReserve.ToString(CultureInfo.InvariantCulture)} FavorableBreadthThreshold={StrategyConfig.FavorableBreadthThreshold.ToString(CultureInfo.InvariantCulture)} WeakStressThreshold={StrategyConfig.WeakStressThreshold.ToString(CultureInfo.InvariantCulture)} UpgradeConfirmationWeeks={StrategyConfig.UpgradeConfirmationWeeks} GrowthAtrEligibilityLimit={StrategyConfig.GrowthAtrEligibilityLimit.ToString(CultureInfo.InvariantCulture)} ReplacementScoreGap={StrategyConfig.ReplacementScoreGap.ToString(CultureInfo.InvariantCulture)} HoldStabilityBonus={StrategyConfig.HoldStabilityBonus.ToString(CultureInfo.InvariantCulture)} ToleranceBandScale={StrategyConfig.RebalanceToleranceBandScale.ToString(CultureInfo.InvariantCulture)}");
+                $"AegisGrowthAllocation initialized. GrowthUniverse={StrategyConfig.GrowthTickers.Count} DefensiveUniverse={StrategyConfig.DefensiveTickers.Count} UndeployedReserve={_undeployedCapitalReserve.ToString(CultureInfo.InvariantCulture)} FavorableBreadthThreshold={StrategyConfig.FavorableBreadthThreshold.ToString(CultureInfo.InvariantCulture)} WeakStressThreshold={StrategyConfig.WeakStressThreshold.ToString(CultureInfo.InvariantCulture)} SevereStressGap={StrategyConfig.SevereStressGap.ToString(CultureInfo.InvariantCulture)} SevereStressThreshold={StrategyConfig.SevereStressThreshold.ToString(CultureInfo.InvariantCulture)} UpgradeConfirmationWeeks={StrategyConfig.UpgradeConfirmationWeeks} GrowthAtrEligibilityLimit={StrategyConfig.GrowthAtrEligibilityLimit.ToString(CultureInfo.InvariantCulture)} ReplacementScoreGap={StrategyConfig.ReplacementScoreGap.ToString(CultureInfo.InvariantCulture)} HoldStabilityBonus={StrategyConfig.HoldStabilityBonus.ToString(CultureInfo.InvariantCulture)} ToleranceBandScale={StrategyConfig.RebalanceToleranceBandScale.ToString(CultureInfo.InvariantCulture)}");
         }
 
         public override void OnData(Slice slice)
@@ -500,10 +500,9 @@ namespace QuantConnect.Algorithm.CSharp
                 StrategyConfig.FavorableBreadthThresholdParameter,
                 StrategyConfig.DefaultFavorableBreadthThreshold,
                 value => value > StrategyConfig.WeakBreadthThreshold && value <= 1m);
-            var weakStressThreshold = ParseDecimalParameter(
-                StrategyConfig.WeakStressThresholdParameter,
-                StrategyConfig.DefaultWeakStressThreshold,
-                value => value > StrategyConfig.FavorableStressThreshold && value < StrategyConfig.SevereStressThreshold);
+            var stressBand = ParseStressBandParameters();
+            var weakStressThreshold = stressBand.WeakStressThreshold;
+            var severeStressGap = stressBand.SevereStressGap;
             var upgradeConfirmationWeeks = ParseIntParameter(
                 StrategyConfig.UpgradeConfirmationWeeksParameter,
                 StrategyConfig.DefaultUpgradeConfirmationWeeks,
@@ -528,11 +527,48 @@ namespace QuantConnect.Algorithm.CSharp
             StrategyConfig.ConfigureRuntimeParameters(
                 favorableBreadthThreshold,
                 weakStressThreshold,
+                severeStressGap,
                 upgradeConfirmationWeeks,
                 growthAtrEligibilityLimit,
                 replacementScoreGap,
                 holdStabilityBonus,
                 rebalanceToleranceBandScale);
+        }
+
+        private (decimal WeakStressThreshold, decimal SevereStressGap) ParseStressBandParameters()
+        {
+            var weakStressValid = TryParseOptionalDecimalParameter(
+                StrategyConfig.WeakStressThresholdParameter,
+                StrategyConfig.DefaultWeakStressThreshold,
+                value => value > StrategyConfig.FavorableStressThreshold && value <= StrategyConfig.MaxWeakStressThreshold,
+                out var weakStressThreshold);
+            var severeStressGapValid = TryParseOptionalDecimalParameter(
+                StrategyConfig.SevereStressGapParameter,
+                StrategyConfig.DefaultSevereStressGap,
+                value => value >= 2m && value <= 8m,
+                out var severeStressGap);
+
+            if (!weakStressValid || !severeStressGapValid)
+            {
+                return (StrategyConfig.DefaultWeakStressThreshold, StrategyConfig.DefaultSevereStressGap);
+            }
+
+            var computedSevereStressThreshold = weakStressThreshold + severeStressGap;
+            if (computedSevereStressThreshold > StrategyConfig.MaxSevereStressThreshold)
+            {
+                Debug(
+                    string.Format(
+                        CultureInfo.InvariantCulture,
+                        "[AEGIS] Invalid stress band weak-stress-threshold={0} severe-stress-gap={1} computed-severe-stress-threshold={2}. Using defaults weak={3} severe-gap={4}.",
+                        weakStressThreshold,
+                        severeStressGap,
+                        computedSevereStressThreshold,
+                        StrategyConfig.DefaultWeakStressThreshold,
+                        StrategyConfig.DefaultSevereStressGap));
+                return (StrategyConfig.DefaultWeakStressThreshold, StrategyConfig.DefaultSevereStressGap);
+            }
+
+            return (weakStressThreshold, severeStressGap);
         }
 
         private DateTime ParseBacktestStartDate()
@@ -594,6 +630,36 @@ namespace QuantConnect.Algorithm.CSharp
             }
 
             return value;
+        }
+
+        private bool TryParseOptionalDecimalParameter(
+            string name,
+            decimal defaultValue,
+            Func<decimal, bool> validator,
+            out decimal value)
+        {
+            var raw = GetParameter(name);
+            if (string.IsNullOrWhiteSpace(raw))
+            {
+                value = defaultValue;
+                return true;
+            }
+
+            if (!decimal.TryParse(raw, NumberStyles.Any, CultureInfo.InvariantCulture, out value))
+            {
+                Debug($"[AEGIS] Invalid decimal parameter {name}={raw}. Using default {defaultValue.ToString(CultureInfo.InvariantCulture)}.");
+                value = defaultValue;
+                return false;
+            }
+
+            if (!validator(value))
+            {
+                Debug($"[AEGIS] Out-of-range decimal parameter {name}={value.ToString(CultureInfo.InvariantCulture)}. Using default {defaultValue.ToString(CultureInfo.InvariantCulture)}.");
+                value = defaultValue;
+                return false;
+            }
+
+            return true;
         }
 
         private int ParseIntParameter(string name, int defaultValue, Func<int, bool> validator)
