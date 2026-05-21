@@ -113,3 +113,37 @@ Fresh verification before commit:
 Commit split:
 - Backtest evidence and optimizer analysis artifacts will be committed separately from code.
 - Stress-band parameterization code, tests, and this implementation note will be committed as the behavior-change commit.
+
+## Step 6: Cloud Upload Failure Follow-Up
+
+Date:
+- 2026-05-21
+
+Cloud error:
+- `AegisGrowthAllocation.cs` was not saved because it exceeded the cloud platform file limit of 64,000 characters.
+- Local file size was confirmed at 64,919 characters.
+- The follow-on build error came from the cloud using a stale `AegisGrowthAllocation.cs` caller against the newer `StrategyConfig.ConfigureRuntimeParameters(...)` signature.
+
+Root cause:
+- The stress-band parser added enough code to the cloud entry file to exceed the upload limit.
+
+Fix plan:
+- Move stress-band parameter parsing from `AegisGrowthAllocation.cs` into `StrategyConfig.cs`.
+- Keep `AegisGrowthAllocation.cs` as the cloud entry point and below 64,000 characters.
+- Preserve runtime behavior and existing defaults.
+
+Implementation:
+- Replaced the local stress-band parser in `AegisGrowthAllocation.cs` with a call to `StrategyConfig.ParseStressBandParameters(...)`.
+- Moved optional decimal parsing for the stress-band pair into `StrategyConfig.cs`.
+- Kept the same validation rules and fallback behavior.
+
+Verification:
+- `AegisGrowthAllocation.cs` size after the change: 62,014 characters.
+- `dotnet build Algorithm.CSharp/QuantConnect.Algorithm.CSharp.csproj -c Debug -nologo --no-restore -v:minimal /clp:ErrorsOnly` passed with zero errors.
+- `dotnet build Tests/QuantConnect.Tests.csproj --no-restore -nologo -v:minimal /clp:ErrorsOnly` passed with zero errors.
+- `git diff --check` passed.
+
+Strict review:
+- No order placement, portfolio target, regime rule, or live-state behavior changed.
+- The only behavior-related code movement is stress-band parameter parsing; validation and defaults are unchanged.
+- Cloud upload risk is reduced because the main algorithm file is now below the documented size limit.

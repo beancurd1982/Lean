@@ -1,6 +1,7 @@
 #region imports
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 #endregion
 
@@ -248,6 +249,80 @@ namespace QuantConnect.Algorithm.CSharp
             ReplacementScoreGap = replacementScoreGap;
             HoldStabilityBonus = holdStabilityBonus;
             RebalanceToleranceBandScale = rebalanceToleranceBandScale;
+        }
+
+        public static (decimal WeakStressThreshold, decimal SevereStressGap) ParseStressBandParameters(
+            Func<string, string> getParameter,
+            Action<string> debug)
+        {
+            var weakStressValid = TryParseOptionalDecimalParameter(
+                getParameter,
+                debug,
+                WeakStressThresholdParameter,
+                DefaultWeakStressThreshold,
+                value => value > FavorableStressThreshold && value <= MaxWeakStressThreshold,
+                out var weakStressThreshold);
+            var severeStressGapValid = TryParseOptionalDecimalParameter(
+                getParameter,
+                debug,
+                SevereStressGapParameter,
+                DefaultSevereStressGap,
+                value => value >= 2m && value <= 8m,
+                out var severeStressGap);
+
+            if (!weakStressValid || !severeStressGapValid)
+            {
+                return (DefaultWeakStressThreshold, DefaultSevereStressGap);
+            }
+
+            var computedSevereStressThreshold = weakStressThreshold + severeStressGap;
+            if (computedSevereStressThreshold > MaxSevereStressThreshold)
+            {
+                debug(
+                    string.Format(
+                        CultureInfo.InvariantCulture,
+                        "[AEGIS] Invalid stress band weak-stress-threshold={0} severe-stress-gap={1} computed-severe-stress-threshold={2}. Using defaults weak={3} severe-gap={4}.",
+                        weakStressThreshold,
+                        severeStressGap,
+                        computedSevereStressThreshold,
+                        DefaultWeakStressThreshold,
+                        DefaultSevereStressGap));
+                return (DefaultWeakStressThreshold, DefaultSevereStressGap);
+            }
+
+            return (weakStressThreshold, severeStressGap);
+        }
+
+        private static bool TryParseOptionalDecimalParameter(
+            Func<string, string> getParameter,
+            Action<string> debug,
+            string name,
+            decimal defaultValue,
+            Func<decimal, bool> validator,
+            out decimal value)
+        {
+            var raw = getParameter(name);
+            if (string.IsNullOrWhiteSpace(raw))
+            {
+                value = defaultValue;
+                return true;
+            }
+
+            if (!decimal.TryParse(raw, NumberStyles.Any, CultureInfo.InvariantCulture, out value))
+            {
+                debug($"[AEGIS] Invalid decimal parameter {name}={raw}. Using default {defaultValue.ToString(CultureInfo.InvariantCulture)}.");
+                value = defaultValue;
+                return false;
+            }
+
+            if (!validator(value))
+            {
+                debug($"[AEGIS] Out-of-range decimal parameter {name}={value.ToString(CultureInfo.InvariantCulture)}. Using default {defaultValue.ToString(CultureInfo.InvariantCulture)}.");
+                value = defaultValue;
+                return false;
+            }
+
+            return true;
         }
     }
 
