@@ -34,8 +34,8 @@ namespace QuantConnect.Algorithm.CSharp
         public const string LiveStateKey = "AegisGrowthAllocation_LiveState_V2";
         public const int LiveStateSchemaVersion = 2;
         public const decimal LiveStateQuantityTolerance = 0.0001m;
-        public const string AlgorithmVersion = "AegisGrowthAllocation-2026-05-23-optstress-defaults";
-        public const string SourceRevision = "eb3145647";
+        public const string AlgorithmVersion = "AegisGrowthAllocation-2026-05-23-live-state-diagnostics-v2";
+        public const string SourceRevision = "4c59639af";
         public static readonly DateTime DefaultBacktestStartDate = new DateTime(2018, 1, 1);
         public static readonly TimeSpan WeeklyDecisionTime = new TimeSpan(10, 0, 0);
         public const int CloseWindowSize = 252;

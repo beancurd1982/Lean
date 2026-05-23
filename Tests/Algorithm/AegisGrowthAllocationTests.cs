@@ -684,6 +684,109 @@ namespace QuantConnect.Tests.Algorithm
         }
 
         [Test]
+        public void FormatsLiveHoldingsSummaryForDiagnostics()
+        {
+            var empty = FormatLiveHoldingsSummary(new Dictionary<string, decimal>());
+            var holdings = FormatLiveHoldingsSummary(new Dictionary<string, decimal>
+            {
+                ["AVGO"] = 70m,
+                ["AAPL"] = 101m
+            });
+
+            Assert.That(empty, Is.EqualTo("none"));
+            Assert.That(holdings, Is.EqualTo("AAPL=101;AVGO=70"));
+        }
+
+        [Test]
+        public void DefersStartupStateSaveWhenPersistedAndBrokerHoldingsAreEmpty()
+        {
+            var shouldDefer = ShouldDeferStartupStateSave(
+                null,
+                new Dictionary<string, decimal>(),
+                new Dictionary<int, QuantConnect.Algorithm.CSharp.AegisOpenOrderState>());
+
+            Assert.That(shouldDefer, Is.True);
+        }
+
+        [Test]
+        public void DoesNotDeferStartupStateSaveWhenHoldingsAreVisible()
+        {
+            var shouldDefer = ShouldDeferStartupStateSave(
+                null,
+                new Dictionary<string, decimal>
+                {
+                    ["AAPL"] = 101m
+                },
+                new Dictionary<int, QuantConnect.Algorithm.CSharp.AegisOpenOrderState>());
+
+            Assert.That(shouldDefer, Is.False);
+        }
+
+        [Test]
+        public void DoesNotDeferStartupStateSaveWhenPersistedHoldingsExist()
+        {
+            var state = new QuantConnect.Algorithm.CSharp.AegisLiveState
+            {
+                SchemaVersion = QuantConnect.Algorithm.CSharp.StrategyConfig.LiveStateSchemaVersion,
+                BrokerHoldingsByTicker = new Dictionary<string, decimal>
+                {
+                    ["AAPL"] = 101m
+                }
+            };
+
+            var shouldDefer = ShouldDeferStartupStateSave(
+                state,
+                new Dictionary<string, decimal>(),
+                new Dictionary<int, QuantConnect.Algorithm.CSharp.AegisOpenOrderState>());
+
+            Assert.That(shouldDefer, Is.False);
+        }
+
+        [Test]
+        public void DefersStartupStateSaveWhenPersistedHoldingsExistButBrokerHoldingsAreMissing()
+        {
+            var state = new QuantConnect.Algorithm.CSharp.AegisLiveState
+            {
+                SchemaVersion = QuantConnect.Algorithm.CSharp.StrategyConfig.LiveStateSchemaVersion,
+                BrokerHoldingsByTicker = new Dictionary<string, decimal>
+                {
+                    ["AAPL"] = 101m,
+                    ["SGOV"] = 268m
+                }
+            };
+
+            var shouldDefer = ShouldDeferStartupStateSave(
+                state,
+                new Dictionary<string, decimal>(),
+                new Dictionary<int, QuantConnect.Algorithm.CSharp.AegisOpenOrderState>());
+
+            Assert.That(shouldDefer, Is.True);
+        }
+
+        [Test]
+        public void DoesNotDeferStartupStateSaveWhenPersistedAndBrokerHoldingsAreBothVisible()
+        {
+            var state = new QuantConnect.Algorithm.CSharp.AegisLiveState
+            {
+                SchemaVersion = QuantConnect.Algorithm.CSharp.StrategyConfig.LiveStateSchemaVersion,
+                BrokerHoldingsByTicker = new Dictionary<string, decimal>
+                {
+                    ["AAPL"] = 101m
+                }
+            };
+
+            var shouldDefer = ShouldDeferStartupStateSave(
+                state,
+                new Dictionary<string, decimal>
+                {
+                    ["AAPL"] = 101m
+                },
+                new Dictionary<int, QuantConnect.Algorithm.CSharp.AegisOpenOrderState>());
+
+            Assert.That(shouldDefer, Is.False);
+        }
+
+        [Test]
         public void RestorePersistedRuntimeStateRestoresDefensiveRuntimeState()
         {
             var algorithm = CreateAlgorithm();
@@ -1037,6 +1140,27 @@ namespace QuantConnect.Tests.Algorithm
 
             Assert.That(method, Is.Not.Null);
             return (string)method.Invoke(null, new object[] { state });
+        }
+
+        private static string FormatLiveHoldingsSummary(IReadOnlyDictionary<string, decimal> holdings)
+        {
+            var method = typeof(QuantConnect.Algorithm.CSharp.AegisGrowthAllocation)
+                .GetMethod("FormatLiveHoldingsSummary", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic);
+
+            Assert.That(method, Is.Not.Null);
+            return (string)method.Invoke(null, new object[] { holdings });
+        }
+
+        private static bool ShouldDeferStartupStateSave(
+            QuantConnect.Algorithm.CSharp.AegisLiveState persistedState,
+            IReadOnlyDictionary<string, decimal> brokerHoldings,
+            IReadOnlyDictionary<int, QuantConnect.Algorithm.CSharp.AegisOpenOrderState> brokerOpenOrders)
+        {
+            var method = typeof(QuantConnect.Algorithm.CSharp.AegisGrowthAllocation)
+                .GetMethod("ShouldDeferStartupStateSave", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic);
+
+            Assert.That(method, Is.Not.Null);
+            return (bool)method.Invoke(null, new object[] { persistedState, brokerHoldings, brokerOpenOrders });
         }
 
         private static void SetPrivateField<T>(
