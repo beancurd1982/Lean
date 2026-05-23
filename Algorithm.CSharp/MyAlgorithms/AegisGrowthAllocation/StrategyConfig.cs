@@ -34,6 +34,8 @@ namespace QuantConnect.Algorithm.CSharp
         public const string LiveStateKey = "AegisGrowthAllocation_LiveState_V2";
         public const int LiveStateSchemaVersion = 2;
         public const decimal LiveStateQuantityTolerance = 0.0001m;
+        public const string AlgorithmVersion = "AegisGrowthAllocation-2026-05-23-optstress-defaults";
+        public const string SourceRevision = "eb3145647";
         public static readonly DateTime DefaultBacktestStartDate = new DateTime(2018, 1, 1);
         public static readonly TimeSpan WeeklyDecisionTime = new TimeSpan(10, 0, 0);
         public const int CloseWindowSize = 252;
@@ -67,12 +69,12 @@ namespace QuantConnect.Algorithm.CSharp
         public const decimal TrendLowerBuffer = 0.02m;
         public const int TrendSlopeLookbackDays = 20;
 
-        public const decimal DefaultFavorableBreadthThreshold = 0.75m;
+        public const decimal DefaultFavorableBreadthThreshold = 0.85m;
         public const decimal WeakBreadthThreshold = 0.40m;
 
         public const decimal FavorableStressThreshold = 18m;
-        public const decimal DefaultWeakStressThreshold = 27m;
-        public const decimal DefaultSevereStressGap = 3m;
+        public const decimal DefaultWeakStressThreshold = 33m;
+        public const decimal DefaultSevereStressGap = 4m;
         public const decimal DefaultSevereStressThreshold = DefaultWeakStressThreshold + DefaultSevereStressGap;
         public const decimal MaxWeakStressThreshold = 40m;
         public const decimal MaxSevereStressThreshold = 45m;

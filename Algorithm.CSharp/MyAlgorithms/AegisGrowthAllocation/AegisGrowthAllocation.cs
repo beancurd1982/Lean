@@ -139,6 +139,9 @@ namespace QuantConnect.Algorithm.CSharp
                 WeeklyReview);
 
             Debug(
+                $"AegisGrowthAllocation deployment identity. AlgorithmVersion={StrategyConfig.AlgorithmVersion} SourceRevision={StrategyConfig.SourceRevision} LiveStateKey={StrategyConfig.LiveStateKey} LiveStateSchemaVersion={StrategyConfig.LiveStateSchemaVersion}");
+
+            Debug(
                 $"AegisGrowthAllocation initialized. GrowthUniverse={StrategyConfig.GrowthTickers.Count} DefensiveUniverse={StrategyConfig.DefensiveTickers.Count} UndeployedReserve={_undeployedCapitalReserve.ToString(CultureInfo.InvariantCulture)} FavorableBreadthThreshold={StrategyConfig.FavorableBreadthThreshold.ToString(CultureInfo.InvariantCulture)} WeakStressThreshold={StrategyConfig.WeakStressThreshold.ToString(CultureInfo.InvariantCulture)} SevereStressGap={StrategyConfig.SevereStressGap.ToString(CultureInfo.InvariantCulture)} SevereStressThreshold={StrategyConfig.SevereStressThreshold.ToString(CultureInfo.InvariantCulture)} UpgradeConfirmationWeeks={StrategyConfig.UpgradeConfirmationWeeks} GrowthAtrEligibilityLimit={StrategyConfig.GrowthAtrEligibilityLimit.ToString(CultureInfo.InvariantCulture)} ReplacementScoreGap={StrategyConfig.ReplacementScoreGap.ToString(CultureInfo.InvariantCulture)} HoldStabilityBonus={StrategyConfig.HoldStabilityBonus.ToString(CultureInfo.InvariantCulture)} ToleranceBandScale={StrategyConfig.RebalanceToleranceBandScale.ToString(CultureInfo.InvariantCulture)}");
         }
 
@@ -865,6 +868,8 @@ namespace QuantConnect.Algorithm.CSharp
             return new AegisLiveState
             {
                 SchemaVersion = StrategyConfig.LiveStateSchemaVersion,
+                AlgorithmVersion = StrategyConfig.AlgorithmVersion,
+                SourceRevision = StrategyConfig.SourceRevision,
                 ActiveRegime = _regimeModel.ActiveRegime,
                 UpgradeConfirmationCount = _regimeModel.UpgradeConfirmationCount,
                 UndeployedReserve = _undeployedCapitalReserve,

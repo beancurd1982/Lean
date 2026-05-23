@@ -51,7 +51,7 @@ namespace QuantConnect.Algorithm.CSharp
                 _lastSavedFingerprint = BuildFingerprint(state);
 
                 _algorithm.Debug(
-                    $"[AEGIS-LIVE] {_algorithm.Time}: state restored. Holdings={state.BrokerHoldingsByTicker.Count} OpenOrders={state.OpenOrders.Count} LastReview={state.LastCompletedWeeklyReviewUtc?.ToString("u") ?? "none"} DefensiveHighWater={state.DefensiveOverrideEquityHighWaterMark:0.##} SevereActive={state.SevereCrashModeActive} SevereState={state.SevereCrashModeState} SevereWeeks={state.SevereCrashRecoveryWeeks} SevereExit={state.SevereCrashExitReason}");
+                    $"[AEGIS-LIVE] {_algorithm.Time}: state restored. AlgorithmVersion={state.AlgorithmVersion} SourceRevision={state.SourceRevision} Holdings={state.BrokerHoldingsByTicker.Count} OpenOrders={state.OpenOrders.Count} LastReview={state.LastCompletedWeeklyReviewUtc?.ToString("u") ?? "none"} DefensiveHighWater={state.DefensiveOverrideEquityHighWaterMark:0.##} SevereActive={state.SevereCrashModeActive} SevereState={state.SevereCrashModeState} SevereWeeks={state.SevereCrashRecoveryWeeks} SevereExit={state.SevereCrashExitReason}");
                 return state;
             }
             catch (Exception ex)
@@ -85,7 +85,7 @@ namespace QuantConnect.Algorithm.CSharp
                 _algorithm.ObjectStore.SaveJson(StrategyConfig.LiveStateKey, state);
                 _lastSavedFingerprint = fingerprint;
                 _algorithm.Debug(
-                    $"[AEGIS-LIVE] {_algorithm.Time}: state saved. Holdings={state.BrokerHoldingsByTicker.Count} OpenOrders={state.OpenOrders.Count} DefensiveHighWater={state.DefensiveOverrideEquityHighWaterMark:0.##} SevereActive={state.SevereCrashModeActive} SevereState={state.SevereCrashModeState} SevereWeeks={state.SevereCrashRecoveryWeeks} SevereExit={state.SevereCrashExitReason} Reason={reason ?? "unspecified"}");
+                    $"[AEGIS-LIVE] {_algorithm.Time}: state saved. AlgorithmVersion={state.AlgorithmVersion} SourceRevision={state.SourceRevision} Holdings={state.BrokerHoldingsByTicker.Count} OpenOrders={state.OpenOrders.Count} DefensiveHighWater={state.DefensiveOverrideEquityHighWaterMark:0.##} SevereActive={state.SevereCrashModeActive} SevereState={state.SevereCrashModeState} SevereWeeks={state.SevereCrashRecoveryWeeks} SevereExit={state.SevereCrashExitReason} Reason={reason ?? "unspecified"}");
             }
             catch (Exception ex)
             {
@@ -95,6 +95,12 @@ namespace QuantConnect.Algorithm.CSharp
 
         private static void NormalizeState(AegisLiveState state)
         {
+            state.AlgorithmVersion = string.IsNullOrWhiteSpace(state.AlgorithmVersion)
+                ? StrategyConfig.AlgorithmVersion
+                : state.AlgorithmVersion;
+            state.SourceRevision = string.IsNullOrWhiteSpace(state.SourceRevision)
+                ? "unknown"
+                : state.SourceRevision;
             state.LastPlannedTargetWeights ??= new Dictionary<string, decimal>();
             state.BrokerHoldingsByTicker ??= new Dictionary<string, decimal>();
             state.OpenOrders ??= new List<AegisOpenOrderState>();
@@ -112,6 +118,8 @@ namespace QuantConnect.Algorithm.CSharp
         {
             var builder = new StringBuilder();
             builder.Append("v=").Append(state.SchemaVersion).Append('|');
+            builder.Append("algo=").Append(state.AlgorithmVersion ?? string.Empty).Append('|');
+            builder.Append("src=").Append(state.SourceRevision ?? string.Empty).Append('|');
             builder.Append("regime=").Append((int)state.ActiveRegime).Append('|');
             builder.Append("upgrade=").Append(state.UpgradeConfirmationCount).Append('|');
             builder.Append("reserve=").Append(state.UndeployedReserve.ToString("0.########", System.Globalization.CultureInfo.InvariantCulture)).Append('|');
@@ -150,6 +158,8 @@ namespace QuantConnect.Algorithm.CSharp
     public sealed class AegisLiveState
     {
         public int SchemaVersion { get; set; }
+        public string AlgorithmVersion { get; set; } = StrategyConfig.AlgorithmVersion;
+        public string SourceRevision { get; set; } = StrategyConfig.SourceRevision;
         public DateTime SavedAtUtc { get; set; }
         public RiskRegime ActiveRegime { get; set; }
         public int UpgradeConfirmationCount { get; set; }

@@ -304,6 +304,23 @@ namespace QuantConnect.Tests.Algorithm
         }
 
         [Test]
+        public void UsesPromotedOptStressDefaultParameters()
+        {
+            QuantConnect.Algorithm.CSharp.StrategyConfig.ResetRuntimeParameters();
+
+            Assert.That(QuantConnect.Algorithm.CSharp.StrategyConfig.DefaultFavorableBreadthThreshold, Is.EqualTo(0.85m));
+            Assert.That(QuantConnect.Algorithm.CSharp.StrategyConfig.DefaultWeakStressThreshold, Is.EqualTo(33m));
+            Assert.That(QuantConnect.Algorithm.CSharp.StrategyConfig.DefaultSevereStressGap, Is.EqualTo(4m));
+            Assert.That(QuantConnect.Algorithm.CSharp.StrategyConfig.DefaultSevereStressThreshold, Is.EqualTo(37m));
+            Assert.That(QuantConnect.Algorithm.CSharp.StrategyConfig.DefaultGrowthAtrEligibilityLimit, Is.EqualTo(0.06m));
+            Assert.That(QuantConnect.Algorithm.CSharp.StrategyConfig.FavorableBreadthThreshold, Is.EqualTo(0.85m));
+            Assert.That(QuantConnect.Algorithm.CSharp.StrategyConfig.WeakStressThreshold, Is.EqualTo(33m));
+            Assert.That(QuantConnect.Algorithm.CSharp.StrategyConfig.SevereStressGap, Is.EqualTo(4m));
+            Assert.That(QuantConnect.Algorithm.CSharp.StrategyConfig.SevereStressThreshold, Is.EqualTo(37m));
+            Assert.That(QuantConnect.Algorithm.CSharp.StrategyConfig.GrowthAtrEligibilityLimit, Is.EqualTo(0.06m));
+        }
+
+        [Test]
         public void UsesConfiguredStressBandParameters()
         {
             CreateAlgorithm(new Dictionary<string, string>
@@ -656,6 +673,17 @@ namespace QuantConnect.Tests.Algorithm
         }
 
         [Test]
+        public void BuildPersistedStateIncludesDeploymentIdentity()
+        {
+            var algorithm = CreateAlgorithm();
+
+            var state = BuildPersistedState(algorithm);
+
+            Assert.That(state.AlgorithmVersion, Is.EqualTo(QuantConnect.Algorithm.CSharp.StrategyConfig.AlgorithmVersion));
+            Assert.That(state.SourceRevision, Is.EqualTo(QuantConnect.Algorithm.CSharp.StrategyConfig.SourceRevision));
+        }
+
+        [Test]
         public void RestorePersistedRuntimeStateRestoresDefensiveRuntimeState()
         {
             var algorithm = CreateAlgorithm();
@@ -698,6 +726,25 @@ namespace QuantConnect.Tests.Algorithm
                 SevereCrashRecoveryWeeks = 1,
                 SevereCrashModeState = "hold",
                 SevereCrashExitReason = "none"
+            };
+
+            Assert.That(BuildLiveStateFingerprint(changed), Is.Not.EqualTo(BuildLiveStateFingerprint(baseline)));
+        }
+
+        [Test]
+        public void LiveStateFingerprintChangesWhenDeploymentIdentityChanges()
+        {
+            var baseline = new QuantConnect.Algorithm.CSharp.AegisLiveState
+            {
+                SchemaVersion = QuantConnect.Algorithm.CSharp.StrategyConfig.LiveStateSchemaVersion,
+                AlgorithmVersion = "AegisGrowthAllocation-2026-05-23-optstress-defaults",
+                SourceRevision = "revision-a"
+            };
+            var changed = new QuantConnect.Algorithm.CSharp.AegisLiveState
+            {
+                SchemaVersion = QuantConnect.Algorithm.CSharp.StrategyConfig.LiveStateSchemaVersion,
+                AlgorithmVersion = "AegisGrowthAllocation-2026-05-23-optstress-defaults",
+                SourceRevision = "revision-b"
             };
 
             Assert.That(BuildLiveStateFingerprint(changed), Is.Not.EqualTo(BuildLiveStateFingerprint(baseline)));
