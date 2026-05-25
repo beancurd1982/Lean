@@ -29,3 +29,7 @@
 - Confirm working tree is clean before tagging.
 - Create annotated tag.
 - Push tag to `origin`.
+
+## Execution Notes
+- The release note was committed before tagging so the stable tag can include the documentation commit.
+- First tag creation attempt failed locally with a `.git/refs/tags/...lock` permission error before the tag was created.
