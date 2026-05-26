@@ -1,0 +1,17 @@
+# Local credentials and environment-specific settings
+.env
+.env.*
+*.local.json
+*.secrets.json
+secrets/
+
+# Raw QuantConnect MCP/API responses and scratch exports
+raw/
+tmp/
+scratch/
+*.raw.json
+*.response.json
+
+# Local command transcripts that may contain account metadata
+*.transcript.txt
+*.session.log
