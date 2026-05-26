@@ -43,3 +43,46 @@
 - Finding: Provider actions are classified into `read-only`, `cloud-write`, `forbidden-live`, and `forbidden-object-store`.
 - Finding: Raw cloud responses are ignored by default through `CloudWorkflow/.gitignore`.
 - Residual risk: The actual QuantConnect provider availability still needs to be verified in Phase 2 before we know whether MCP or REST will be the practical first path.
+
+## Phase 2 Start
+
+- Date: 2026-05-26
+- Phase: 2 - Read-only QuantConnect MCP proof of connectivity.
+- Scope: Attempt provider discovery, document selected provider path, and stop before any cloud call that would require credentials.
+- Trading impact: None. No cloud backtest, optimization, live deployment, Object Store, brokerage, or order action was triggered.
+
+## Phase 2 Provider Discovery
+
+- Checked available Codex tools for QuantConnect MCP support using tool discovery.
+- Result: no QuantConnect MCP tools are available in this session.
+- Checked installable plugin/connector candidates after tool discovery returned no QuantConnect tools.
+- Result: no QuantConnect plugin or connector is available to install from the current plugin list.
+- Provider decision for now: `McpInteractive` is blocked in this Codex session; `RestApi` is the practical fallback path for a future executable proof once credentials and project identifiers are supplied outside git.
+
+## Phase 2 Current Boundary
+
+- No QuantConnect API credentials were requested, stored, printed, or committed.
+- No MCP or REST cloud read was executed.
+- No raw response, sanitized sample, or pre/post cloud count can be captured until a provider is connected.
+- Phase 2 is therefore prepared but not fully accepted. The remaining acceptance items require a working provider and credentials.
+
+## Phase 2 Changes
+
+- Added `CloudWorkflow/connection-check.md` to record the MCP discovery result, mutation boundary, REST prerequisites, and remaining read-only proof steps.
+- Added `CloudWorkflow/providers/README.md` to document the provider classes, current provider decision, side-effect rules, credential rules, and Phase 2 exit criteria.
+- Updated this implementation note with Phase 2 provider discovery and the current blocker.
+
+## Phase 2 Validation
+
+- Ran `git diff --check`; no whitespace errors reported.
+- Ran `git status --short`; only the Phase 2 documentation files and this note are changed.
+- Searched Phase 2 files for credential-like strings and QuantConnect environment variable names.
+- Search result review: all matches are environment variable placeholders or credential safety guidance; no real credential or account identifier was found.
+
+## Phase 2 Review
+
+- Finding: No cloud calls were executed because QuantConnect MCP is unavailable and REST credentials were not supplied.
+- Finding: No trading algorithm code was changed.
+- Finding: No live deployment, brokerage, order handling, Object Store, or allocation behavior was changed.
+- Finding: The workflow correctly stops before attempting REST because credentials must be supplied outside git.
+- Residual risk: Full Phase 2 acceptance remains blocked until either a QuantConnect MCP tool is made available or REST credentials/project identifiers are supplied through local environment variables or an OS/user secret store.
