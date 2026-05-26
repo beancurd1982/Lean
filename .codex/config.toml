@@ -1,0 +1,24 @@
+# Project-scoped Codex MCP configuration for Aegis QuantConnect workflow.
+# This contains no credentials. It expects QuantConnect Local Platform to expose
+# the MCP HTTP endpoint at http://localhost:3001/.
+
+[mcp_servers.quantconnect]
+url = "http://localhost:3001/"
+enabled = true
+startup_timeout_sec = 20
+tool_timeout_sec = 120
+default_tools_approval_mode = "prompt"
+
+# Phase 2 is read-only. Keep the allow-list narrow until cloud-write guardrails
+# are implemented and explicitly approved.
+enabled_tools = [
+  "read_mcp_server_version",
+  "read_open_project",
+  "read_project",
+  "list_projects",
+  "list_backtests",
+  "read_backtest",
+  "read_backtest_orders",
+  "list_optimizations",
+  "read_optimization"
+]

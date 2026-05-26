@@ -11,10 +11,10 @@ This folder records which QuantConnect cloud provider path is available for the 
 
 ## Current Provider Decision
 
-- `McpInteractive`: blocked. No QuantConnect MCP tools are available in this Codex session.
-- `LocalPlatformMcp`: not configured in this repository.
+- `McpInteractive`: blocked. No QuantConnect MCP tools are preinstalled in this Codex session.
+- `LocalPlatformMcp`: configured through project-scoped `.codex/config.toml`, but currently blocked because `http://localhost:3001/` is not reachable from this machine.
 - `DockerMcp`: not configured in this repository.
-- `RestApi`: selected fallback for future executable proof, pending credentials supplied outside git.
+- `RestApi`: fallback if `LocalPlatformMcp` is unavailable, pending credentials supplied outside git.
 
 ## Side-Effect Rules
 

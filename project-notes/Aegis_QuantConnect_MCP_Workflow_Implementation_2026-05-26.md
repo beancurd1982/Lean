@@ -86,3 +86,42 @@
 - Finding: No live deployment, brokerage, order handling, Object Store, or allocation behavior was changed.
 - Finding: The workflow correctly stops before attempting REST because credentials must be supplied outside git.
 - Residual risk: Full Phase 2 acceptance remains blocked until either a QuantConnect MCP tool is made available or REST credentials/project identifiers are supplied through local environment variables or an OS/user secret store.
+
+## Phase 2 MCP Follow-Up Research
+
+- QuantConnect has an official MCP server that connects LLM clients to the QuantConnect API.
+- QuantConnect officially documents Claude Code and Copilot setup through QuantConnect Local Platform, using an HTTP MCP endpoint at `http://localhost:3001/`.
+- QuantConnect's public Docker MCP server repository exists, but its README currently says the Docker path is deprecated for now and the preferred path is the embedded MCP in VS Code/Local Platform.
+- OpenAI Codex supports MCP servers through `config.toml`, including STDIO servers and streamable HTTP servers.
+- Conclusion: QuantConnect MCP is not available as a preinstalled Codex plugin in this session, but it should be possible to connect Codex to the Local Platform MCP endpoint if Local Platform exposes `http://localhost:3001/` and this project is trusted.
+
+## Phase 2 Local Platform MCP Configuration
+
+- Added project-scoped `.codex/config.toml`.
+- Configured `mcp_servers.quantconnect` to use `http://localhost:3001/`.
+- Did not add credentials to config.
+- Restricted Phase 2 tools with an allow-list for read-only project, backtest, order, optimization, and MCP-version reads.
+- Excluded cloud-write, live-trading, Object Store, project mutation, and file mutation tools from the allow-list.
+
+## Phase 2 Local Endpoint Check
+
+- Ran a local reachability check against `http://localhost:3001/`.
+- Result: unreachable on this machine at the time of the check.
+- Interpretation: QuantConnect Local Platform MCP is not currently running or not exposing the endpoint.
+- Next requirement: start QuantConnect Local Platform with MCP enabled, then restart Codex or start a new Codex session so `.codex/config.toml` can be loaded.
+- Trading impact: none. This was a local HTTP reachability check only; no QuantConnect cloud action was attempted.
+
+## Phase 2 MCP Configuration Validation
+
+- Ran `git diff --check`; no whitespace errors reported.
+- Ran `git status --short`; changes are limited to `.codex/config.toml`, CloudWorkflow documentation, and this implementation note.
+- Searched changed files for credential-like strings and QuantConnect environment variable names.
+- Search result review: all matches are environment variable placeholders or credential safety guidance; no real credential or account identifier was found.
+
+## Phase 2 MCP Configuration Review
+
+- Finding: The Codex MCP config contains no credentials.
+- Finding: The configured QuantConnect endpoint is local-only: `http://localhost:3001/`.
+- Finding: The Phase 2 allow-list includes read-oriented project, backtest, order, optimization, and MCP-version tools only.
+- Finding: The allow-list excludes cloud-write, live-trading, Object Store, project mutation, and file mutation tools.
+- Residual risk: tool names may differ from the QuantConnect MCP server implementation. If tools do not appear after restarting Codex with Local Platform running, inspect the exposed tool list and adjust the allow-list without broadening into write/live/Object Store tools.

@@ -15,6 +15,18 @@ Use the first available mode that can complete the read-only proof in the implem
 
 Do not require every mode to work. One supported provider is enough for later phases if unavailable providers are documented as blockers or fallback limitations.
 
+## Codex Local Platform MCP Setup
+
+This repository includes `.codex/config.toml` with a QuantConnect MCP server entry that points to `http://localhost:3001/`.
+
+To use it:
+
+1. Start QuantConnect Local Platform and confirm it exposes the MCP endpoint on `http://localhost:3001/`.
+2. Restart Codex or open a new Codex session from this repository so the project-scoped MCP config is loaded.
+3. Check that QuantConnect MCP tools appear before attempting Phase 2 cloud reads.
+
+The config contains no credentials and restricts Phase 2 to a read-only tool allow-list.
+
 ## Credential Rules
 
 - Do not commit credentials, API tokens, account identifiers, brokerage account data, raw Object Store JSON, or raw cloud response bodies.
