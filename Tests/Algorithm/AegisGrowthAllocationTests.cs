@@ -723,7 +723,7 @@ namespace QuantConnect.Tests.Algorithm
         }
 
         [Test]
-        public void DoesNotDeferStartupStateSaveWhenPersistedHoldingsExist()
+        public void DefersStartupStateSaveWhenPersistedHoldingsExistAndBrokerHoldingsAreMissing()
         {
             var state = new QuantConnect.Algorithm.CSharp.AegisLiveState
             {
@@ -739,28 +739,78 @@ namespace QuantConnect.Tests.Algorithm
                 new Dictionary<string, decimal>(),
                 new Dictionary<int, QuantConnect.Algorithm.CSharp.AegisOpenOrderState>());
 
-            Assert.That(shouldDefer, Is.False);
+            Assert.That(shouldDefer, Is.True);
         }
 
         [Test]
-        public void DefersStartupStateSaveWhenPersistedHoldingsExistButBrokerHoldingsAreMissing()
+        public void FormatsStartupReconciliationMessageForDeferredBrokerSnapshot()
         {
-            var state = new QuantConnect.Algorithm.CSharp.AegisLiveState
-            {
-                SchemaVersion = QuantConnect.Algorithm.CSharp.StrategyConfig.LiveStateSchemaVersion,
-                BrokerHoldingsByTicker = new Dictionary<string, decimal>
-                {
-                    ["AAPL"] = 101m,
-                    ["SGOV"] = 268m
-                }
-            };
+            var message = FormatStartupReconciliationMessage(
+                brokerHoldingsCount: 0,
+                persistedHoldingsCount: 7,
+                brokerOpenOrdersCount: 0,
+                persistedOpenOrdersCount: 0,
+                holdingsMatch: false,
+                openOrdersMatch: true,
+                shouldDeferStartupSave: true);
 
-            var shouldDefer = ShouldDeferStartupStateSave(
-                state,
-                new Dictionary<string, decimal>(),
-                new Dictionary<int, QuantConnect.Algorithm.CSharp.AegisOpenOrderState>());
+            Assert.That(message, Does.Contain("broker snapshot not ready"));
+            Assert.That(message, Does.Contain("persisted state retained"));
+            Assert.That(message, Does.Not.Contain("Broker state wins"));
+        }
 
-            Assert.That(shouldDefer, Is.True);
+        [Test]
+        public void FormatsStartupReconciliationMessageWhenBrokerStateWins()
+        {
+            var message = FormatStartupReconciliationMessage(
+                brokerHoldingsCount: 7,
+                persistedHoldingsCount: 6,
+                brokerOpenOrdersCount: 0,
+                persistedOpenOrdersCount: 0,
+                holdingsMatch: false,
+                openOrdersMatch: true,
+                shouldDeferStartupSave: false);
+
+            Assert.That(message, Does.Contain("broker/store mismatch detected"));
+            Assert.That(message, Does.Contain("Broker state wins"));
+        }
+
+        [Test]
+        public void FormatsStressDiagnosticWhenStressWindowIsNotReady()
+        {
+            var diagnostic = FormatStressDiagnostic(
+                "WarmupFinished",
+                "VIX",
+                stressCount: 0,
+                latestStressClose: null,
+                stressAverage5: null,
+                isReady: false);
+
+            Assert.That(diagnostic, Does.Contain("[AEGIS-STRESS-DIAG]"));
+            Assert.That(diagnostic, Does.Contain("Phase=WarmupFinished"));
+            Assert.That(diagnostic, Does.Contain("StressSymbol=VIX"));
+            Assert.That(diagnostic, Does.Contain("StressCount=0"));
+            Assert.That(diagnostic, Does.Contain("LatestStressClose=none"));
+            Assert.That(diagnostic, Does.Contain("StressAverage5=none"));
+            Assert.That(diagnostic, Does.Contain("StressReady=False"));
+        }
+
+        [Test]
+        public void FormatsStressDiagnosticWhenStressWindowIsReady()
+        {
+            var diagnostic = FormatStressDiagnostic(
+                "WeeklyReview",
+                "VIX",
+                stressCount: 5,
+                latestStressClose: 18.25m,
+                stressAverage5: 19.75m,
+                isReady: true);
+
+            Assert.That(diagnostic, Does.Contain("Phase=WeeklyReview"));
+            Assert.That(diagnostic, Does.Contain("StressCount=5"));
+            Assert.That(diagnostic, Does.Contain("LatestStressClose=18.25"));
+            Assert.That(diagnostic, Does.Contain("StressAverage5=19.75"));
+            Assert.That(diagnostic, Does.Contain("StressReady=True"));
         }
 
         [Test]
@@ -1161,6 +1211,58 @@ namespace QuantConnect.Tests.Algorithm
 
             Assert.That(method, Is.Not.Null);
             return (bool)method.Invoke(null, new object[] { persistedState, brokerHoldings, brokerOpenOrders });
+        }
+
+        private static string FormatStartupReconciliationMessage(
+            int brokerHoldingsCount,
+            int persistedHoldingsCount,
+            int brokerOpenOrdersCount,
+            int persistedOpenOrdersCount,
+            bool holdingsMatch,
+            bool openOrdersMatch,
+            bool shouldDeferStartupSave)
+        {
+            var method = typeof(QuantConnect.Algorithm.CSharp.AegisGrowthAllocation)
+                .GetMethod("FormatStartupReconciliationMessage", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic);
+
+            Assert.That(method, Is.Not.Null);
+            return (string)method.Invoke(
+                null,
+                new object[]
+                {
+                    brokerHoldingsCount,
+                    persistedHoldingsCount,
+                    brokerOpenOrdersCount,
+                    persistedOpenOrdersCount,
+                    holdingsMatch,
+                    openOrdersMatch,
+                    shouldDeferStartupSave
+                });
+        }
+
+        private static string FormatStressDiagnostic(
+            string phase,
+            string stressSymbol,
+            int stressCount,
+            decimal? latestStressClose,
+            decimal? stressAverage5,
+            bool isReady)
+        {
+            var method = typeof(QuantConnect.Algorithm.CSharp.AegisGrowthAllocation)
+                .GetMethod("FormatStressDiagnostic", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic);
+
+            Assert.That(method, Is.Not.Null);
+            return (string)method.Invoke(
+                null,
+                new object[]
+                {
+                    phase,
+                    stressSymbol,
+                    stressCount,
+                    latestStressClose,
+                    stressAverage5,
+                    isReady
+                });
         }
 
         private static void SetPrivateField<T>(

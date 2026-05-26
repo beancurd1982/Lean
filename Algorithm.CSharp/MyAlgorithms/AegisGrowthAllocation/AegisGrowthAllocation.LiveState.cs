@@ -53,11 +53,12 @@ namespace QuantConnect.Algorithm.CSharp
 
                 var holdingsMatch = DictionariesMatch(brokerHoldings, persistedHoldings);
                 var openOrdersMatch = OpenOrdersMatch(brokerOpenOrders.Values, persistedOpenOrders);
+                var shouldDeferStartupSave = ShouldDeferStartupStateSave(_loadedLiveState, brokerHoldings, brokerOpenOrders);
 
                 if (!holdingsMatch || !openOrdersMatch)
                 {
                     Debug(
-                        $"[AEGIS-LIVE] {Time}: broker/store mismatch detected. BrokerHoldings={brokerHoldings.Count} StoreHoldings={persistedHoldings.Count} BrokerOpenOrders={brokerOpenOrders.Count} StoreOpenOrders={persistedOpenOrders.Count}. Broker state wins.");
+                        $"[AEGIS-LIVE] {Time}: {FormatStartupReconciliationMessage(brokerHoldings.Count, persistedHoldings.Count, brokerOpenOrders.Count, persistedOpenOrders.Count, holdingsMatch, openOrdersMatch, shouldDeferStartupSave)}");
                 }
                 else
                 {
@@ -69,10 +70,10 @@ namespace QuantConnect.Algorithm.CSharp
                 Debug(
                     $"[AEGIS-LIVE] {Time}: startup reconciliation complete. Holdings={brokerHoldings.Count} OpenOrders={_trackedOpenOrders.Count} RestoredRegime={_regimeModel.ActiveRegime} LastReview={_lastCompletedWeeklyReviewUtc?.ToString("u") ?? "none"}");
 
-                if (ShouldDeferStartupStateSave(_loadedLiveState, brokerHoldings, brokerOpenOrders))
+                if (shouldDeferStartupSave)
                 {
                     Debug(
-                        $"[AEGIS-LIVE] {Time}: startup state save deferred because no persisted or broker holdings/open orders are visible during Initialize.");
+                        $"[AEGIS-LIVE] {Time}: startup state save deferred until broker snapshot is ready.");
                     return false;
                 }
 
@@ -215,6 +216,31 @@ namespace QuantConnect.Algorithm.CSharp
                 persistedOpenOrderCount == 0 &&
                 brokerHoldings.Count == 0 &&
                 brokerOpenOrders.Count == 0;
+        }
+
+        private static string FormatStartupReconciliationMessage(
+            int brokerHoldingsCount,
+            int persistedHoldingsCount,
+            int brokerOpenOrdersCount,
+            int persistedOpenOrdersCount,
+            bool holdingsMatch,
+            bool openOrdersMatch,
+            bool shouldDeferStartupSave)
+        {
+            var counts =
+                $"BrokerHoldings={brokerHoldingsCount} StoreHoldings={persistedHoldingsCount} BrokerOpenOrders={brokerOpenOrdersCount} StoreOpenOrders={persistedOpenOrdersCount}.";
+
+            if (shouldDeferStartupSave)
+            {
+                return $"broker/store mismatch detected. {counts} broker snapshot not ready; persisted state retained until warmup or first live data.";
+            }
+
+            if (!holdingsMatch || !openOrdersMatch)
+            {
+                return $"broker/store mismatch detected. {counts} Broker state wins.";
+            }
+
+            return $"broker/store state matched on startup. {counts}";
         }
 
         private static string FormatLiveHoldingsSummary(IReadOnlyDictionary<string, decimal> holdings)

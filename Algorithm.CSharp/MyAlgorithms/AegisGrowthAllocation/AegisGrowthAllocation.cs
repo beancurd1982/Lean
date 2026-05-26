@@ -223,6 +223,8 @@ namespace QuantConnect.Algorithm.CSharp
                 return;
             }
 
+            LogStressDiagnostic("WeeklyReview");
+
             if (!_marketState.IsReady || _stressWindow.Count < StrategyConfig.VixAverageWindow)
             {
                 Debug($"[AEGIS] {Time} Weekly review skipped. MarketReady={_marketState.IsReady} StressCount={_stressWindow.Count}");
@@ -343,6 +345,7 @@ namespace QuantConnect.Algorithm.CSharp
             }
 
             TryCompleteDeferredStartupStateSave("WarmupFinished");
+            LogStressDiagnostic("WarmupFinished");
         }
 
         private static double GetWeeklyDecisionMinutesAfterMarketOpen()
@@ -370,6 +373,50 @@ namespace QuantConnect.Algorithm.CSharp
             }
 
             SetEndDate(endDate.Value);
+        }
+
+        private void LogStressDiagnostic(string phase)
+        {
+            if (!LiveMode)
+            {
+                return;
+            }
+
+            var stressCount = _stressWindow.Count;
+            var latestStressClose = stressCount > 0
+                ? (decimal?)_stressWindow[0]
+                : null;
+            var stressReady = stressCount >= StrategyConfig.VixAverageWindow;
+            var stressAverage5 = stressReady
+                ? (decimal?)_stressWindow.Average()
+                : null;
+
+            Debug(FormatStressDiagnostic(
+                phase,
+                _stressSymbol?.Value ?? StrategyConfig.StressTicker,
+                stressCount,
+                latestStressClose,
+                stressAverage5,
+                stressReady));
+        }
+
+        private static string FormatStressDiagnostic(
+            string phase,
+            string stressSymbol,
+            int stressCount,
+            decimal? latestStressClose,
+            decimal? stressAverage5,
+            bool isReady)
+        {
+            return string.Format(
+                CultureInfo.InvariantCulture,
+                "[AEGIS-STRESS-DIAG] Phase={0} StressSymbol={1} StressCount={2} LatestStressClose={3} StressAverage5={4} StressReady={5}",
+                phase,
+                stressSymbol,
+                stressCount,
+                latestStressClose.HasValue ? latestStressClose.Value.ToString("0.####", CultureInfo.InvariantCulture) : "none",
+                stressAverage5.HasValue ? stressAverage5.Value.ToString("0.####", CultureInfo.InvariantCulture) : "none",
+                isReady);
         }
 
         private void ExecutePlan(PortfolioPlan plan, IReadOnlyDictionary<Symbol, decimal> currentWeights)
