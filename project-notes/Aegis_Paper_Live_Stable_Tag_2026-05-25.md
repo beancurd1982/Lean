@@ -24,6 +24,7 @@
 ## Known Follow-Up
 - The startup mismatch log still says `Broker state wins` before the deferred-save guard takes effect. Behavior is safe, but the log wording should be cleaned up later.
 - VIX live index data warning still needs separate investigation.
+- Post-tag operational hardening is tracked in `Algorithm.CSharp/MyAlgorithms/AegisGrowthAllocation/Plans/Aegis_Operational_Hardening_Plan_2026-05-26.md`.
 
 ## Verification Plan
 - Confirm working tree is clean before tagging.

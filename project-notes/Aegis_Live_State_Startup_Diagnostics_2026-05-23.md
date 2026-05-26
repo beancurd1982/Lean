@@ -60,3 +60,7 @@
 ## Open Questions
 - Whether QuantConnect live `Portfolio[...]` is populated before or after `Initialize()` for IB paper accounts with existing positions.
 - Whether VIX live index data updates reliably despite the cloud warning.
+
+## Follow-Up Planned
+- Operational follow-up work is tracked in `Algorithm.CSharp/MyAlgorithms/AegisGrowthAllocation/Plans/Aegis_Operational_Hardening_Plan_2026-05-26.md`.
+- The plan covers live-state log wording cleanup, VIX live data diagnostics, and local Aegis test-environment repair or isolation.
