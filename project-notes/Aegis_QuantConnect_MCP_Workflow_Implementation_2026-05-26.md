@@ -165,3 +165,56 @@ Built project 'AegisGrowthAllocation_BackTest' in Cloud for Lean Engine 2.5.0.0.
 - Finding: No backtest, optimization, live deployment, brokerage action, or Object Store action was triggered.
 - Finding: The GUI fallback does not replace the planned MCP/REST ingestion workflow for systematic result retrieval and analysis.
 - Residual risk: coordinate-driven GUI automation is sensitive to layout changes and must retain visual verification checkpoints before destructive or cloud-write actions.
+
+## Chrome GUI Backtest And Result Download Verification
+
+- Date: 2026-05-31.
+- Context: The user explicitly approved a backtest launch and result-download verification against the separate cloud backtest project `AegisGrowthAllocation_BackTest`.
+- Detailed evidence: `project-notes/Aegis_QuantConnect_Chrome_Automation_Findings_2026-05-30.md`.
+- Verified parameter set before launch:
+  - `backtest-start=2023-01-01`
+  - `backtest-end=2026-01-01`
+  - `crisis-diagnostics=true`
+  - `pre-weak-guard-enabled=true`
+  - `weak-stress-overlay-enabled=false`
+  - `severe-crash-override-enabled=false`
+  - `favorable-breadth-threshold=0.85`
+  - `weak-stress-threshold=33`
+  - `growth-atr-eligibility-limit=0.06`
+  - `severe-stress-gap=4`
+- Verified launch control: the single yellow arrow immediately to the right of the Cloud Build gear.
+- Verified completed backtest result name: `Logical Sky Blue Pelican`.
+- Verified result tabs:
+  - `Overview`
+  - `Report`
+  - `Orders`
+  - `Trades`
+  - `Insights`
+  - `Logs`
+  - `Code`
+- Verified downloads:
+  - `Algorithm.CSharp/MyAlgorithms/AegisGrowthAllocation/BackTestLogs/Logical Sky Blue Pelican.json`
+  - `Algorithm.CSharp/MyAlgorithms/AegisGrowthAllocation/BackTestLogs/Logical Sky Blue Pelican_orders.csv`
+  - normalized log: `Algorithm.CSharp/MyAlgorithms/AegisGrowthAllocation/BackTestLogs/2026-05-31_113756__AegisGrowthAllocation__Logical-Sky-Blue-Pelican_logs.txt`
+- Verified structural checks:
+  - overview JSON parses and contains `Statistics` and `Orders`
+  - orders CSV parses with `534` rows
+  - normalized log text is readable with `7` lines
+  - `BackTestLogs/log-index.csv` contains the new log row with `status=unreviewed`
+- Required local renamer invocation on the current Windows machine:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File Algorithm.CSharp/MyAlgorithms/AegisGrowthAllocation/BackTestLogs/Invoke-BackTestLogRename.ps1
+```
+
+## Chrome GUI Backtest And Result Download Review
+
+- Finding: The bounded single-backtest launch and three-artifact download workflow is viable through Chrome GUI automation.
+- Finding: Each export control was visually verified before clicking it.
+- Finding: The native `Save As` destination is stateful and must be visually checked before every save.
+- Finding: No optimization, live deployment, brokerage action, or Object Store action was triggered.
+- Finding: The JSON and CSV still use the QuantConnect-generated backtest name; only the text log currently passes through the repo-local normalization rule.
+- Finding: The downloaded log is intentionally still `unreviewed`; result ingestion verification is not a strategy-performance review.
+- Residual risk: coordinate-driven GUI automation remains sensitive to layout changes and requires visual checkpoints.
+- Residual risk: batch optimization result retrieval remains unverified.
+- Next improvement: add a repo-local bundle renamer that gives the overview JSON, orders CSV, and text log one consistent normalized test-run name.

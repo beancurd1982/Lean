@@ -1,0 +1,7 @@
+Launching analysis for 892251281710124f6daed3be82b71355 with LEAN Engine v2.5.0.0.17756
+2023-01-01 00:00:00 AegisGrowthAllocation deployment identity. AlgorithmVersion=AegisGrowthAllocation-2026-05-23-live-state-diagnostics-v2 SourceRevision=4c59639af LiveStateKey=AegisGrowthAllocation_LiveState_V2 LiveStateSchemaVersion=2
+2023-01-01 00:00:00 AegisGrowthAllocation initialized. GrowthUniverse=11 DefensiveUniverse=9 UndeployedReserve=0 FavorableBreadthThreshold=0.85 WeakStressThreshold=33 SevereStressGap=4 SevereStressThreshold=37 UpgradeConfirmationWeeks=1 GrowthAtrEligibilityLimit=0.06 ReplacementScoreGap=10 HoldStabilityBonus=2 ToleranceBandScale=1
+2021-12-31 00:00:00 Algorithm starting warm up...
+2023-01-01 00:00:00 Algorithm finished warming up.
+2025-12-31 16:15:00 [AEGIS-DIAG-SUMMARY] Weeks=157 Start=2023-01-03 End=2025-12-29 PreWeakWeeks=20 NonPreWeakWeeks=137 SevereCrashWeeks=0 WeakRegimeWeeks=3 PreWeakAvgDrawdown=0.0731 NonPreWeakAvgDrawdown=0.0187 SevereCrashAvgDrawdown=n/a PreWeakNextReturnAvg=0.0048 NonPreWeakNextReturnAvg=0.0042 PreWeakFwd4Avg=0.0153 PreWeakFwd8Avg=0.0368 PreWeakFwd12Avg=0.0583 PreWeakFwd4WinRate=0.8000 PreWeakAvgTarget=G0.2400/D0.3000/C0.4600 NonPreWeakAvgTarget=G0.5445/D0.2511/C0.2044
+Algorithm Id:(892251281710124f6daed3be82b71355) completed in 1.64 seconds at 14k data points per second. Processing total of 22,413 data points.

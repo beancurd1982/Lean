@@ -62,6 +62,38 @@ This fallback does not authorize backtests, optimizations, live deployments, Obj
 
 Detailed evidence: `project-notes/Aegis_QuantConnect_Chrome_Automation_Findings_2026-05-30.md`.
 
+### Verified Backtest Result Download Fallback
+
+With explicit approval for a backtest-project run, the guarded Chrome GUI fallback can also launch one backtest and download the three artifacts used by the existing Aegis manual review workflow.
+
+1. Confirm the visible project is the intended backtest project and verify all parameter values.
+2. Click the single yellow backtest arrow immediately to the right of the Cloud Build gear.
+3. Wait for the completed backtest result tab and verify fresh Cloud Terminal completion output.
+4. Scroll downward within the central result pane until the result tab strip is visible.
+5. From `Overview`, click `Download Results` and accept the native `Save As` dialog for the proposed `.json` file.
+6. From `Orders`, click `Download Orders` and accept the native `Save As` dialog for the proposed `_orders.csv` file.
+7. From `Logs`, click `Download Logs` and accept the native `Save As` dialog for the proposed `_logs.txt` file.
+8. Visually confirm every native `Save As` destination before saving. The destination is stateful.
+9. Normalize the downloaded text log and update `BackTestLogs/log-index.csv`:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File Algorithm.CSharp/MyAlgorithms/AegisGrowthAllocation/BackTestLogs/Invoke-BackTestLogRename.ps1
+```
+
+The process-scoped execution-policy bypass is required on the current Windows machine because direct script invocation is blocked by the machine execution policy. It does not modify the machine policy.
+
+Verified result tabs:
+
+- `Overview`
+- `Report`
+- `Orders`
+- `Trades`
+- `Insights`
+- `Logs`
+- `Code`
+
+This remains a GUI fallback, not the target normalized MCP/REST ingestion pipeline. Coordinate-driven automation requires visual checkpoints before each action. Batch optimization result retrieval remains unverified.
+
 ## Credential Rules
 
 - Do not commit credentials, API tokens, account identifiers, brokerage account data, raw Object Store JSON, or raw cloud response bodies.

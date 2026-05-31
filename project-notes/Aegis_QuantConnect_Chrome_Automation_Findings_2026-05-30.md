@@ -642,3 +642,293 @@ Built project 'AegisGrowthAllocation_BackTest' in Cloud for Lean Engine 2.5.0.0.
 - Ran `git diff --check`; no whitespace errors were reported.
 - Strict review result: the note accurately records the backtest-only parameter workflow and the clean removal of the disposable parameter.
 - Excluded from commit: root-level PNG screenshots captured as temporary GUI evidence.
+
+## Backtest Launch Control Test
+
+- Date: 2026-05-31.
+- User explicitly requested a guarded backtest launch from the QuantConnect cloud backtest project.
+- User identified the first yellow arrow button to the right of `Cloud Build` as the backtest launch control.
+- Intended workflow:
+  - verify the visible project is `AegisGrowthAllocation_BackTest`
+  - inspect the left parameter panel and confirm the values are suitable for the test
+  - confirm the temporary parameter `codex-test-param` is absent
+  - confirm the most recent Cloud Terminal build succeeded
+  - click the yellow backtest arrow exactly once
+  - wait for the backtest to complete
+  - verify the completed result view
+- Safety boundary:
+  - launch one backtest only
+  - do not start an optimization
+  - do not interact with live deployment controls
+  - do not write or delete Object Store data
+
+### Backtest Parameter Review
+
+- Verified visible backtest parameters before launch:
+  - `backtest-start=2023-01-01`
+  - `backtest-end=2026-01-01`
+  - `crisis-diagnostics=true`
+  - `pre-weak-guard-enabled=true`
+  - `weak-stress-overlay-enabled=false`
+  - `severe-crash-override-enabled=false`
+  - `favorable-breadth-threshold=0.85`
+  - `weak-stress-threshold=33`
+  - `growth-atr-eligibility-limit=0.06`
+  - `severe-stress-gap=4`
+- Verified disposable parameter `codex-test-param` was absent.
+- Verified the most recent Cloud Terminal build completed successfully before launch.
+- Review result: parameter set is internally consistent for the requested backtest workflow test.
+
+### Backtest Launch Result
+
+- Clicked the single yellow backtest arrow exactly once.
+- Verified a result tab opened with generated name `Logical Sky Blue Pelican`.
+- Verified the result dashboard displayed:
+  - equity: `$56,666.12`
+  - fees: `-$534.04`
+  - holdings: `$41,916.74`
+  - net profit: `$22,844.86`
+  - PSR: `80.910%`
+  - return: `88.89%`
+  - unrealized: `$3,814.22`
+- Verified fresh Cloud Terminal output included:
+
+```text
+Received backtest 'Logical Sky Blue Pelican' request
+Initializing algorithm...
+Algorithm '892251281710124f6daed3be82b71355' completed
+Backtest deployed in 1.586 seconds
+```
+
+- Verified diagnostics summary reported:
+
+```text
+Weeks=157 Start=2023-01-03 End=2025-12-29 PreWeakWeeks=20 NonPreWeakWeeks=137 SevereCrashWeeks=0 WeakRegimeWeeks=3 PreWeakAvgDrawdown=0.0731
+```
+
+- Finding: the configured calendar range `2023-01-01` through `2026-01-01` produced an expected trading-day diagnostics range of `2023-01-03` through `2025-12-29`.
+- Finding: the first yellow arrow to the right of `Cloud Build` reliably launches a single backtest with the current parameter panel values.
+
+### Backtest Launch Strict Review
+
+- Strict review completed.
+- Verified target: QuantConnect cloud backtest project `AegisGrowthAllocation_BackTest`.
+- Verified mutation scope: one cloud backtest launch only.
+- Verified result: completed backtest dashboard and completion terminal lines are visible.
+- Verified safety boundary: no optimization, live deployment, brokerage action, or Object Store action was triggered.
+- Residual note: this run validated the GUI launch workflow. It is not, by itself, a deployment recommendation or a full strategy-performance review.
+
+## Backtest Result Navigation And Download Discovery
+
+- Date: 2026-05-31.
+- User requested exploration of the completed backtest result area before testing result-file downloads.
+- Expected navigation:
+  - scroll down within the central source-code/backtest-result area
+  - locate the backtest result tab strip
+  - verify tabs: `Overview`, `Report`, `Orders`, `Trades`, `Insights`, `Logs`, and `Code`
+  - locate the `Download Results` control
+- Safety boundary:
+  - navigation and visual inspection only during the first step
+  - do not click `Download Results` until the control is visually verified
+  - do not trigger a second backtest, optimization, live deployment, or Object Store action
+
+### Result navigation verified
+
+- Date: 2026-05-31.
+- Wheel scrolling within the central QuantConnect result pane is supported through Windows mouse-wheel events.
+- The completed backtest result area was reached and visually verified.
+- Verified result tabs:
+  - `Overview`
+  - `Report`
+  - `Orders`
+  - `Trades`
+  - `Insights`
+  - `Logs`
+  - `Code`
+- The blue `Download Results` control is visible on the right side of the `Overview` tab.
+- Next bounded action:
+  - click only `Download Results`
+  - inspect the newest browser download without moving it into the repository
+  - do not trigger a new build, backtest, optimization, live deployment, or Object Store action
+
+### Overview result download discovery
+
+- Date: 2026-05-31.
+- Clicking `Download Results` on the `Overview` tab opens a native Windows `Save As` dialog.
+- The proposed result filename is derived from the QuantConnect backtest name:
+  - `Logical Sky Blue Pelican.json`
+- The dialog retained the previously used repository destination:
+  - `Algorithm.CSharp/MyAlgorithms/AegisGrowthAllocation/BackTestLogs`
+- A browser temporary download file appeared under the Windows user downloads directory while the `Save As` dialog remained open.
+- Next bounded action:
+  - accept the proposed JSON filename and destination
+  - verify the saved JSON artifact exists
+  - inspect the `Orders` and `Logs` tabs separately after returning to the QuantConnect project
+
+### Overview JSON saved
+
+- Date: 2026-05-31.
+- The native `Save As` dialog was accepted without renaming the file.
+- Verified saved artifact:
+  - `Algorithm.CSharp/MyAlgorithms/AegisGrowthAllocation/BackTestLogs/Logical Sky Blue Pelican.json`
+  - size: `1,605,778` bytes
+- The browser displayed a completed-download notification after the save.
+- Next bounded action:
+  - open the `Orders` result tab
+  - visually inspect the tab for an export control
+  - do not click an export until its location and expected behavior are verified
+
+### Orders result export discovered
+
+- Date: 2026-05-31.
+- The `Orders` tab was opened successfully.
+- The tab displays the order history table and a blue `Download Orders` control in the upper-right area.
+- Next bounded action:
+  - click only `Download Orders`
+  - inspect the native save dialog
+  - accept the proposed order export filename and verify the saved artifact
+
+### Orders CSV save dialog verified
+
+- Date: 2026-05-31.
+- Clicking `Download Orders` opens a native Windows `Save As` dialog.
+- The proposed filename is:
+  - `Logical Sky Blue Pelican_orders.csv`
+- The selected destination remains:
+  - `Algorithm.CSharp/MyAlgorithms/AegisGrowthAllocation/BackTestLogs`
+- Next bounded action:
+  - accept the proposed CSV filename and destination
+  - verify the saved CSV artifact exists
+  - inspect the `Logs` result tab separately
+
+### Orders CSV saved
+
+- Date: 2026-05-31.
+- The native `Save As` dialog was accepted without renaming the file.
+- Verified saved artifact:
+  - `Algorithm.CSharp/MyAlgorithms/AegisGrowthAllocation/BackTestLogs/Logical Sky Blue Pelican_orders.csv`
+  - size: `39,209` bytes
+- The browser displayed a completed-download notification after the save.
+- The `Orders` tab content caused the shared result tab strip to move above the current viewport.
+- Next bounded action:
+  - scroll upward within the central result pane
+  - expose and open the `Logs` result tab
+  - visually inspect the logs export control before clicking it
+
+### Logs result export discovered
+
+- Date: 2026-05-31.
+- The shared result strip was restored through upward wheel scrolling in the central result pane.
+- The `Logs` tab was opened successfully.
+- The tab displays the backtest log table and a blue `Download Logs` control in the upper-right area.
+- Next bounded action:
+  - click only `Download Logs`
+  - inspect the native save dialog
+  - accept the proposed log filename and verify the saved artifact
+
+### Logs text save dialog verified
+
+- Date: 2026-05-31.
+- Clicking `Download Logs` opens a native Windows `Save As` dialog.
+- The proposed filename is:
+  - `Logical Sky Blue Pelican_logs.txt`
+- The selected destination remains:
+  - `Algorithm.CSharp/MyAlgorithms/AegisGrowthAllocation/BackTestLogs`
+- Repository workflow implication:
+  - after saving the new text log, run `Algorithm.CSharp/MyAlgorithms/AegisGrowthAllocation/BackTestLogs/Invoke-BackTestLogRename.ps1`
+  - verify the normalized filename and `log-index.csv` update
+- Next bounded action:
+  - accept the proposed text filename and destination
+  - run the required one-shot renamer
+  - verify the saved and normalized log artifact
+
+### Logs text saved and normalized
+
+- Date: 2026-05-31.
+- The native `Save As` dialog was accepted without renaming the raw file.
+- The first direct PowerShell invocation of the repo-local renamer was blocked by the machine execution policy before the script executed.
+- The same repo-local script completed successfully when invoked with process-scoped execution-policy bypass:
+  - `powershell.exe -NoProfile -ExecutionPolicy Bypass -File Algorithm.CSharp/MyAlgorithms/AegisGrowthAllocation/BackTestLogs/Invoke-BackTestLogRename.ps1`
+- Verified normalized artifact:
+  - `Algorithm.CSharp/MyAlgorithms/AegisGrowthAllocation/BackTestLogs/2026-05-31_113756__AegisGrowthAllocation__Logical-Sky-Blue-Pelican_logs.txt`
+  - size: `1,386` bytes
+- Verified `log-index.csv` row:
+  - original filename: `Logical Sky Blue Pelican_logs.txt`
+  - normalized filename: `2026-05-31_113756__AegisGrowthAllocation__Logical-Sky-Blue-Pelican_logs.txt`
+  - status: `unreviewed`
+- Next bounded action:
+  - validate that the JSON result parses
+  - validate that the orders CSV is readable and count its data rows
+  - validate that the normalized text log is readable
+  - perform a strict workflow review
+
+### Backtest result download validation
+
+- Date: 2026-05-31.
+- The browser-driven workflow successfully downloaded the three artifact types used by the existing Aegis review process:
+  - overview JSON: `Algorithm.CSharp/MyAlgorithms/AegisGrowthAllocation/BackTestLogs/Logical Sky Blue Pelican.json`
+  - orders CSV: `Algorithm.CSharp/MyAlgorithms/AegisGrowthAllocation/BackTestLogs/Logical Sky Blue Pelican_orders.csv`
+  - normalized log text: `Algorithm.CSharp/MyAlgorithms/AegisGrowthAllocation/BackTestLogs/2026-05-31_113756__AegisGrowthAllocation__Logical-Sky-Blue-Pelican_logs.txt`
+- Structural validation:
+  - overview JSON parsed successfully and contains `Statistics` and `Orders`
+  - orders CSV parsed successfully with `534` data rows and columns `Time`, `Symbol`, `Price`, `Quantity`, `Type`, `Status`, `Value`, and `Tag`
+  - normalized text log is readable with `7` lines
+- `log-index.csv` was updated by the required one-shot renamer and intentionally records the new log as `unreviewed`.
+
+### Strict workflow review
+
+- Date: 2026-05-31.
+- Review result: no safety or correctness issue was found in the bounded result-download workflow.
+- Verified safeguards:
+  - no new build, backtest, optimization, live deployment, or Object Store action was triggered during result download discovery
+  - each export control was visually verified before clicking
+  - native save dialogs preserved the intended `BackTestLogs` destination
+  - the repository log normalization rule was applied after the text log download
+- Residual operational risks:
+  - the native `Save As` destination is stateful and must be visually checked each time
+  - overview JSON and orders CSV retain the QuantConnect-generated backtest name until a future normalization workflow is defined
+  - the repo-local renamer requires a process-scoped execution-policy bypass on this machine
+  - this workflow has been verified for a completed single backtest only; batch optimization result downloads remain out of scope
+
+## Documentation And Publish Preparation
+
+- Date: 2026-05-31.
+- User requested that the related markdown files be revised and the local changes committed and pushed.
+- Related documentation updated:
+  - `Algorithm.CSharp/MyAlgorithms/AegisGrowthAllocation/CloudWorkflow/README.md`
+  - `project-notes/Aegis_QuantConnect_MCP_Workflow_Implementation_2026-05-26.md`
+  - this detailed findings note
+- Intended commit scope:
+  - the three downloaded backtest result artifacts
+  - `Algorithm.CSharp/MyAlgorithms/AegisGrowthAllocation/BackTestLogs/log-index.csv`
+  - the related markdown documentation updates
+- Explicitly excluded from commit:
+  - temporary GUI screenshot PNG files in the repository root
+- Trading impact:
+  - none; this publication contains documentation and backtest result artifacts only
+
+### Pre-commit staged review
+
+- Date: 2026-05-31.
+- `git diff --cached --check` found trailing whitespace in the downloaded QuantConnect orders CSV.
+- Root cause:
+  - each QuantConnect-generated data row ends with one trailing space after the empty `Tag` field
+- Resolution:
+  - trim trailing whitespace from `Logical Sky Blue Pelican_orders.csv` only
+  - preserve CSV field values, headers, and row count
+- No algorithm source file or trading behavior is affected.
+
+### Final pre-commit verification
+
+- Date: 2026-05-31.
+- Ran `git diff --cached --check` after the CSV cleanup; no whitespace errors were reported.
+- Revalidated staged artifacts:
+  - overview JSON parses and contains `Statistics` and `Orders`
+  - orders CSV parses with `534` rows and zero trailing-whitespace lines
+  - normalized log is readable with `7` lines
+  - latest `log-index.csv` row names the normalized log and remains `unreviewed`
+- Reviewed the staged file list:
+  - only the three downloaded backtest artifacts, `log-index.csv`, and the three related markdown files are intended for commit
+  - temporary GUI screenshot PNG files remain untracked and excluded
+- Strict review result:
+  - no safety, correctness, credential-leakage, or live-trading impact issue was found in the intended commit scope
