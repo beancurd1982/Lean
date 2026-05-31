@@ -559,3 +559,86 @@ Built project 'AegisGrowthAllocation_BackTest' in Cloud for Lean Engine 2.5.0.0.
 - Credential scan review: matches are existing placeholder guidance only; no real credential, API token, or account identifier is present.
 - Strict review result: documentation changes accurately record the verified fallback workflow and do not change algorithm behavior.
 - Excluded from commit: root-level PNG screenshots captured as temporary GUI evidence.
+
+## Backtest Parameters Panel Workflow
+
+- Date: 2026-05-31.
+- User described the QuantConnect cloud backtest project's left-side `PARAMETERS` panel.
+- Existing panel behavior:
+  - click the blue `Add New Parameter` button at the bottom of the parameter list
+  - the panel reveals `Parameter Name` and `Parameter Default Value` input boxes
+  - click `Create Parameter` to persist the entered parameter
+  - click `x` to cancel creation without adding the parameter
+- Safety boundary:
+  - creating a parameter mutates the cloud backtest project configuration
+  - do not click `Create Parameter` until the user supplies or confirms the intended parameter name and default value
+  - use the `x` action for a safe form-open/form-cancel behavior test when no persistent parameter is intended
+  - do not interact with a live-trading project
+
+### Test Parameter Creation Scope
+
+- User explicitly approved creating a new test parameter in the QuantConnect cloud backtest project.
+- Intended disposable test parameter:
+  - name: `codex-test-param`
+  - default value: `true`
+- Scope boundary: create one backtest-project parameter only. Do not modify source code, launch a build, run a backtest, start an optimization, deploy live trading, or write Object Store data.
+
+### Test Parameter Creation Result
+
+- Clicked the blue `Add New Parameter` control.
+- Verified the creation form displayed:
+  - `Parameter Name`
+  - `Parameter Default Value`
+  - `Create Parameter`
+  - cancel `x`
+- Entered:
+  - name: `codex-test-param`
+  - default value: `true`
+- Clicked `Create Parameter`.
+- Verified the form closed and the parameter list refreshed.
+- Verified the new panel row: `codex-test-param = true`.
+
+### Parameter Creation Strict Review
+
+- Strict review completed.
+- Verified target: QuantConnect cloud backtest project `AegisGrowthAllocation_BackTest`.
+- Verified mutation scope: one disposable test parameter was created.
+- Verified action boundary: no source edit, cloud build, backtest, optimization, live deployment, or Object Store action was triggered.
+- Residual state: `codex-test-param=true` remains in the backtest project and should be deleted when parameter-removal behavior is tested or before the project is used for a clean production-like backtest.
+
+### Test Parameter Removal Scope
+
+- User explicitly requested removal of disposable test parameter `codex-test-param`.
+- Intended workflow:
+  - hover over the `codex-test-param` row
+  - verify row action icons appear
+  - click the row trash icon
+  - verify the parameter row disappears
+- Scope boundary: remove only `codex-test-param` from the cloud backtest project. Do not modify algorithm parameters used by the strategy.
+
+### Test Parameter Removal Result
+
+- Hovered over the `codex-test-param` row.
+- Verified the row-level edit and trash icons appeared.
+- Clicked the row trash icon.
+- Verified the parameter list refreshed without a separate confirmation modal.
+- Verified `codex-test-param` disappeared.
+- Verified the original strategy parameter list remains present.
+
+### Parameter Removal Strict Review
+
+- Strict review completed.
+- Verified target: QuantConnect cloud backtest project `AegisGrowthAllocation_BackTest`.
+- Verified mutation scope: only disposable test parameter `codex-test-param` was removed.
+- Verified clean residual state: the temporary parameter no longer exists.
+- Verified action boundary: no source edit, cloud build, backtest, optimization, live deployment, or Object Store action was triggered.
+- Finding: parameter deletion is immediate after clicking the row trash icon; no separate confirmation modal was observed.
+
+## Parameter Workflow Documentation Publish Review
+
+- Date: 2026-05-31.
+- User requested commit and push after the parameter create/remove workflow verification.
+- Durable repository change: this automation findings note.
+- Ran `git diff --check`; no whitespace errors were reported.
+- Strict review result: the note accurately records the backtest-only parameter workflow and the clean removal of the disposable parameter.
+- Excluded from commit: root-level PNG screenshots captured as temporary GUI evidence.
