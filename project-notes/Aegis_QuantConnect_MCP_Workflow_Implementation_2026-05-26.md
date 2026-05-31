@@ -125,3 +125,43 @@
 - Finding: The Phase 2 allow-list includes read-oriented project, backtest, order, optimization, and MCP-version tools only.
 - Finding: The allow-list excludes cloud-write, live-trading, Object Store, project mutation, and file mutation tools.
 - Residual risk: tool names may differ from the QuantConnect MCP server implementation. If tools do not appear after restarting Codex with Local Platform running, inspect the exposed tool list and adjust the allow-list without broadening into write/live/Object Store tools.
+
+## Chrome GUI Fallback Verification
+
+- Date: 2026-05-31.
+- Context: QuantConnect MCP remains unavailable in the active Codex session, so a guarded Chrome GUI fallback was tested against the separate cloud backtest project `AegisGrowthAllocation_BackTest`.
+- Detailed evidence: `project-notes/Aegis_QuantConnect_Chrome_Automation_Findings_2026-05-30.md`.
+- Verified capabilities:
+  - inspect the workspace explorer
+  - create a temporary file
+  - edit cloud source content
+  - clear stale Cloud Terminal output
+  - trigger `Cloud Build`
+  - detect a deliberate compile failure from fresh Cloud Terminal output
+  - permanently delete cloud backtest source files with named confirmation
+  - recreate the complete Aegis source set from exact local content
+  - verify a clean cloud build
+- Required restored source set:
+  - `AegisGrowthAllocation.cs`
+  - `AegisGrowthAllocation.LiveState.cs`
+  - `LiveStateStore.cs`
+  - `PortfolioManager.cs`
+  - `RegimeModel.cs`
+  - `StockSelectionModel.cs`
+  - `StrategyConfig.cs`
+- Preferred restore workflow: expand `WORKSPACE (WORKSPACE)`, right-click the child `project` row, select `New File...`, enter the filename, paste matching local source, and wait for autosave.
+- UI finding: the parent workspace header and child project row are independent accordions. Avoid the small explorer header `New File` button because a nearby misclick can collapse the workspace.
+- Final cloud build result:
+
+```text
+Building project 'AegisGrowthAllocation_BackTest' in Cloud, with Signature '3d5b76'
+Built project 'AegisGrowthAllocation_BackTest' in Cloud for Lean Engine 2.5.0.0.17756, with Id '5d2d16-3d5b76'
+```
+
+## Chrome GUI Fallback Review
+
+- Finding: The GUI fallback is viable for guarded backtest-project source synchronization and cloud compile verification.
+- Finding: No local algorithm source file was edited during the restore verification.
+- Finding: No backtest, optimization, live deployment, brokerage action, or Object Store action was triggered.
+- Finding: The GUI fallback does not replace the planned MCP/REST ingestion workflow for systematic result retrieval and analysis.
+- Residual risk: coordinate-driven GUI automation is sensitive to layout changes and must retain visual verification checkpoints before destructive or cloud-write actions.

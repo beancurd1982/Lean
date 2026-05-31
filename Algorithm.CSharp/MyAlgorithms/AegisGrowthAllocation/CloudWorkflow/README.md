@@ -27,6 +27,41 @@ To use it:
 
 The config contains no credentials and restricts Phase 2 to a read-only tool allow-list.
 
+## Verified Chrome GUI Fallback
+
+When MCP or REST access is unavailable, the QuantConnect cloud backtest project can be maintained through a guarded Chrome GUI workflow. This fallback has been verified against `AegisGrowthAllocation_BackTest`.
+
+Required Aegis source files:
+
+- `AegisGrowthAllocation.cs`
+- `AegisGrowthAllocation.LiveState.cs`
+- `LiveStateStore.cs`
+- `PortfolioManager.cs`
+- `RegimeModel.cs`
+- `StockSelectionModel.cs`
+- `StrategyConfig.cs`
+
+Preferred source restore method:
+
+1. Confirm the visible project is the intended backtest project, not a live-trading project.
+2. Confirm the explorer `WORKSPACE (WORKSPACE)` accordion is expanded.
+3. Right-click the child `project` row.
+4. Select `New File...`.
+5. Enter the exact filename.
+6. Replace generated content with the matching local source content.
+7. Wait for autosave before creating the next file.
+8. After all files are present, clear stale `CLOUD TERMINAL` output.
+9. Trigger `Cloud Build (Ctrl+Shift+B)`.
+10. Verify the fresh terminal output contains `Built project ...` and inspect `PROBLEMS`.
+
+Avoid the small explorer header `New File` button during restore. Its hit area is close to the collapsible workspace header and is easier to misclick.
+
+The `WORKSPACE (WORKSPACE)` header and child `project` row are independent accordions. Expand the parent before using explorer controls and expand the child before visually verifying filenames.
+
+This fallback does not authorize backtests, optimizations, live deployments, Object Store writes, or live-trading project mutation. Those actions require separate explicit approval.
+
+Detailed evidence: `project-notes/Aegis_QuantConnect_Chrome_Automation_Findings_2026-05-30.md`.
+
 ## Credential Rules
 
 - Do not commit credentials, API tokens, account identifiers, brokerage account data, raw Object Store JSON, or raw cloud response bodies.

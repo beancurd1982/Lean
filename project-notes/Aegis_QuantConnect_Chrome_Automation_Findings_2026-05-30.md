@@ -385,3 +385,177 @@ Build Error File: test1.cs Line:1 Column:25 - } expected
 - Durable repository change: this automation findings note.
 - Excluded from commit: root-level PNG screenshots captured during GUI verification. These are temporary local evidence artifacts, not source-controlled project assets.
 - Review result: documentation-only publish scope is correct. No production algorithm file, cloud-workspace file, or trading behavior change is included in the Git commit.
+
+## Backtest Cloud Workspace Full Source Deletion Test
+
+- Date: 2026-05-31.
+- User explicitly confirmed that the target project is the QuantConnect backtest project, not the project running live trading.
+- User explicitly requested deletion of all source files from the confirmed backtest cloud workspace.
+- Intended deletion workflow:
+  - verify the visible project is `AegisGrowthAllocation_BackTest`
+  - delete the first visible source file
+  - confirm permanent deletion in the QuantConnect modal
+  - wait briefly and visually verify the explorer refresh
+  - repeat until no cloud-workspace source files remain
+- Safety boundary:
+  - do not modify or delete any local repository source file
+  - do not interact with the live-trading QuantConnect project
+  - do not trigger build, backtest, optimization, live deployment, or Object Store actions
+
+### Full Source Deletion Test Result
+
+- Verified the visible project identity before deletion: `AegisGrowthAllocation_BackTest`.
+- Verified the initial cloud-workspace source list:
+  - `AegisGrowthAllocation.cs`
+  - `LiveStateStore.cs`
+  - `PortfolioManager.cs`
+  - `RegimeModel.cs`
+  - `StockSelectionModel.cs`
+  - `StrategyConfig.cs`
+  - `test1.cs`
+- Deleted the first visible source file repeatedly using the verified QuantConnect context-menu workflow:
+  - right-click the first explorer file
+  - select `Delete Permanently`
+  - confirm the named file in the QuantConnect modal
+  - click `Delete`
+  - wait for explorer refresh
+- Verified after the first deletion that `AegisGrowthAllocation.cs` disappeared and `LiveStateStore.cs` became the first visible file.
+- Verified after the second deletion that `LiveStateStore.cs` disappeared and `PortfolioManager.cs` became the first visible file.
+- Captured intermediate explorer states during the remaining deletion loop.
+- Verified final explorer state: the `project` node is expanded and contains no source files.
+- Finding: the cloud backtest workspace can be cleared reliably by repeating the first-file permanent-delete workflow with a short refresh wait between deletions.
+
+### Full Source Deletion Strict Review
+
+- Strict review completed.
+- Verified target: QuantConnect cloud project `AegisGrowthAllocation_BackTest`.
+- Verified end state: no cloud-workspace source files remain under the expanded `project` node.
+- Verified local scope: no local repository source file was deleted or modified.
+- Verified cloud action boundary: no build, backtest, optimization, live deployment, or Object Store action was triggered.
+- Live-trading risk: none identified because the user confirmed this is the separate backtest project, not the live-trading project.
+- Residual state: the backtest cloud project is intentionally empty and cannot build until source files are recreated or uploaded.
+
+## Backtest Cloud Workspace Source Restore Test
+
+- Date: 2026-05-31.
+- User explicitly requested recreation of the algorithm source files in the empty QuantConnect backtest cloud workspace, followed by a cloud build and terminal verification.
+- Local source inventory:
+  - `AegisGrowthAllocation.cs`
+  - `AegisGrowthAllocation.LiveState.cs`
+  - `LiveStateStore.cs`
+  - `PortfolioManager.cs`
+  - `RegimeModel.cs`
+  - `StockSelectionModel.cs`
+  - `StrategyConfig.cs`
+- Dependency check:
+  - `AegisGrowthAllocation.cs` defines `public partial class AegisGrowthAllocation : QCAlgorithm`.
+  - `AegisGrowthAllocation.LiveState.cs` defines `public partial class AegisGrowthAllocation`.
+  - The split live-state source file is required and must be included in the restore set.
+- Size check: every local source file is below the QuantConnect 64,000-character per-file limit.
+- Intended restore workflow:
+  - click the workspace explorer `New File` control
+  - enter the exact local source filename
+  - wait for the generated editor file to open
+  - replace generated content with the matching local source content
+  - wait for autosave
+  - repeat for all seven files
+  - clear prior Cloud Terminal logs
+  - trigger `Cloud Build`
+  - inspect the fresh terminal output and `PROBLEMS`
+- Safety boundary:
+  - target only `AegisGrowthAllocation_BackTest`
+  - upload exact local source content without edits
+  - do not trigger backtest, optimization, live deployment, or Object Store actions
+
+### Workspace Accordion Interruption
+
+- The multi-file restore workflow was interrupted after the user observed that the explorer `WORKSPACE (WORKSPACE)` panel is collapsible.
+- Required control behavior test before continuing restore:
+  - capture the current explorer state
+  - click the `WORKSPACE (WORKSPACE)` header once
+  - verify the workspace tree and explorer action buttons collapse
+  - click the same header again
+  - verify the workspace tree and explorer action buttons expand and return
+- Restore remains paused until this accordion behavior is verified.
+
+### Workspace Accordion Test Result
+
+- Verified two independent explorer accordions:
+  - parent header: `WORKSPACE (WORKSPACE)`
+  - child row: `project`
+- Parent header behavior:
+  - when expanded, the explorer action buttons are visible and the child `project` row is shown
+  - after one click, the entire workspace body collapses and the explorer action buttons disappear
+  - after a second click, the explorer action buttons and child `project` row return
+- Child `project` row behavior:
+  - it can remain collapsed independently after the parent workspace is expanded
+  - it must be expanded separately when visual verification of the source-file list is required
+- Post-interruption inspection:
+  - expanded the parent `WORKSPACE (WORKSPACE)` section
+  - expanded the child `project` row
+  - verified the cloud workspace currently shows no persisted source files
+- Finding: restore automation must explicitly verify parent workspace expansion before using header action buttons and explicitly verify child project expansion before inspecting created files.
+- Residual state: source restore should restart from an empty project state.
+
+### Safer New File Workflow
+
+- User requested a safer file-creation method because the explorer header action-button hit area is small and can accidentally collapse the parent workspace accordion.
+- Revised creation workflow:
+  - verify `WORKSPACE (WORKSPACE)` is expanded
+  - right-click the child `project` row
+  - select `New File...`
+  - enter the exact filename
+  - wait for the editor tab to open
+  - replace generated content with the matching local source content
+  - wait for autosave
+- Safety improvement: avoid clicking the small explorer header `New File` action button during restore.
+- Restore target remains the confirmed QuantConnect backtest project `AegisGrowthAllocation_BackTest`.
+
+### Safer Restore Test Result
+
+- Verified the parent `WORKSPACE (WORKSPACE)` section was expanded.
+- Right-clicked the child `project` row.
+- Verified the context menu displayed `New File...` as the first row.
+- Recreated and populated the seven required source files using the safer project-row context-menu workflow:
+  - `AegisGrowthAllocation.cs`
+  - `AegisGrowthAllocation.LiveState.cs`
+  - `LiveStateStore.cs`
+  - `PortfolioManager.cs`
+  - `RegimeModel.cs`
+  - `StockSelectionModel.cs`
+  - `StrategyConfig.cs`
+- Verified the expanded explorer displayed all seven expected filenames.
+- Cleared stale `CLOUD TERMINAL` output before final build verification.
+- Triggered `Cloud Build (Ctrl+Shift+B)`.
+- Fresh terminal output:
+
+```text
+Building project 'AegisGrowthAllocation_BackTest' in Cloud, with Signature '3d5b76'
+Built project 'AegisGrowthAllocation_BackTest' in Cloud for Lean Engine 2.5.0.0.17756, with Id '5d2d16-3d5b76'
+```
+
+- Build result: success.
+- The visible `PROBLEMS` badge remained at `2`, consistent with the pre-existing obsolete API warnings previously attributed to `AegisGrowthAllocation.cs`.
+
+### Safer Restore Strict Review
+
+- Strict review completed.
+- Verified target: QuantConnect cloud backtest project `AegisGrowthAllocation_BackTest`.
+- Verified source set: all seven required local Aegis source files were recreated in the cloud workspace.
+- Verified build: the authoritative post-clear Cloud Build completed successfully with build id `5d2d16-3d5b76`.
+- Verified safety boundary: no backtest, optimization, live deployment, or Object Store action was triggered.
+- Verified local scope: no local algorithm source file was edited.
+- Finding: right-clicking the child `project` row and selecting `New File...` is safer and more reliable than clicking the small explorer header action button.
+
+## Documentation Publish Review - 2026-05-31
+
+- User confirmed that the safer restore workflow works and requested related markdown updates followed by commit and push.
+- Updated durable documentation:
+  - `Algorithm.CSharp/MyAlgorithms/AegisGrowthAllocation/CloudWorkflow/README.md`
+  - `project-notes/Aegis_QuantConnect_MCP_Workflow_Implementation_2026-05-26.md`
+  - `project-notes/Aegis_QuantConnect_Chrome_Automation_Findings_2026-05-30.md`
+- Ran `git diff --check`; no whitespace errors were reported.
+- Scanned intended markdown changes for credential-like strings.
+- Credential scan review: matches are existing placeholder guidance only; no real credential, API token, or account identifier is present.
+- Strict review result: documentation changes accurately record the verified fallback workflow and do not change algorithm behavior.
+- Excluded from commit: root-level PNG screenshots captured as temporary GUI evidence.
