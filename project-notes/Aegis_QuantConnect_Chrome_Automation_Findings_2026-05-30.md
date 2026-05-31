@@ -932,3 +932,14 @@ Weeks=157 Start=2023-01-03 End=2025-12-29 PreWeakWeeks=20 NonPreWeakWeeks=137 Se
   - temporary GUI screenshot PNG files remain untracked and excluded
 - Strict review result:
   - no safety, correctness, credential-leakage, or live-trading impact issue was found in the intended commit scope
+
+### Publish result
+
+- Date: 2026-05-31.
+- Created and pushed the focused workflow-and-artifact commit:
+  - `88f0b1e61 docs: record QuantConnect GUI download workflow`
+- Push target:
+  - `origin/research-algorithms`
+- Push result:
+  - successful
+- Temporary GUI screenshot PNG files remain untracked and intentionally excluded.
