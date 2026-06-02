@@ -94,6 +94,12 @@ Verified result tabs:
 
 This remains a GUI fallback, not the target normalized MCP/REST ingestion pipeline. Coordinate-driven automation requires visual checkpoints before each action. Batch optimization result retrieval remains unverified.
 
+### Chrome Plugin Runtime Troubleshooting Boundary
+
+If the dedicated authenticated-Chrome path fails before tab discovery with `windows sandbox failed: spawn setup refresh`, treat the failure as a local Codex plugin/runtime issue. Do not continue with coordinate-based browser input or QuantConnect cloud actions until the Chrome plugin connection is repaired and a harmless navigation smoke test succeeds.
+
+The verified 2026-06-02 local recovery involved current-user Codex and Chrome integration state. Keep machine-specific registry paths and generated-file backups out of this workflow README. Refer to `project-notes/Aegis_QuantConnect_Chrome_Automation_Findings_2026-05-30.md` for the detailed diagnostic record.
+
 ## Credential Rules
 
 - Do not commit credentials, API tokens, account identifiers, brokerage account data, raw Object Store JSON, or raw cloud response bodies.

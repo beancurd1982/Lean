@@ -218,3 +218,19 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File Algorithm.CSharp/MyAlgor
 - Residual risk: coordinate-driven GUI automation remains sensitive to layout changes and requires visual checkpoints.
 - Residual risk: batch optimization result retrieval remains unverified.
 - Next improvement: add a repo-local bundle renamer that gives the overview JSON, orders CSV, and text log one consistent normalized test-run name.
+
+## Chrome Plugin Local Runtime Recovery Verification
+
+- Date: 2026-06-02.
+- Context: the dedicated authenticated-Chrome control path stopped initializing before tab discovery or navigation.
+- Detailed repair evidence: `project-notes/Aegis_QuantConnect_Chrome_Automation_Findings_2026-05-30.md`.
+- Verified recovery:
+  - native-host registry registration is present
+  - native-host validation reports `Correct: yes`
+  - the Codex Chrome Extension is installed and enabled
+  - the repaired browser bridge initializes successfully
+  - the normal Chrome plugin `latest` client path loads successfully
+  - a new Chrome tab navigated successfully to `https://www.youtube.com/`
+- Finding: the blocker was local Codex Chrome plugin/runtime setup, not QuantConnect cloud state.
+- Residual risk: the local repair includes a version-specific current-user compatibility entry for a copied Codex sandbox helper. Reassess after Codex desktop updates.
+- Safety result: no QuantConnect navigation, cloud mutation, algorithm source edit, build, backtest, optimization, live deployment, brokerage action, or Object Store action occurred during recovery verification.

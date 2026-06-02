@@ -943,3 +943,200 @@ Weeks=157 Start=2023-01-03 End=2025-12-29 PreWeakWeeks=20 NonPreWeakWeeks=137 Se
 - Push result:
   - successful
 - Temporary GUI screenshot PNG files remain untracked and intentionally excluded.
+
+## Existing Parameter Edit Discovery
+
+- Date: 2026-05-31.
+- User requested verification of the remaining parameter-management action: editing an existing parameter value.
+- Target project:
+  - confirmed cloud backtest project `AegisGrowthAllocation_BackTest`
+- Planned disposable test:
+  - create `codex-edit-test-param` with default value `1`
+  - edit the existing row through its pencil icon and change the value to `2`
+  - visually verify the updated value
+  - remove the disposable parameter through its trash icon
+  - visually verify the original parameter panel is restored
+- Safety boundary:
+  - do not edit any strategy parameter
+  - do not trigger build, backtest, optimization, live deployment, or Object Store action
+  - remove the disposable parameter before completing the test
+
+### Existing parameter edit test blocked before UI interaction
+
+- Date: 2026-05-31.
+- Attempted to establish the supported Windows automation connection twice.
+- Attempted to establish the dedicated authenticated-Chrome automation connection twice.
+- Both supported paths failed during local setup with:
+  - `windows sandbox failed: spawn setup refresh`
+- No browser input was sent.
+- No disposable parameter was created.
+- No strategy parameter, source file, build, backtest, optimization, live deployment, or Object Store state was changed.
+- Recovery requirement:
+  - restart Codex and resume the same bounded disposable test
+  - create `codex-edit-test-param=1`
+  - edit it to `2` through the pencil icon
+  - visually verify the updated value
+  - remove the disposable parameter and verify the original panel is restored
+
+### Chrome restart retry remained blocked
+
+- Date: 2026-05-31.
+- User shut down Chrome and requested a fresh launch and navigation to:
+  - `https://www.quantconnect.com/project/28209469`
+- Attempted the supported dedicated Chrome automation connection twice after the browser shutdown.
+- Both attempts failed before Chrome launch or navigation with:
+  - `windows sandbox failed: spawn setup refresh`
+- No browser process was launched by the automation runtime.
+- No navigation, browser input, parameter mutation, build, backtest, optimization, live deployment, or Object Store action occurred.
+- Interpretation:
+  - the blocker is in the local automation runtime setup rather than in the open Chrome process or QuantConnect page state
+
+### Additional supported Chrome launch retry remained blocked
+
+- Date: 2026-05-31.
+- User requested another supported Chrome launch and navigation attempt for:
+  - `https://www.quantconnect.com/project/28209469`
+- Attempted the supported Chrome automation launch twice with a connection reset between attempts.
+- Both attempts failed before Chrome launch or navigation with:
+  - `windows sandbox failed: spawn setup refresh`
+- No browser input or QuantConnect cloud mutation occurred.
+
+### Existing Chrome instance retry and plugin diagnostics remained blocked
+
+- Date: 2026-05-31.
+- User confirmed that a Chrome instance was already open and requested supported Chrome control to navigate to:
+  - `https://www.google.com/maps`
+- Reset the Chrome automation runtime and attempted the dedicated authenticated-Chrome extension connection twice.
+- Both attempts failed before tab inspection or navigation with:
+  - `windows sandbox failed: spawn setup refresh`
+- Attempted the Chrome plugin's four read-only diagnostic scripts:
+  - `node scripts/chrome-is-running.js --json`
+  - `node scripts/installed-browsers.js --json`
+  - `node scripts/check-extension-installed.js --json`
+  - `node scripts/check-native-host-manifest.js --json`
+- All four diagnostic scripts failed before inspection because Windows rejected `node.exe` startup with:
+  - `Access is denied`
+- Interpretation:
+  - the dedicated Chrome plugin backend cannot initialize in the current Codex session
+  - the failure occurs before Chrome tab discovery, URL navigation, or QuantConnect interaction
+  - an already-open Chrome process does not bypass the backend initialization failure
+- Safety result:
+  - no browser input was sent
+  - no navigation occurred
+  - no QuantConnect parameter, source file, build, backtest, optimization, live deployment, or Object Store state changed
+- Recommended recovery:
+  - reinstall or refresh the Chrome plugin from the Codex plugin UI
+  - fully exit and restart Codex after the plugin refresh
+  - reopen Chrome and retry the dedicated Chrome control path
+
+### Post-reinstall Chrome control retry remained blocked
+
+- Date: 2026-05-31.
+- User reinstalled the Chrome plugin, launched Chrome, and requested supported Chrome control to navigate to:
+  - `https://www.youtube.com/`
+- Reset the Chrome automation runtime and attempted the dedicated authenticated-Chrome extension connection.
+- Waited two seconds and performed the required lightweight retry.
+- Both attempts failed before tab discovery, tab creation, or navigation with:
+  - `windows sandbox failed: spawn setup refresh`
+- Repeated the Chrome plugin's four read-only diagnostic scripts after the reinstall.
+- All four diagnostic scripts still failed before inspection because Windows rejected `node.exe` startup with:
+  - `Access is denied`
+- Interpretation:
+  - reinstalling the Chrome plugin alone did not repair the local automation runtime
+  - launching Chrome manually does not bypass the blocked backend initialization
+  - the next recovery step is a full Codex desktop application exit and restart
+- Safety result:
+  - no browser input was sent
+  - no navigation occurred
+  - no QuantConnect parameter, source file, build, backtest, optimization, live deployment, or Object Store state changed
+
+### Explicit Chrome plugin invocation remained blocked
+
+- Date: 2026-05-31.
+- User explicitly invoked the installed Chrome plugin and requested navigation to:
+  - `https://www.youtube.com/`
+- Attempted the dedicated authenticated-Chrome extension connection.
+- Waited two seconds and performed the required lightweight retry.
+- Both attempts failed before tab discovery, tab creation, or navigation with:
+  - `windows sandbox failed: spawn setup refresh`
+- Repeated the four read-only Chrome plugin diagnostic scripts.
+- All four diagnostic scripts still failed before inspection because Windows rejected `node.exe` startup with:
+  - `Access is denied`
+- Interpretation:
+  - explicitly selecting the installed Chrome plugin does not bypass the local helper runtime failure
+  - browser navigation remains unavailable until the Windows execution block affecting the Chrome helper runtime is resolved
+- Safety result:
+  - no browser input was sent
+  - no navigation occurred
+  - no QuantConnect parameter, source file, build, backtest, optimization, live deployment, or Object Store state changed
+
+## Supported Chrome Plugin Local Recovery Follow-Up
+
+- Date: 2026-06-02.
+- Scope: repair and verify the local Codex Chrome plugin integration only.
+- Safety boundary:
+  - do not navigate to QuantConnect during repair
+  - do not modify QuantConnect parameters, source files, builds, backtests, optimizations, live deployments, or Object Store data
+  - keep every local workaround reversible and retain backups before editing generated files
+
+### Root cause findings
+
+- The Codex Chrome plugin and the Codex Chrome Extension were available after reinstall.
+- The Chrome extension was installed and enabled in the selected `Default` profile:
+  - extension version: `1.1.5`
+- The native-messaging manifest existed, but the required current-user Chrome native-host registry entry was initially missing.
+- After the registry registration was restored, the plugin's own native-host validator reported `Correct: yes`.
+- A second independent local runtime failure remained:
+  - the newer copied Codex CLI failed while launching its copied Windows sandbox setup helper
+  - Windows reported `The requested operation requires elevation. (os error 740)`
+- The Chrome plugin's `latest` junction also pointed to an incomplete staging bundle that contained the native binary but omitted the scripts and skill files.
+
+### Local repair applied
+
+- Restored the current-user Chrome native-host registration for `com.openai.codexextension`.
+- Normalized the generated Chrome native-host manifest and both Chrome host descriptor copies as BOM-free JSON.
+- Updated the generated descriptors to use the complete cached Chrome plugin bundle.
+- Added a narrowly scoped, reversible current-user `RUNASINVOKER` compatibility entry for the copied Windows sandbox setup helper.
+- Backed up and synchronized the incomplete Chrome plugin staging folder from the complete cached bundle so the normal `latest` path includes:
+  - `scripts/browser-client.mjs`
+  - `scripts/check-extension-installed.js`
+  - `scripts/check-native-host-manifest.js`
+  - `extension-host/windows/x64/extension-host.exe`
+  - `skills/control-chrome/SKILL.md`
+
+### Verification result
+
+- The plugin's native-host validator reported `Correct: yes`.
+- The extension checker reported the Codex Chrome Extension installed and enabled in the selected profile.
+- The repaired browser bridge initialized successfully.
+- The normal Chrome plugin `latest` client path loaded successfully.
+- The repaired Chrome connection listed the currently open Chrome tabs.
+- User requested a navigation smoke test.
+- Opened a new Chrome tab and navigated successfully to:
+  - `https://www.youtube.com/`
+- Verified resulting page title:
+  - `YouTube`
+
+### Review result
+
+- Finding: supported Chrome plugin control is functional again in the current Codex installation.
+- Finding: the earlier browser-control blocker was caused by local Codex plugin/runtime setup, not by QuantConnect state.
+- Finding: plugin reinstall alone was insufficient because the missing registry registration, copied-helper compatibility behavior, and incomplete `latest` staging bundle were separate issues.
+- Residual risk: a future Codex desktop update may generate a different hashed CLI/helper path or refresh generated Chrome plugin files, so the local workaround may need reassessment after an update.
+- Residual risk: the bounded disposable QuantConnect parameter-edit test remains pending and must retain its original step-level confirmation boundaries.
+- Trading impact: none. No QuantConnect navigation or cloud mutation occurred during the local repair and YouTube smoke test.
+
+### Documentation publish preparation
+
+- Date: 2026-06-02.
+- User requested revision of related markdown files followed by commit and push.
+- Intended commit scope:
+  - `Algorithm.CSharp/MyAlgorithms/AegisGrowthAllocation/CloudWorkflow/README.md`
+  - `project-notes/Aegis_QuantConnect_MCP_Workflow_Implementation_2026-05-26.md`
+  - this detailed findings note
+- Explicitly excluded:
+  - temporary QuantConnect and YouTube screenshot PNG files in the repository root
+- Review checks:
+  - `git diff --check` passed for the three markdown files
+  - credential-like value scan found no matches
+  - diff review found no algorithm source, QuantConnect cloud-state, live-trading, brokerage, or Object Store changes
