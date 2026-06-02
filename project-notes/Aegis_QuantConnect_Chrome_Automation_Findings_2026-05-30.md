@@ -1140,3 +1140,459 @@ Weeks=157 Start=2023-01-03 End=2025-12-29 PreWeakWeeks=20 NonPreWeakWeeks=137 Se
   - `git diff --check` passed for the three markdown files
   - credential-like value scan found no matches
   - diff review found no algorithm source, QuantConnect cloud-state, live-trading, brokerage, or Object Store changes
+
+## Existing Parameter Edit Test Resume
+
+- Date: 2026-06-02.
+- User explicitly approved resuming the bounded disposable parameter-edit test after the Chrome plugin recovery.
+- Target project:
+  - `AegisGrowthAllocation_BackTest`
+- Intended sequence:
+  - create disposable parameter `codex-edit-test-param=1`
+  - edit the disposable parameter value to `2`
+  - visually verify the updated value
+  - delete the disposable parameter
+  - visually verify that the original parameter panel is restored
+- Safety boundary:
+  - mutate only the disposable `codex-edit-test-param` row
+  - do not edit any strategy parameter
+  - do not edit source files
+  - do not trigger cloud build, backtest, optimization, live deployment, brokerage, or Object Store actions
+
+### Resume blocked before QuantConnect navigation
+
+- Date: 2026-06-02.
+- Attempted to initialize the supported Chrome plugin path before opening the QuantConnect project.
+- Initialization failed because the normal Chrome plugin `latest` bundle is missing:
+  - `scripts/browser-client.mjs`
+- Read-only filesystem verification confirmed that the regenerated `latest` staging directory is also missing:
+  - `scripts/check-extension-installed.js`
+  - `scripts/check-native-host-manifest.js`
+  - `extension-host/windows/x64/extension-host.exe`
+  - `skills/control-chrome/SKILL.md`
+- The versioned cache still contains these files, but the supported workflow requires the normal plugin path and must not silently substitute a different cache path.
+- Safety result:
+  - stopped before opening QuantConnect
+  - no browser navigation occurred
+  - no disposable parameter was created
+  - no strategy parameter, source file, build, backtest, optimization, live deployment, brokerage, or Object Store state changed
+- Recovery requirement:
+  - restore the Chrome plugin through the Codex plugin UI before retrying the bounded disposable parameter-edit test
+
+### Sign-out and sign-in refresh restored Chrome plugin path
+
+- Date: 2026-06-02.
+- User signed out of Codex, fully exited the app, reopened Codex, and signed back in.
+- Read-only verification confirmed that the normal Chrome plugin `latest` bundle again contains:
+  - `scripts/browser-client.mjs`
+  - `scripts/check-extension-installed.js`
+  - `scripts/check-native-host-manifest.js`
+  - `extension-host/windows/x64/extension-host.exe`
+  - `skills/control-chrome/SKILL.md`
+- The Chrome plugin is present in the local bundled marketplace and remains enabled in Codex config.
+- The lightweight supported Chrome connection check succeeded and listed the currently open Chrome tab.
+- Next bounded action:
+  - open the separate QuantConnect backtest project
+  - inspect project identity and the parameters panel
+  - do not mutate a parameter until the exact disposable-test scope is rechecked
+
+### QuantConnect project inspection blocked by signed-out page
+
+- Date: 2026-06-02.
+- Opened the separate backtest-project URL in a new controlled Chrome tab:
+  - `https://www.quantconnect.com/project/28209469`
+- The resulting page showed the QuantConnect signed-out shell rather than the `AegisGrowthAllocation_BackTest` workspace.
+- Visible page state included the top-right `Sign In` action and no project parameter panel.
+- Waited for the project workspace to load, but the page did not become interactive.
+- Safety result:
+  - stopped before parameter-panel interaction
+  - no disposable parameter was created
+  - no strategy parameter, source file, build, backtest, optimization, live deployment, brokerage, or Object Store state changed
+- Recovery requirement:
+  - sign into QuantConnect manually in the opened Chrome tab
+  - reopen or refresh the separate backtest-project URL
+  - resume with a read-only project-identity and parameter-panel inspection before creating the disposable parameter
+
+### Existing parameter edit test approved for retry
+
+- Date: 2026-06-02.
+- User explicitly approved resuming the bounded disposable parameter-edit test.
+- Required read-only checkpoint before mutation:
+  - verify the visible project is `AegisGrowthAllocation_BackTest`
+  - verify the parameter panel is visible
+  - stop if the page is signed out or the project identity cannot be confirmed
+- Approved mutation scope:
+  - create `codex-edit-test-param=1`
+  - edit only that disposable value to `2`
+  - visually verify the updated value
+  - delete the disposable row
+  - visually verify that the original parameter panel is restored
+- Excluded actions:
+  - no strategy parameter edit
+  - no source file edit
+  - no cloud build, backtest, optimization, live deployment, brokerage, or Object Store action
+
+### Existing parameter edit test completed successfully
+
+- Date: 2026-06-02.
+- Connected through the repaired supported Chrome plugin path.
+- Claimed the already-open QuantConnect project tab and completed the required read-only checkpoint:
+  - page was signed in
+  - visible project identity was `AegisGrowthAllocation_BackTest`
+  - parameter panel was visible
+- Opened the `Add New Parameter` form.
+- The first coordinate-based typing attempt submitted an empty form and triggered validation only:
+  - no parameter row was created
+  - no strategy parameter was changed
+- Switched to DOM-targeted focus plus explicit keypress events.
+- Created the disposable row:
+  - `codex-edit-test-param=1`
+- Hovered that exact row and opened its edit control.
+- Changed only the disposable value:
+  - `codex-edit-test-param=2`
+- Verified the rendered updated row visually.
+- Hovered that exact row and selected its delete control.
+- Verified visually and through a read-only visible-DOM check that:
+  - `codex-edit-test-param` is no longer present
+  - the original strategy-parameter list is restored
+
+### Existing parameter edit test review
+
+- Strict review completed.
+- Finding: parameter create, update, and delete actions are now verified through the guarded Chrome GUI fallback.
+- Finding: DOM-targeted focus plus individual keypress events is more reliable than generic coordinate typing for QuantConnect parameter forms.
+- Finding: the disposable row was removed successfully; no residual test parameter remains.
+- Finding: no strategy parameter was changed.
+- Finding: no source file edit, cloud build, backtest, optimization, live deployment, brokerage, or Object Store action occurred.
+- Trading impact: none.
+- Residual risk:
+  - parameter mutation remains a cloud-write action and must retain exact-row verification and explicit user approval
+  - coordinate-only typing should not be used for future QuantConnect parameter mutation when DOM-targeted controls are available
+
+## Proposed Next Test - Read-Only Optimization Wizard Discovery
+
+- Date: 2026-06-02.
+- Recommended next automation test:
+  - open the `Optimize Project (Ctrl+Shift+O)` interface for the separate backtest project
+  - inspect the visible wizard controls and available result/constraint fields
+  - verify whether opening the wizard pre-populates or mutates any project parameters
+  - identify the final `Launch Optimization` control
+  - close the wizard without launching an optimization
+- Safety boundary:
+  - confirm the visible project is `AegisGrowthAllocation_BackTest`
+  - do not change any strategy parameter
+  - do not add or remove optimization parameters
+  - do not launch an optimization
+  - do not trigger cloud build, backtest, live deployment, brokerage, or Object Store actions
+- Reason for sequencing:
+  - parameter create, update, and delete automation is now verified
+  - single-backtest launch and artifact download are already verified
+  - batch optimization launch and result retrieval remain the largest unverified workflow gap
+  - read-only wizard discovery is required before designing a narrowly bounded disposable optimization run
+- Expected follow-up after discovery:
+  - define a minimal low-cost disposable optimization matrix
+  - request separate explicit approval before configuring or launching that cloud optimization
+
+### Optimization wizard open action approved
+
+- Date: 2026-06-02.
+- User clarified the optimization control and explicitly approved opening the wizard:
+  - control: the small double-arrow `Optimize Project` button
+  - expected result: a new `Optimization Wizard` editor tab
+- User described additional wizard controls for later discovery:
+  - blue `Launch Optimization` button
+  - parameter rows with name, default, minimum, maximum, optional step size, gear icon, and delete icon
+  - constraints section, intentionally deferred
+  - scrollable lower area with compute-node settings, speed slider, and estimated-cost panels
+- Approved immediate scope:
+  - confirm `AegisGrowthAllocation_BackTest`
+  - click the small double-arrow optimization button
+  - verify the `Optimization Wizard` tab opens
+  - capture the initial visible wizard state
+- Excluded immediate actions:
+  - no parameter edit, gear expansion, row deletion, constraint interaction, scrolling, compute-node change, optimization launch, build, backtest, live deployment, brokerage, or Object Store action
+
+### Optimization wizard open result
+
+- Date: 2026-06-02.
+- Connected through the supported Chrome plugin path.
+- Confirmed the visible project:
+  - `AegisGrowthAllocation_BackTest`
+- Located the current DOM-backed editor action:
+  - `Optimize Project (Ctrl+Shift+O)`
+- Clicked that action once.
+- Verified that a new editor tab opened:
+  - `Optimization Wizard`
+- Waited for the initial wizard body to render.
+- Observed terminal messages:
+
+```text
+Requesting optimization estimate...
+Received optimization estimate request
+```
+
+- Current visible result:
+  - the `Optimization Wizard` tab is open
+  - the wizard editor body remained blank after the extended render wait
+  - the expected parameter rows and blue `Launch Optimization` button are not visible yet
+- Safety result:
+  - no parameter edit, gear expansion, row deletion, constraint interaction, scrolling, compute-node change, optimization launch, build, backtest, live deployment, brokerage, or Object Store action occurred
+- Next bounded diagnostic:
+  - inspect the open wizard visually with the user
+  - if needed, test a non-mutating render recovery action such as closing and reopening the wizard or refreshing the project page, only after explicit approval
+
+### Optimization wizard delayed render retry approved
+
+- Date: 2026-06-02.
+- User clarified that the wizard requires a longer render delay.
+- Approved bounded retry:
+  - reclaim the already-open QuantConnect backtest-project tab
+  - wait at least five seconds
+  - capture the initial rendered wizard state
+- Safety boundary remains unchanged:
+  - no parameter edit, gear expansion, row deletion, constraint interaction, scrolling, compute-node change, optimization launch, build, backtest, live deployment, brokerage, or Object Store action
+
+### Optimization wizard delayed render retry result
+
+- Date: 2026-06-02.
+- Reclaimed the separate backtest-project tab:
+  - `AegisGrowthAllocation_BackTest`
+- Reopened `Optimize Project (Ctrl+Shift+O)`.
+- Waited eight seconds after the exact wizard-open action.
+- Result: the `Optimization Wizard` rendered successfully.
+- Initial visible wizard controls:
+  - blue `Launch Optimization` button
+  - `Parameter & Constraints` section
+  - disabled `Add Parameter` button
+  - three configured optimization rows:
+    - `favorable-breadth-threshold`
+    - `weak-stress-threshold`
+    - `severe-stress-gap`
+  - visible default, minimum, and maximum columns
+  - visible gear icon and delete icon for each configured row
+  - `Add Constraint` button
+  - collapsed `Estimated Number and Cost of Backtests` section
+- Corrected finding:
+  - the earlier blank wizard state was a render-timing issue
+  - wait at least five seconds after opening the wizard before concluding that the page is blank
+- Safety result:
+  - no parameter edit, gear expansion, row deletion, constraint interaction, scrolling, compute-node change, optimization launch, build, backtest, live deployment, brokerage, or Object Store action occurred
+- Next bounded discovery step:
+  - inspect one gear expansion to reveal step size without editing it
+  - collapse or leave the row unchanged
+  - scroll the wizard read-only to inspect compute-node, speed-slider, and estimated-cost controls
+  - request explicit approval before performing that read-only interaction sequence
+
+### Optimization wizard read-only control discovery approved
+
+- Date: 2026-06-02.
+- User explicitly approved the next bounded wizard inspection.
+- Approved interactions:
+  - reclaim the open backtest-project tab
+  - wait at least five seconds for the wizard render
+  - expand one configured parameter row through its gear icon
+  - verify the visible step-size field without editing it
+  - scroll the wizard page downward
+  - inspect compute-node, speed-slider, and estimated-cost controls
+- Safety boundary:
+  - do not edit parameter fields or step size
+  - do not remove rows
+  - do not interact with constraints
+  - do not change compute-node or speed settings
+  - do not launch optimization, build, backtest, live deployment, brokerage, or Object Store actions
+
+### Optimization wizard read-only control discovery result
+
+- Date: 2026-06-02.
+- Reclaimed the open QuantConnect backtest project tab and allowed the wizard to finish rendering before interaction.
+- Expanded the gear icon for `favorable-breadth-threshold`.
+- Verified the revealed step-size field is `0.05`.
+- Verified the configured optimization rows remain unchanged:
+  - `favorable-breadth-threshold`: default `0.85`, minimum `0.8`, maximum `0.9`
+  - `weak-stress-threshold`: default `33`, minimum `27`, maximum `33`
+  - `severe-stress-gap`: default `4`, minimum `2`, maximum `8`
+- Scrolled the wizard page downward without editing controls.
+- Verified the lower compute section:
+  - selected compute profile: `O4-12`
+  - selected profile rate: `0.3/Hour`
+  - selected profile resources: `4 Cores`, `12 GB RAM`
+  - maximum allowed nodes: `4`
+  - speed slider remained unchanged
+- Verified the displayed estimate:
+  - estimated total backtests: `48 Backtests`
+  - estimated batch time: `0.15 Hours`
+  - estimated batch cost: `0.18 USD`
+- No optimization was launched.
+
+### Strict review - optimization wizard read-only control discovery
+
+- Date: 2026-06-02.
+- Review result: no issues found.
+- The test remained inside the approved read-only boundary.
+- No parameter values, step-size values, constraints, compute profiles, node counts, speed settings, source files, or project parameters were changed.
+- No build, backtest, optimization, live deployment, brokerage, or Object Store action was triggered.
+- Remaining risk: future automation that edits or launches an optimization must verify every configured value immediately before launch and must require explicit user approval before spending QCC.
+
+## Disposable Optimization Wizard Edit Test
+
+### Disposable step-size edit approved
+
+- Date: 2026-06-02.
+- User explicitly approved the next bounded optimization wizard edit test.
+- Test scope:
+  - reclaim the open QuantConnect backtest-project tab
+  - expand the `favorable-breadth-threshold` gear row if necessary
+  - change only its step size from `0.05` to `0.04`
+  - verify that the wizard reacts to the temporary value
+  - restore the original step size to `0.05`
+  - verify the restored wizard state
+- Safety boundary:
+  - do not edit default, minimum, or maximum values
+  - do not edit other optimization rows
+  - do not change constraints, compute profile, maximum nodes, or speed settings
+  - do not launch optimization, build, backtest, live deployment, brokerage, or Object Store actions
+
+### Disposable step-size edit result
+
+- Date: 2026-06-02.
+- Reclaimed the open QuantConnect backtest-project tab and returned to the expanded `favorable-breadth-threshold` row.
+- Verified the original step size was `0.05`.
+- Confirmed direct text injection is not accepted reliably by this cloud-platform numeric input.
+- Confirmed the reliable edit method:
+  - click the numeric input
+  - select the existing value with `Ctrl+A`
+  - enter the replacement using individual keyboard events
+  - click empty wizard space to blur the field
+  - wait for the optimization estimate request to complete
+- Temporarily changed the step size from `0.05` to `0.04`.
+- Verified the field accepted `0.04`.
+- Verified `0.04` did not change the displayed `48 Backtests` estimate because the generated combination count did not change.
+- Temporarily changed the same step size to `0.025` to verify estimate recalculation behavior.
+- Verified that blurring the field caused the estimate to recalculate:
+  - estimated total backtests changed from `48 Backtests` to `80 Backtests`
+  - estimated batch time changed from `0.15 Hours` to `0.25 Hours`
+  - estimated batch cost changed from `0.18 USD` to `0.3 USD`
+- Restored the original step size to `0.05`.
+- Verified that blurring the restored field caused the baseline estimate to return:
+  - estimated total backtests: `48 Backtests`
+  - estimated batch time: `0.15 Hours`
+  - estimated batch cost: `0.18 USD`
+- No optimization was launched.
+
+### Strict review - disposable optimization wizard edit
+
+- Date: 2026-06-02.
+- Review result: no issues found.
+- The original optimization setup was restored before the test ended.
+- The only edited control was the `favorable-breadth-threshold` step-size field.
+- Default, minimum, maximum, constraint, compute-profile, maximum-node, speed-slider, source-file, and project-parameter values remained unchanged.
+- No build, backtest, optimization, live deployment, brokerage, or Object Store action was triggered.
+- Workflow rule: optimizer edits must be entered with individual keyboard events and blurred before estimate values are trusted.
+
+## Disposable Optimization Parameter Row Test
+
+### Disposable optimizer-row test approved
+
+- Date: 2026-06-02.
+- User explicitly approved the next bounded optimization wizard row test.
+- Intended test scope:
+  - reclaim the open QuantConnect backtest-project tab
+  - inspect the wizard after it finishes rendering
+  - attempt to add one existing project parameter as a disposable optimizer row
+  - verify the row-add workflow without launching optimization
+  - remove the disposable optimizer row
+  - verify the original three-row baseline is restored
+- Safety boundary:
+  - do not remove or edit any baseline optimizer row unless a separate explicit approval is obtained
+  - do not create or remove any project-level parameter
+  - stop if the platform's three-row limit prevents adding a disposable row
+  - do not change constraints, compute profile, maximum nodes, or speed settings
+  - do not launch optimization, build, backtest, live deployment, brokerage, or Object Store actions
+
+### Disposable optimizer-row test result
+
+- Date: 2026-06-02.
+- Reclaimed the open QuantConnect backtest-project tab and waited for the wizard to finish rendering.
+- Verified the baseline optimizer configuration remains:
+  - `favorable-breadth-threshold`: default `0.85`, minimum `0.8`, maximum `0.9`, step size `0.05`
+  - `weak-stress-threshold`: default `33`, minimum `27`, maximum `33`
+  - `severe-stress-gap`: default `4`, minimum `2`, maximum `8`
+- Verified the `Add Parameter` button is disabled while the three baseline optimizer rows are configured.
+- Confirmed the platform enforces the three-parameter optimization limit in the current wizard.
+- Stopped before deleting or editing any baseline row.
+- No disposable row was added because a safe fourth-row add is not available.
+
+### Strict review - disposable optimizer-row test
+
+- Date: 2026-06-02.
+- Review result: no issues found.
+- The inspection remained inside the approved safety boundary.
+- No optimizer row, parameter value, step-size value, constraint, compute profile, maximum node count, speed-slider setting, source file, or project-level parameter was changed.
+- No build, backtest, optimization, live deployment, brokerage, or Object Store action was triggered.
+- Open question: whether to approve a reversible remove-and-readd test for one baseline optimizer row so the add-row workflow can be exercised under the platform's three-parameter limit.
+
+### Reversible baseline-row remove-and-readd test approved
+
+- Date: 2026-06-02.
+- User confirmed the QuantConnect optimization wizard supports a maximum of three parameter rows and explicitly approved the reversible test.
+- Test scope:
+  - inspect and record the complete `severe-stress-gap` optimizer-row configuration, including step size
+  - remove only the `severe-stress-gap` optimizer row
+  - verify `Add Parameter` becomes available
+  - add `severe-stress-gap` back immediately
+  - restore and verify its original default, minimum, maximum, and step-size values
+  - verify the original three-row baseline and estimate are restored
+- Safety boundary:
+  - do not edit or remove `favorable-breadth-threshold` or `weak-stress-threshold`
+  - do not create or remove any project-level parameter
+  - do not change constraints, compute profile, maximum nodes, or speed settings
+  - do not launch optimization, build, backtest, live deployment, brokerage, or Object Store actions
+
+### Reversible baseline-row remove-and-readd test result
+
+- Date: 2026-06-02.
+- Reclaimed the open QuantConnect backtest-project tab and waited for the wizard to finish rendering.
+- Expanded the `severe-stress-gap` gear row before deletion and recorded the complete baseline:
+  - name: `severe-stress-gap`
+  - default: `4`
+  - minimum: `2`
+  - maximum: `8`
+  - step size: `2`
+- Removed only the `severe-stress-gap` optimizer row.
+- Verified `Add Parameter` became enabled when the wizard contained two rows.
+- Clicked `Add Parameter`.
+- Verified that the wizard immediately creates a placeholder row:
+  - name: `parameter1`
+  - default: `5`
+  - minimum: `0`
+  - maximum: `10`
+- Replaced the placeholder fields using the verified individual-keypress method:
+  - name: `severe-stress-gap`
+  - default: `4`
+  - minimum: `2`
+  - maximum: `8`
+- Expanded the restored row's gear control.
+- Verified that a newly added row receives a placeholder step size of `0.5`.
+- Replaced the placeholder step size with the recorded baseline value `2`.
+- Blurred the field and waited for the optimization estimate request to complete.
+- Verified the restored estimate:
+  - estimated total backtests: `48 Backtests`
+  - estimated batch time: `0.15 Hours`
+  - estimated batch cost: `0.18 USD`
+- Verified the compute settings remained unchanged:
+  - selected compute profile: `O4-12`
+  - maximum allowed nodes: `4`
+- Collapsed the temporary `severe-stress-gap` step-size detail view after verification.
+- No optimization was launched.
+
+### Strict review - reversible baseline-row remove-and-readd test
+
+- Date: 2026-06-02.
+- Review result: no issues found.
+- The original three-row optimizer baseline was restored before the test ended.
+- `favorable-breadth-threshold` and `weak-stress-threshold` were not edited or removed.
+- `severe-stress-gap` was restored with default `4`, minimum `2`, maximum `8`, and step size `2`.
+- The baseline estimate returned to `48 Backtests`, `0.15 Hours`, and `0.18 USD`.
+- No project-level parameter, constraint, compute profile, maximum-node count, speed-slider setting, or source file was changed.
+- No build, backtest, optimization, live deployment, brokerage, or Object Store action was triggered.
+- Workflow rule: when re-adding an optimizer row, explicitly restore its step size because the wizard assigns a generic placeholder step size of `0.5`.
