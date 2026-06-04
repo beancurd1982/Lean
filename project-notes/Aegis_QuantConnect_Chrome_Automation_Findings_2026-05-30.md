@@ -1596,3 +1596,54 @@ Received optimization estimate request
 - No project-level parameter, constraint, compute profile, maximum-node count, speed-slider setting, or source file was changed.
 - No build, backtest, optimization, live deployment, brokerage, or Object Store action was triggered.
 - Workflow rule: when re-adding an optimizer row, explicitly restore its step size because the wizard assigns a generic placeholder step size of `0.5`.
+
+## One-Combination Optimization Setup
+
+### One-combination optimization setup approved
+
+- Date: 2026-06-03.
+- User approved setting up the optimization wizard for a minimal one-combination flow and explicitly reserved final launch approval for a later instruction.
+- Intended setup:
+  - `favorable-breadth-threshold`: default `0.85`, minimum `0.85`, maximum `0.85`
+  - `weak-stress-threshold`: default `33`, minimum `33`, maximum `33`
+  - `severe-stress-gap`: default `4`, minimum `4`, maximum `4`
+  - preserve existing step-size fields unless the platform requires otherwise
+  - preserve existing compute profile, maximum nodes, speed slider, constraints, project parameters, and source files
+- Expected estimate after setup:
+  - `1 Backtest`
+- Safety boundary:
+  - do not click `Launch Optimization`
+  - do not build, backtest, live deploy, access brokerage actions, or touch Object Store
+  - stop after setup and report the visible values for user double-check
+
+### One-combination optimization setup blocked by browser-control runtime
+
+- Date: 2026-06-03.
+- Attempted to connect to the already-open QuantConnect project tab.
+- The browser-control execution runtime exited unexpectedly before any Chrome page interaction occurred.
+- Retried after resetting the runtime.
+- The retry failed with the same runtime startup issue.
+- A minimal runtime check also failed, confirming the issue is with the local browser-control execution runtime rather than the QuantConnect page.
+- No optimizer values were changed.
+- No optimization was launched.
+- Next action: run non-invasive Chrome-extension health checks, then retry browser control only after the runtime is healthy.
+
+### One-combination optimization setup retry
+
+- Date: 2026-06-03.
+- User asked to retry after the previous browser-control runtime failure.
+- Retry scope remains unchanged:
+  - set up the wizard for one optimization combination only
+  - do not click `Launch Optimization`
+  - stop after setup for user double-check
+
+### One-combination optimization setup retry result
+
+- Date: 2026-06-03.
+- Retried the Chrome browser-control connection using the current plugin cache path.
+- The runtime exited again before the open tab list could be read.
+- Failure mode remained `windows sandbox failed: spawn setup refresh`.
+- No QuantConnect page interaction occurred.
+- No optimizer values were changed.
+- No optimization was launched.
+- Current blocker: Codex browser-control runtime cannot start in this session.
