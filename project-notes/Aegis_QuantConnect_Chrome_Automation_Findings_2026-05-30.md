@@ -1647,3 +1647,188 @@ Received optimization estimate request
 - No optimizer values were changed.
 - No optimization was launched.
 - Current blocker: Codex browser-control runtime cannot start in this session.
+
+### One-combination optimization setup resumed
+
+- Date: 2026-06-04.
+- Chrome plugin connectivity has been restored and verified.
+- User approved setting up the QuantConnect Optimization Wizard for a one-combination smoke test.
+- Intended setup:
+  - `favorable-breadth-threshold`: default `0.85`, minimum `0.85`, maximum `0.85`
+  - `weak-stress-threshold`: default `33`, minimum `33`, maximum `33`
+  - `severe-stress-gap`: default `4`, minimum `4`, maximum `4`
+- Expected estimate:
+  - `1 Backtest`
+- Safety boundary:
+  - do not click `Launch Optimization`
+  - do not change source files, project parameters, constraints, compute profile, maximum nodes, speed slider, live deployment, brokerage, or Object Store
+  - stop after setup and report visible values for user double-check
+
+### One-combination optimization setup blocked by wizard validation
+
+- Date: 2026-06-04.
+- Action attempted:
+  - opened the existing QuantConnect Optimization Wizard tab through the Chrome plugin
+  - edited `favorable-breadth-threshold` minimum from `0.8` to `0.85`
+  - edited `favorable-breadth-threshold` maximum from `0.9` to `0.85`
+  - edited `weak-stress-threshold` minimum from `27` to `33`
+  - edited `severe-stress-gap` minimum from `2` to `4`
+  - edited `severe-stress-gap` maximum from `8` to `4`
+- Result:
+  - the wizard rejected the exact one-combination setup and displayed: `Error, min and max values not valid for parameter: favorable-breadth-threshold`
+  - this indicates the wizard requires `max > min`; exact `min = max` is not accepted even when the intended value is valid for the algorithm
+- Safety boundary observed:
+  - `Launch Optimization` was not clicked
+  - no source files were changed in the cloud project
+  - no project-level backtest parameters were changed
+  - no live deployment, brokerage, Object Store, compute profile, or constraint setting was changed
+- Next decision required:
+  - either leave the setup stopped and manually review the wizard state
+  - or use a valid one-value workaround where `max > min` and the step size is larger than the range, then verify the estimate shows `1 Backtest`
+- Review result:
+  - no algorithm behavior, source code, or live-trading state was changed
+  - risk is limited to the current Optimization Wizard form values until the user confirms the next action
+
+### Proposed one-step optimization wizard workaround
+
+- Date: 2026-06-04.
+- Constraint learned:
+  - QuantConnect Optimization Wizard requires `max > min`; it rejects exact `min = max`
+- Proposed workaround, later rejected:
+  - set the intended test value as `min`
+  - set `max` slightly above the intended value
+  - set `step` larger than `max - min`
+  - verify the estimate shows exactly `1 Backtest` before launching
+- Proposed values:
+  - `favorable-breadth-threshold`: default `0.85`, min `0.85`, max `0.90`, step `0.10`
+  - `weak-stress-threshold`: default `33`, min `33`, max `34`, step `2`
+  - `severe-stress-gap`: default `4`, min `4`, max `5`, step `2`
+- Rationale:
+  - each optimized parameter grid should emit only the first value because the next value would exceed the max
+  - the single expected combination remains `0.85 / 33 / 4`
+- Review result:
+  - this is a wizard setup workaround only
+  - no source code or live-trading state change is proposed
+  - the setup must be verified by the wizard estimate before `Launch Optimization`
+
+### One-step workaround correction
+
+- Date: 2026-06-04.
+- User clarified that the QuantConnect Optimization Wizard step must be `(max - min) / n` where `n >= 1`.
+- Implication:
+  - a step larger than the parameter range is not valid
+  - if a parameter has `min < max`, the smallest valid range creates at least two tested values for that parameter: `min` and `max`
+  - with three optimized parameters, the smallest valid grid is therefore at least `2 x 2 x 2 = 8` backtests
+- Corrected recommendation:
+  - use a normal single backtest for a true one-combination smoke test
+  - use the Optimization Wizard only when testing at least one actual range
+- Review result:
+  - no browser action was taken after the correction
+  - the prior proposed workaround should not be used
+
+### Approved minimal optimization wizard setup
+
+- Date: 2026-06-04.
+- User approved using the smallest valid Optimization Wizard grid after the `min = max` and oversized-step constraints were clarified.
+- Approved values:
+  - `favorable-breadth-threshold`: default `0.85`, minimum `0.85`, maximum `0.90`, step `0.05`
+  - `weak-stress-threshold`: default `33`, minimum `33`, maximum `34`, step `1`
+  - `severe-stress-gap`: default `4`, minimum `4`, maximum `5`, step `1`
+- Expected estimate:
+  - `8 Backtests`
+- Safety boundary:
+  - set up the wizard only
+  - do not click `Launch Optimization`
+  - do not change source files, project parameters outside the wizard, constraints, compute profile, live deployment, brokerage, or Object Store
+
+### Minimal optimization wizard setup completed
+
+- Date: 2026-06-04.
+- Wizard values set:
+  - `favorable-breadth-threshold`: default `0.85`, minimum `0.85`, maximum `0.90`, step `0.05`
+  - `weak-stress-threshold`: default `33`, minimum `33`, maximum `34`, step `1`
+  - `severe-stress-gap`: default `4`, minimum `4`, maximum `5`, step `1`
+- Verification:
+  - QuantConnect Optimization Wizard estimate displayed `8 Backtests`
+  - estimated batch time displayed `0.03 Hours`
+  - estimated batch cost displayed `0.03 USD`
+- Safety boundary observed:
+  - `Launch Optimization` was not clicked
+  - no source files were changed in the cloud project
+  - no project-level parameters outside the wizard were changed
+  - no live deployment, brokerage, Object Store, constraints, or compute-node profile was changed
+- Review result:
+  - setup matches the approved smallest valid optimization grid
+  - no algorithm code behavior or live-trading state was affected
+  - remaining action is user confirmation before launching the optimization
+
+### Minimal optimization launch approved
+
+- Date: 2026-06-04.
+- User approved:
+  - select the cheapest compute node: `O2-8`, `0.15/Hour`
+  - click `Launch Optimization`
+- Expected launch state:
+  - parameters remain:
+    - `favorable-breadth-threshold`: default `0.85`, minimum `0.85`, maximum `0.90`, step `0.05`
+    - `weak-stress-threshold`: default `33`, minimum `33`, maximum `34`, step `1`
+    - `severe-stress-gap`: default `4`, minimum `4`, maximum `5`, step `1`
+  - estimate remains `8 Backtests`
+- Safety boundary:
+  - do not change source files, project-level parameters outside the wizard, constraints, live deployment, brokerage, or Object Store
+  - only select the approved compute node and launch the optimization run
+
+### Minimal optimization launched
+
+- Date: 2026-06-04.
+- Action completed:
+  - selected compute node `O2-8`, `0.15/Hour`
+  - clicked `Launch Optimization`
+- Launch verification:
+  - Optimization Wizard switched to the running optimization results tab
+  - run name displayed as `Smooth Apricot Rat`
+  - status row displayed:
+    - `0 Completed`
+    - `0 Failed`
+    - `3 Running`
+    - `5 In Queue`
+    - `8 Total`
+    - `0 QCC Consumed`
+  - Cloud Terminal displayed `Launching optimization cluster...`
+- Review result:
+  - approved launch action was completed
+  - cheapest compute node was selected before launch
+  - no source files, live deployment, brokerage, Object Store, or project-level parameters outside the wizard were changed
+  - optimization is now running on QuantConnect and should be monitored until all eight runs complete
+
+### Optimization results page orientation
+
+- Date: 2026-06-04.
+- User showed the completed QuantConnect optimization results page for run `Smooth Apricot Rat`.
+- Observed status header:
+  - `8 Completed`
+  - `0 Failed`
+  - `0 Running`
+  - `0 In Queue`
+  - `8 Total`
+  - `1.16 QCC Consumed`
+- Observed page structure:
+  - the optimization opens in a new results tab named after the generated run name
+  - the top title area tracks completed, failed, running, queued, total, average length, total runtime, and QCC consumed
+  - `Strategy Equities` renders the selected run equity curve while the optimization completes
+  - scrolling down exposes 3D result-dot charts for Sharpe Ratio, Drawdown, and Compounding Annual Return
+  - further scrolling exposes the paginated backtest result table
+- Observed result table behavior:
+  - visible columns include `Name`, `PSR`, `Sharpe Ratio`, `Net Profit`, `Drawdown`, and `backtest-start`
+  - the table is paginated; the example showed `1 to 7 of 8`, `Page 1 of 2`
+  - the rotated `Columns` control opens a column selector menu
+  - visible selector options include `Name`, `PSR`, `Sharpe Ratio`, `Net Profit`, `Drawdown`, `Total Orders`, `Average Win`, `Average Loss`, `Alpha`, `Compounding Annual Return`, `Expectancy`, `Beta`, `Loss Rate`, `Win Rate`, `Profit-Loss Ratio`, and `Annual Standard Deviation`
+  - column headers can be clicked repeatedly to cycle sorting modes
+- Automation implications:
+  - for result analysis, first wait until the status header shows all runs completed and zero failed/running/queued unless the user asks to inspect partial results
+  - then expose key columns through the `Columns` menu before screenshotting or scraping the result table
+  - for large optimization runs, monitoring may need periodic refresh/checks for up to about ten minutes or more
+  - screenshots should capture both the status header and the sorted result table after the desired columns are visible
+- Review result:
+  - this was documentation and UI-orientation only
+  - no cloud settings, source files, live deployment, brokerage, or Object Store state were changed
