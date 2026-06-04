@@ -194,3 +194,17 @@
 - Recommendation: Do read-only result ingestion/reporting first, then perform one small guarded optimization smoke test, then scale to parameter sweeps.
 - Open questions: Need user confirmation whether the next workflow is read-only ingestion/reporting or active cloud optimization launch.
 - Risks: Optimization launch changes QuantConnect cloud state and consumes cloud resources; live deployment remains out of scope unless explicitly approved.
+
+## Step 29 - Chrome Plugin Verification After Commit
+- Summary: After committing and pushing the troubleshooting notes, retried the Chrome plugin using the current versioned cache path `C:/Users/douya/.codex/plugins/cache/openai-bundled/chrome/26.601.21317/scripts/browser-client.mjs`.
+- Verification: The Chrome extension backend connected successfully and returned one open tab: `Algorithmic Trading Platform - QuantConnect.com` at `https://www.quantconnect.com/project/28209469`.
+- Files touched: `project-notes/Codex_Plugin_Page_Troubleshooting_2026-06-04.md`
+- Finding: Chrome plugin control is usable again through the extension backend.
+- Open questions: None for basic plugin connectivity.
+- Risks: No QuantConnect page state was changed; this was a read-only tab-list verification.
+
+## Step 30 - Strict Review
+- Review scope: Chrome plugin verification and project note update.
+- Review result: No issues found.
+- Safety/correctness findings: Verification was read-only and did not click, edit, build, backtest, optimize, deploy, access brokerage, or touch Object Store.
+- Residual risk: Future browser automation should use the versioned `chrome/26.601.21317` path or dynamically resolve the versioned directory rather than relying on `chrome/latest`.
