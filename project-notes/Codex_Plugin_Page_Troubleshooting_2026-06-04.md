@@ -195,6 +195,20 @@
 - Open questions: Need user confirmation whether the next workflow is read-only ingestion/reporting or active cloud optimization launch.
 - Risks: Optimization launch changes QuantConnect cloud state and consumes cloud resources; live deployment remains out of scope unless explicitly approved.
 
+## Step 29 - Recall Chrome Plugin Fix
+- Summary: User reports the Chrome plugin appears broken again and asks how it was fixed earlier.
+- Files touched: `project-notes/Codex_Plugin_Page_Troubleshooting_2026-06-04.md`
+- Next step: Re-read the recorded Chrome plugin fix and summarize the exact config change and verification command/result.
+- Open questions: Need to confirm whether the same `sandbox = "elevated"` override has returned before applying any change.
+- Risks: Local Codex configuration only; no live-trading behavior is affected.
+
+## Step 30 - Current Config Check
+- Summary: The same setting has returned: `C:/Users/douya/.codex/config.toml` currently contains `[windows] sandbox = "elevated"`. The earlier backup file still exists at `C:/Users/douya/.codex/config.toml.backup-before-chrome-sandbox-test-20260604`.
+- Files touched: `project-notes/Codex_Plugin_Page_Troubleshooting_2026-06-04.md`
+- Finding: This matches the earlier root-cause hypothesis. Removing only `sandbox = "elevated"` previously allowed the Chrome plugin browser-client to open YouTube successfully.
+- Open questions: Need user confirmation before editing the real Codex config again.
+- Risks: Local Codex configuration only; no live-trading behavior is affected.
+
 ## Step 29 - Chrome Plugin Verification After Commit
 - Summary: After committing and pushing the troubleshooting notes, retried the Chrome plugin using the current versioned cache path `C:/Users/douya/.codex/plugins/cache/openai-bundled/chrome/26.601.21317/scripts/browser-client.mjs`.
 - Verification: The Chrome extension backend connected successfully and returned one open tab: `Algorithmic Trading Platform - QuantConnect.com` at `https://www.quantconnect.com/project/28209469`.
@@ -208,3 +222,18 @@
 - Review result: No issues found.
 - Safety/correctness findings: Verification was read-only and did not click, edit, build, backtest, optimize, deploy, access brokerage, or touch Object Store.
 - Residual risk: Future browser automation should use the versioned `chrome/26.601.21317` path or dynamically resolve the versioned directory rather than relying on `chrome/latest`.
+
+## Step 31 - Repeat Chrome Sandbox Fix
+- Summary: User approved applying the previously successful Chrome plugin fix again.
+- Current finding: `C:/Users/douya/.codex/config.toml` again contains `[windows] sandbox = "elevated"`, matching the earlier root cause for `windows sandbox failed: spawn setup refresh`.
+- Planned action: Back up the current config, remove only the `sandbox = "elevated"` line, then retry Chrome plugin connectivity using the current bundled Chrome plugin path.
+- Files touched: `project-notes/Codex_Plugin_Page_Troubleshooting_2026-06-04.md`, `C:/Users/douya/.codex/config.toml`
+- Risks: Local Codex Windows sandbox behavior changes back to default; no repository code or live-trading behavior is affected.
+
+## Step 32 - Repeat Chrome Sandbox Fix Verified
+- Summary: Backed up `C:/Users/douya/.codex/config.toml` to `C:/Users/douya/.codex/config.toml.backup-before-chrome-sandbox-test-20260606` and removed only `sandbox = "elevated"` from `[windows]`.
+- Verification: Chrome plugin browser-client connected successfully using `C:/Users/douya/.codex/plugins/cache/openai-bundled/chrome/26.602.40724/scripts/browser-client.mjs` and returned the currently open Chrome tab `Google` at `https://www.google.com/`.
+- Files touched: `project-notes/Codex_Plugin_Page_Troubleshooting_2026-06-04.md`, `C:/Users/douya/.codex/config.toml`
+- Finding: This confirms the same fix still restores Chrome plugin control.
+- Review result: No repository code, QuantConnect project state, live deployment, brokerage state, or Object Store state was changed.
+- Residual risk: If `sandbox = "elevated"` is reintroduced later, Chrome plugin control may fail again with the same startup error.

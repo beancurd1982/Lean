@@ -1832,3 +1832,276 @@ Received optimization estimate request
 - Review result:
   - this was documentation and UI-orientation only
   - no cloud settings, source files, live deployment, brokerage, or Object Store state were changed
+
+### Manual single-backtest optimization alternative
+
+- Date: 2026-06-04.
+- User described an alternative to the QuantConnect Optimization Wizard:
+  - set one parameter combination in the normal project Parameters panel
+  - run a single normal backtest
+  - wait for the result page
+  - download the result files using the established download workflow
+  - normalize/index the logs and result files
+  - change the parameter values to the next combination
+  - repeat until all desired combinations are tested
+- Example:
+  - one parameter test: `paraA = a1` through `a6` requires six single backtests
+  - three-parameter grid: `a1-a3`, `b1-b3`, `c1-c3` requires `3 x 3 x 3 = 27` single backtests
+- Advantages:
+  - avoids launching many backtests through the paid Optimization Wizard batch flow
+  - gives direct downloadable result files for each individual run
+  - works with the existing log normalization and analysis workflow
+  - can be paused, inspected, or adjusted between runs
+- Tradeoffs:
+  - slower and more manual than a batch optimization
+  - requires precise tracking of the parameter combination for each uploaded/downloaded result set
+  - needs a naming convention for manual optimization outputs to prevent result mix-ups
+  - benefits from automation around parameter editing, backtest launch, completion wait, result download, and file normalization
+- Recommended automation design:
+  - define a local run matrix file with run id, parameter names, parameter values, and expected file prefix
+  - use Chrome automation to apply one row of the matrix to the QuantConnect Parameters panel
+  - launch a normal backtest
+  - wait until the result page is completed
+  - download overview/log/orders files
+  - normalize files into a dedicated folder
+  - append run metadata and metrics to a CSV or markdown index
+  - repeat until all rows are complete
+- Review result:
+  - this is a workflow proposal only
+  - no browser action, source code change, live deployment change, brokerage change, or Object Store change was performed
+
+### Next optimization direction review
+
+- Date: 2026-06-04.
+- Current live/default parameter baseline in code:
+  - `favorable-breadth-threshold=0.85`
+  - `weak-stress-threshold=33`
+  - `severe-stress-gap=4`
+  - computed severe stress threshold is `37`
+  - `growth-atr-eligibility-limit=0.06`
+  - `pre-weak-guard-enabled=true`
+  - `weak-stress-overlay-enabled=false`
+  - `severe-crash-override-enabled=false`
+  - `upgrade-confirmation-weeks=1`
+  - `replacement-score-gap=10`
+  - `hold-stability-bonus=2`
+  - `tolerance-band-scale=1`
+- Where the project stands:
+  - `0.85 / 33 / 4` was promoted because it was the best balanced stress-band candidate found so far
+  - validation improved 2019-2020, 2021-2022, and 2023-2026 behavior versus the closest prior/default-like runs
+  - 2007-2008 remained the known weakness; drawdown stayed about `20.3%` and net profit remained negative
+  - strict severe-crash behavior helped 2008 in earlier tests but hurt later windows, so it was not promoted
+  - Chrome automation can now edit parameters, run backtests, download result files, and launch/inspect Optimization Wizard runs
+- Recommended next optimization phase:
+  - do not re-optimize the already-promoted stress-band defaults broadly as the first move
+  - focus next on execution churn and selection stability parameters, because they may improve net return, fees, and drawdown without changing the core defensive regime
+- Recommended first grid:
+  - `replacement-score-gap`: `8`, `10`, `12`
+  - `hold-stability-bonus`: `2`, `4`, `6`
+  - `tolerance-band-scale`: `1.0`, `1.25`, `1.5`
+  - keep fixed: `favorable-breadth-threshold=0.85`, `weak-stress-threshold=33`, `severe-stress-gap=4`, `growth-atr-eligibility-limit=0.06`, `pre-weak-guard-enabled=true`, `weak-stress-overlay-enabled=false`, `severe-crash-override-enabled=false`
+- Recommended method:
+  - use the manual single-backtest grid workflow rather than Optimization Wizard for this phase
+  - run the `3 x 3 x 3 = 27` combinations over `2023-01-01` to `2026-01-01` first, because that window is short, current, and sensitive to churn/selection quality
+  - after selecting the best 2-3 candidates, validate only those candidates over the five established crisis/broad windows
+- Acceptance criteria:
+  - must not materially worsen drawdown versus current defaults
+  - should reduce orders/fees or improve Sharpe/Sortino/CAR versus current defaults
+  - should not materially degrade 2007-2008 after final validation
+- Automation recommendation:
+  - create a local manual optimization run matrix before launching the sequence
+  - use Chrome automation row-by-row to set parameters, run a normal backtest, wait for completion, download files, normalize names, and update an index
+  - require user approval before starting a multi-run automated sequence
+- Review result:
+  - this is analysis and planning only
+  - no code, cloud settings, live deployment, brokerage, or Object Store state was changed
+
+### Manual grid rollout control
+
+- Date: 2026-06-04.
+- User clarified that the manual optimization grid must be rolled out in controlled stages.
+- Approved staged sequence:
+  - Stage 1: run only one smoke-test combination: `replacement-score-gap=8`, `hold-stability-bonus=2`, `tolerance-band-scale=1.0`
+  - Stage 2: only if Stage 1 succeeds and user approves, run two more combinations: `10 / 2 / 1.0` and `12 / 2 / 1.0`
+  - Stage 3: only if Stage 2 succeeds and user approves, continue with the remaining 24 combinations
+- Safety boundary:
+  - do not run the full 27-combination grid without explicit user approval
+  - after each stage, report whether parameter editing, backtest launch, completion detection, downloads, normalization, and metric capture worked
+  - stop immediately if Chrome automation, QuantConnect UI, download naming, or result normalization becomes unreliable
+- Review result:
+  - staged rollout reduces automation risk and prevents accidental cost/time expansion
+  - no browser action, source code change, live deployment, brokerage, or Object Store change was performed
+
+### Manual grid Stage 1 started
+
+- Date: 2026-06-04.
+- Approved Stage 1 combination:
+  - `replacement-score-gap=8`
+  - `hold-stability-bonus=2`
+  - `tolerance-band-scale=1.0`
+- Fixed run setup expected:
+  - `backtest-start=2023-01-01`
+  - `backtest-end=2026-01-01`
+  - `favorable-breadth-threshold=0.85`
+  - `weak-stress-threshold=33`
+  - `severe-stress-gap=4`
+  - `growth-atr-eligibility-limit=0.06`
+  - `pre-weak-guard-enabled=true`
+  - `weak-stress-overlay-enabled=false`
+  - `severe-crash-override-enabled=false`
+- Scope:
+  - run exactly one normal backtest
+  - download and normalize result files if the run completes
+  - stop and report before running any additional combinations
+
+### Manual grid Stage 1 continuation
+
+- Date: 2026-06-04.
+- Continuation status:
+  - the single Stage 1 backtest was launched from the QuantConnect project UI
+  - the run completed and opened the result tab named `Hyper Active Asparagus Jellyfish`
+  - visible headline metrics before file normalization were PSR `79.476%`, return `86.57%`, net profit `$22,131.24`, fees `-$533.03`, holdings `$41,344.86`, and equity `$55,969.79`
+  - overview JSON and orders CSV downloads were detected in the local Downloads folder as temporary files
+- Next recorded step:
+  - reconnect to the QuantConnect browser tab
+  - download the log file
+  - move and normalize the three Stage 1 files into `Algorithm.CSharp/MyAlgorithms/AegisGrowthAllocation/BackTestLogs`
+  - compare Stage 1 against the current default `Logical Sky Blue Pelican` baseline
+- Safety boundary:
+  - do not launch Stage 2 or any additional backtest before reporting Stage 1 results to the user
+
+### Manual grid Stage 1 download retry
+
+- Date: 2026-06-06.
+- User disabled Chrome's `Ask where to save each file before downloading` option.
+- Expected download behavior:
+  - QuantConnect downloads should save directly to `C:\Users\douya\Downloads`
+  - no native Windows Save As dialog should block the automation
+- Retry plan:
+  - reconnect to the QuantConnect project tab
+  - use the completed `Hyper Active Asparagus Jellyfish` result tab if still available
+  - otherwise rerun only the approved Stage 1 combination: `replacement-score-gap=8`, `hold-stability-bonus=2`, `tolerance-band-scale=1.0`
+  - download results, orders, and logs
+  - move and normalize files into `Algorithm.CSharp/MyAlgorithms/AegisGrowthAllocation/BackTestLogs`
+  - stop after Stage 1 analysis and do not start Stage 2 without approval
+
+### Manual grid Stage 1 retry blocker
+
+- Date: 2026-06-06.
+- Chrome download prompt setting was confirmed suitable by user screenshot:
+  - `Ask where to save each file before downloading` is off
+  - default download folder is `C:\Users\douya\Downloads`
+- Retry result:
+  - Chrome browser automation could not start; helper failed with `windows sandbox failed: spawn setup refresh`
+  - updated plugin path was found at `C:\Users\douya\.codex\plugins\cache\openai-bundled\chrome\26.602.40724`
+  - extension diagnostic confirmed the Chrome extension is installed and enabled in the Default profile
+  - native host diagnostic reported the missing registry key `HKCU\Software\Google\Chrome\NativeMessagingHosts\com.openai.codexextension`
+- Current blocker:
+  - Codex cannot control Chrome until the native messaging host registration is repaired
+  - Stage 1 result files were not downloaded in this retry
+- Next safe action:
+  - repair/reinstall the Chrome native host registration, then rerun the Stage 1 download workflow
+
+### Manual grid Stage 1 retry resumed after Chrome fix
+
+- Date: 2026-06-06.
+- User approved retrying the Stage 1 workflow after restoring Chrome plugin control.
+- Chrome restore source:
+  - related troubleshooting note: `project-notes/Codex_Plugin_Page_Troubleshooting_2026-06-04.md`
+  - final effective fix was removing `sandbox = "elevated"` from `[windows]` in `C:\Users\douya\.codex\config.toml`
+  - backup created: `C:\Users\douya\.codex\config.toml.backup-before-chrome-sandbox-test-20260606`
+  - Chrome browser-client then connected successfully through the current bundled path `chrome/26.602.40724`
+- Approved retry sequence:
+  - reconnect to the QuantConnect project tab and use the completed Stage 1 result tab if it is still available
+  - if the result tab is gone, rerun only the approved Stage 1 combination: `replacement-score-gap=8`, `hold-stability-bonus=2`, `tolerance-band-scale=1.0`
+  - download results, orders, and logs
+  - verify files appear in `C:\Users\douya\Downloads`
+  - move and rename them into `Algorithm.CSharp/MyAlgorithms/AegisGrowthAllocation/BackTestLogs`
+  - normalize/index the log file, analyze metrics, compare against `Logical Sky Blue Pelican`, update notes, and stop
+- Safety boundary:
+  - do not start Stage 2 or any additional parameter combination without explicit user approval
+
+### Manual grid Stage 1 project tab handoff
+
+- Date: 2026-06-06.
+- User manually opened the QuantConnect project tab after Chrome plugin navigation attempts could not open the project URL directly.
+- Next action:
+  - claim the user-opened QuantConnect tab
+  - inspect whether the completed Stage 1 result tab is available
+  - if not available, verify the approved Stage 1 parameters and rerun only that one backtest
+- Safety boundary:
+  - no Stage 2 run or additional parameter combination is approved
+
+### Manual grid Stage 1 result
+
+- Date: 2026-06-06.
+- Run name: `Dancing Brown Penguin`.
+- Approved parameter combination:
+  - `replacement-score-gap=8`
+  - `hold-stability-bonus=2`
+  - `tolerance-band-scale=1.0`
+- Fixed parameters confirmed:
+  - `backtest-start=2023-01-01`
+  - `backtest-end=2026-01-01`
+  - `crisis-diagnostics=true`
+  - `pre-weak-guard-enabled=true`
+  - `weak-stress-overlay-enabled=false`
+  - `severe-crash-override-enabled=false`
+  - `favorable-breadth-threshold=0.85`
+  - `weak-stress-threshold=33`
+  - `growth-atr-eligibility-limit=0.06`
+  - `severe-stress-gap=4`
+- Downloaded files:
+  - `C:\Users\douya\Downloads\Dancing Brown Penguin.json`
+  - `C:\Users\douya\Downloads\Dancing Brown Penguin_orders.csv`
+  - `C:\Users\douya\Downloads\Dancing Brown Penguin_logs.txt`
+- Repository artifacts:
+  - `Algorithm.CSharp/MyAlgorithms/AegisGrowthAllocation/BackTestLogs/ManualGrid_Stage1_01_RSG8_HSB2_TBS1.0_2023-2026.json`
+  - `Algorithm.CSharp/MyAlgorithms/AegisGrowthAllocation/BackTestLogs/ManualGrid_Stage1_01_RSG8_HSB2_TBS1.0_2023-2026_orders.csv`
+  - `Algorithm.CSharp/MyAlgorithms/AegisGrowthAllocation/BackTestLogs/2026-06-06_182645__AegisGrowthAllocation__ManualGrid_Stage1_01_RSG8_HSB2_TBS1-0_2023-2026_logs.txt`
+- Workflow result:
+  - Chrome setting change worked; QuantConnect downloaded all three files directly to `C:\Users\douya\Downloads` without the Save As dialog
+  - copying into `BackTestLogs` required elevated filesystem access because sandboxed PowerShell was denied write access to that folder
+  - the repo-local log renamer required process-only `ExecutionPolicy Bypass`
+  - `log-index.csv` was updated and the Stage 1 and baseline logs were marked reviewed with this note as the review path
+
+### Manual grid Stage 1 comparison
+
+- Baseline: `Logical Sky Blue Pelican` using the current promoted default values.
+- Stage 1: `replacement-score-gap=8`, `hold-stability-bonus=2`, `tolerance-band-scale=1.0`.
+- Key metrics:
+  - PSR declined from `80.910%` to `77.445%`
+  - Sharpe declined from `1.028` to `0.96`
+  - Sortino declined from `1.275` to `1.19`
+  - compounding annual return declined from `23.598%` to `22.471%`
+  - net profit declined from `88.887%` to `83.767%`
+  - end equity declined from `$56,666.12` to `$55,130.03`
+  - total orders increased from `534` to `542`
+  - fees increased from `$534.04` to `$542.01`
+  - portfolio turnover increased from `3.50%` to `3.61%`
+  - drawdown improved slightly from `10.900%` to `10.800%`
+- Interpretation:
+  - lowering `replacement-score-gap` from the current default `10` to `8` increased churn and reduced return quality
+  - the small drawdown improvement does not compensate for weaker Sharpe, Sortino, PSR, net profit, orders, fees, and turnover
+  - this Stage 1 candidate should not replace the current default
+- Recommended next step:
+  - if continuing Stage 2, test `replacement-score-gap=10` and `12` with `hold-stability-bonus=2` and `tolerance-band-scale=1.0`
+  - do not run Stage 2 until user explicitly approves it
+
+### Manual grid Stage 1 strict review
+
+- Review scope:
+  - Chrome automation of one normal QuantConnect backtest
+  - file downloads and repository artifact normalization
+  - result comparison against the current default baseline
+- Review result:
+  - no algorithm source code, live deployment, brokerage state, or Object Store state was changed
+  - the backtest was limited to the single approved Stage 1 combination
+  - no Stage 2 or additional parameter combination was launched
+- Safety/correctness findings:
+  - parameter setup was correct and confirmed by the downloaded log line
+  - Stage 1 underperformed the baseline and should not be promoted
+  - the automation workflow is viable after disabling Chrome Save As prompts, but filesystem copy into `BackTestLogs` may need elevated access in future runs
+- Residual risks:
+  - Downloads folder still contains the original `Dancing Brown Penguin` files because copying was safer than deleting after sandbox move/copy failures
+  - future runs should dynamically resolve Chrome plugin version paths instead of hardcoding a specific cache version
