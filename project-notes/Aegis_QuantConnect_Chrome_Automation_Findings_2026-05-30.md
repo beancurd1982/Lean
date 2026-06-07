@@ -2607,3 +2607,112 @@ Received optimization estimate request
   - do not modify algorithm source files
   - do not launch optimization wizard
   - do not advance beyond the `RSG12` run until it is downloaded, analyzed, and reported
+
+### Manual grid Stage 2 run 2 analysis
+
+- Date: 2026-06-07.
+- Result file set:
+  - `ManualGrid_Stage2_02_RSG12_HSB2_TBS1.0_2023-2026.json`
+  - `ManualGrid_Stage2_02_RSG12_HSB2_TBS1.0_2023-2026_orders.csv`
+  - `2026-06-07_232858__AegisGrowthAllocation__ManualGrid_Stage2_02_RSG12_HSB2_TBS1-0_2023-2026_logs.txt`
+- Confirmed run parameters from log:
+  - `ReplacementScoreGap=12`
+  - `HoldStabilityBonus=2`
+  - `ToleranceBandScale=1.0`
+  - `FavorableBreadthThreshold=0.85`
+  - `WeakStressThreshold=33`
+  - `SevereStressGap=4`
+  - `GrowthAtrEligibilityLimit=0.06`
+- Result comparison:
+  - Baseline `Logical Sky Blue Pelican`: PSR `80.910%`, Sharpe `1.028`, Sortino `1.275`, CAR `23.598%`, Net Profit `88.887%`, Drawdown `10.900%`, Orders `534`, Fees `$534.04`, End Equity `$56,666.12`
+  - Stage 1 `RSG8_HSB2_TBS1.0`: PSR `77.445%`, Sharpe `0.960`, Sortino `1.190`, CAR `22.471%`, Net Profit `83.767%`, Drawdown `10.800%`, Orders `542`, Fees `$542.01`, End Equity `$55,130.03`
+  - Stage 2 `RSG10_HSB2_TBS1.0`: PSR `80.373%`, Sharpe `1.017`, Sortino `1.258`, CAR `23.411%`, Net Profit `88.033%`, Drawdown `10.900%`, Orders `533`, Fees `$533.04`, End Equity `$56,410.04`
+  - Stage 2 `RSG12_HSB2_TBS1.0`: PSR `79.915%`, Sharpe `1.018`, Sortino `1.278`, CAR `23.704%`, Net Profit `89.377%`, Drawdown `10.800%`, Orders `520`, Fees `$520.04`, End Equity `$56,813.10`
+- Interpretation:
+  - `RSG12` is the best result so far on CAR, net profit, end equity, drawdown, order count, fees, win rate, and Sortino.
+  - `RSG12` still trails the baseline on PSR and Sharpe, so it is not a clean universal winner.
+  - The result suggests a higher replacement-score gap reduces turnover and slightly improves absolute return without increasing drawdown in the 2023-2026 validation window.
+  - Because `RSG12` improves several economic metrics while only slightly reducing PSR/Sharpe, it deserves follow-up validation rather than immediate default promotion.
+- Orders review:
+  - total rows: `520`
+  - all orders are `Market` orders
+  - most active symbols by order count: `NFLX=49`, `SGOV=46`, `AVGO=44`, `NVDA=42`, `USMV=38`, `VIG=34`, `META=33`, `COST=32`, `XLU=26`, `DUK=22`, `AAPL=21`, `LLY=20`
+- Diagnostic log review:
+  - `PreWeakWeeks=20`, `NonPreWeakWeeks=137`, `SevereCrashWeeks=0`, `WeakRegimeWeeks=3`
+  - `PreWeakAvgDrawdown=0.0723`, `NonPreWeakAvgDrawdown=0.0185`
+  - `PreWeakAvgTarget=G0.2400/D0.3000/C0.4600`
+  - `NonPreWeakAvgTarget=G0.5445/D0.2511/C0.2044`
+- Strict review:
+  - no issue found with file normalization or metric extraction
+  - no evidence the wrong parameter combination was tested
+  - residual risk: this is still one 2023-2026 window result; validating `RSG12` across crisis windows is required before changing live defaults
+- Recommendation:
+  - stop broad replacement-score-gap expansion for now
+  - run targeted validation of `RSG12_HSB2_TBS1.0` across the established stress windows before promoting it
+  - if stress validation is acceptable, consider a small `hold-stability-bonus` sweep around `RSG12` rather than continuing to widen `replacement-score-gap`
+
+### Manual grid RSG12 stress validation analysis
+
+- Date: 2026-06-07.
+- User ran five stress-window backtests with:
+  - `ReplacementScoreGap=12`
+  - `HoldStabilityBonus=2`
+  - `ToleranceBandScale=1.0`
+  - fixed defensive defaults otherwise unchanged
+- Random QuantConnect names were mapped by log period and renamed into:
+  - `ManualGrid_RSG12_Stress01_2007-10_2008-12`
+  - `ManualGrid_RSG12_Stress02_2009_2010`
+  - `ManualGrid_RSG12_Stress03_2019-07_2020`
+  - `ManualGrid_RSG12_Stress04_2021_2022`
+  - `ManualGrid_RSG12_Stress05_2023_2026`
+- RSG12 stress metrics:
+  - Stress01 2007-10 to 2008-12: PSR `0.149%`, Sharpe `-1.457`, Sortino `-1.421`, CAR `-13.649%`, Net Profit `-16.808%`, Drawdown `20.300%`, Orders `145`, End Equity `$24,957.47`
+  - Stress02 2009 to 2010: PSR `55.620%`, Sharpe `1.069`, Sortino `1.185`, CAR `14.303%`, Net Profit `30.636%`, Drawdown `10.200%`, Orders `276`, End Equity `$39,190.90`
+  - Stress03 2019-07 to 2020: PSR `77.380%`, Sharpe `1.598`, Sortino `1.591`, CAR `32.724%`, Net Profit `53.169%`, Drawdown `13.300%`, Orders `204`, End Equity `$45,950.62`
+  - Stress04 2021 to 2022: PSR `27.651%`, Sharpe `0.549`, Sortino `0.694`, CAR `7.983%`, Net Profit `16.571%`, Drawdown `13.600%`, Orders `293`, End Equity `$34,971.45`
+  - Stress05 2023 to 2026: PSR `79.915%`, Sharpe `1.018`, Sortino `1.278`, CAR `23.704%`, Net Profit `89.377%`, Drawdown `10.800%`, Orders `520`, End Equity `$56,813.10`
+- Comparison against existing `OptStress_01..05`:
+  - Stress01: effectively unchanged; tiny improvement in end equity but no defensive improvement during 2008.
+  - Stress02: slightly worse than OptStress on PSR, Sharpe, CAR, net profit, and end equity; one fewer order.
+  - Stress03: mixed; slightly better CAR/net profit/end equity, but worse PSR, Sharpe, and drawdown.
+  - Stress04: clearly worse; lower PSR, Sharpe, CAR, net profit, and end equity with unchanged drawdown.
+  - Stress05: better absolute economics and turnover, but lower PSR/Sharpe than baseline.
+- Interpretation:
+  - `RSG12` is not robust enough to promote as a default.
+  - Its benefit is concentrated in the 2023-2026 window and partially in the 2019-2020 absolute-return metrics.
+  - It weakens the 2021-2022 stress window and does not solve the 2008 defensive weakness.
+  - Replacement-score-gap is mostly a turnover/selection-stability lever, not the right primary lever for crisis defense.
+- Strict review:
+  - all five logs confirm `ReplacementScoreGap=12`, `HoldStabilityBonus=2`, `ToleranceBandScale=1.0`
+  - file mapping was derived from log `Start`/`End` diagnostics, not random QuantConnect run names
+  - no evidence the wrong periods or parameters were analyzed
+- Recommendation:
+  - do not change live/default `replacement-score-gap` to `12`
+  - stop the replacement-score-gap sweep for now
+  - next optimization should target a defensive/stress-specific lever, especially the 2021-2022 weak-market behavior and the 2008 crash response, rather than further widening replacement-score-gap
+
+### RSG12 three-agent review decision checkpoint
+
+- Date: 2026-06-08.
+- User requested the important finding be recorded so future sessions can immediately recover the next move.
+- Three-agent review consensus:
+  - do not promote `RSG12_HSB2_TBS1.0` to default
+  - stop widening `replacement-score-gap`
+  - treat `RSG12` as a useful non-default reference point, not a live-deployment candidate
+- Reasoning:
+  - `RSG12` improved 2023-2026 absolute economics, order count, fees, and end equity
+  - `RSG12` did not improve 2008, clearly weakened 2021-2022, and generally weakened PSR/Sharpe in stress validation
+  - higher replacement-score-gap appears to add holding inertia and churn reduction, not crisis defense
+  - further broad RSG testing would risk local-window chasing and overfitting
+- Best next move:
+  - design one bounded, hypothesis-driven defensive experiment targeting Weak/stress behavior
+  - likely first candidate: a Weak/stress cash or exposure-control lever
+  - alternate candidates: defensive-sleeve quality filter, pre-Weak deterioration guard, or stress-specific replacement override
+- Pre-registered hypothesis:
+  - reduce 2008 and 2021-2022 stress bleed without materially hurting 2009-2010 recovery, 2019-2020 recovery, or 2023-2026 full-period performance
+- Acceptance gates:
+  - improve 2008 or 2021-2022 drawdown/post-Weak bleed
+  - do not materially worsen 2009-2010 or 2019-2020 recovery participation
+  - preserve full-period PSR/Sharpe within a defined tolerance
+  - avoid material turnover/order increase
+  - beat baseline on a composite robustness score, not on a single favorable window
