@@ -2105,3 +2105,505 @@ Received optimization estimate request
 - Residual risks:
   - Downloads folder still contains the original `Dancing Brown Penguin` files because copying was safer than deleting after sandbox move/copy failures
   - future runs should dynamically resolve Chrome plugin version paths instead of hardcoding a specific cache version
+
+### Manual grid Stage 2 approved scope
+
+- Date: 2026-06-06.
+- User approved exactly two Stage 2 normal backtests:
+  - `replacement-score-gap=10`, `hold-stability-bonus=2`, `tolerance-band-scale=1.0`
+  - `replacement-score-gap=12`, `hold-stability-bonus=2`, `tolerance-band-scale=1.0`
+- Fixed parameters must remain:
+  - `backtest-start=2023-01-01`
+  - `backtest-end=2026-01-01`
+  - `crisis-diagnostics=true`
+  - `pre-weak-guard-enabled=true`
+  - `weak-stress-overlay-enabled=false`
+  - `severe-crash-override-enabled=false`
+  - `favorable-breadth-threshold=0.85`
+  - `weak-stress-threshold=33`
+  - `growth-atr-eligibility-limit=0.06`
+  - `severe-stress-gap=4`
+- Required workflow for each run:
+  - set and verify the three Stage 2 parameters in the QuantConnect Parameters panel
+  - launch one normal backtest
+  - wait for completion
+  - download overview JSON, orders CSV, and logs TXT
+  - move/rename artifacts into `Algorithm.CSharp/MyAlgorithms/AegisGrowthAllocation/BackTestLogs`
+  - normalize the log with the repo-local one-shot renamer and update `log-index.csv`
+  - compare against the current default baseline and Stage 1 before recommending the next step
+- Safety boundary:
+  - do not launch Stage 3 or any additional parameter combination without explicit user approval
+  - do not modify algorithm source files, live deployment, brokerage state, or Object Store state
+
+### Manual grid Stage 2 automation attempt blocked
+
+- Date: 2026-06-06.
+- Intended first Stage 2 run:
+  - `replacement-score-gap=10`
+  - `hold-stability-bonus=2`
+  - `tolerance-band-scale=1.0`
+- What happened:
+  - Chrome/QuantConnect control was available.
+  - The project workspace initially rendered in a narrow layout, so Chrome was maximized at the OS level to restore a usable result list and parameters panel.
+  - A backtest named `Emotional Fluorescent Yellow Koala` was launched, but the `replacement-score-gap` edit had not actually taken effect.
+  - The Backtest Results list showed `Emotional Fluorescent Yellow Koala` with the same headline metrics as Stage 1:
+    - PSR `77.445`
+    - Sharpe `0.96`
+    - Orders `542`
+  - Interpretation: this run duplicated the Stage 1 `replacement-score-gap=8`, `hold-stability-bonus=2`, `tolerance-band-scale=1.0` setup and is not a valid Stage 2 result.
+- Parameter-edit blocker:
+  - The correct `replacement-score-gap` row can be reached by scrolling the Parameters panel.
+  - The pencil edit form can be opened.
+  - The Chrome plugin's text input path failed with a virtual clipboard error:
+    - `Browser Use virtual clipboard is not installed`
+  - Windows `SendKeys` was attempted as a fallback, but focus landed on the parameter name field rather than the value field.
+  - The automation did not save the partially edited form; the project was reloaded to discard unsaved edits.
+- Safety result:
+  - no Stage 2-valid backtest files were downloaded or normalized
+  - no Stage 3/full-grid run was launched
+  - no algorithm source file, live deployment, brokerage state, or Object Store state was changed
+- Required next step before continuing automation:
+  - either fix the Chrome plugin virtual clipboard/text-entry path
+  - or have the user manually set the three Stage 2 parameters before Codex launches/downloads/analyzes the run
+  - do not continue automated parameter editing until text entry can be verified without risking parameter-name corruption
+
+### Existing parameter update workaround test planned
+
+- Date: 2026-06-06.
+- User proposed a safer workaround for updating existing QuantConnect Parameters-panel values:
+  - remove the existing parameter row
+  - add a new parameter with the same name and the desired value
+- Rationale:
+  - adding/removing parameters was previously proven in the GUI
+  - editing the existing row form failed because text entry/focus could land in the parameter name field
+  - remove-and-recreate may avoid the brittle edit form entirely
+- Planned reversible test:
+  - create temporary parameter `codex-recreate-test=1`
+  - remove `codex-recreate-test`
+  - recreate `codex-recreate-test=2`
+  - verify the row displays value `2`
+  - remove `codex-recreate-test`
+- Safety boundary:
+  - do not touch real Aegis parameters until this temporary test is visually verified
+  - do not launch a build, backtest, optimization, live deployment, brokerage action, or Object Store action during this test
+
+### Existing parameter update workaround test result
+
+- Date: 2026-06-06.
+- Test scope:
+  - temporary parameter only: `codex-recreate-test`
+  - no real Aegis parameter mutation
+  - no build, backtest, optimization, live deployment, brokerage action, or Object Store action
+- Result:
+  - the `Add New Parameter` form opened correctly
+  - the visible DOM exposed exact input node ids for the form:
+    - parameter name input
+    - parameter default value input
+    - `Create Parameter` submit button
+  - direct browser text entry did not populate the temporary parameter name input
+  - browser clipboard paste did not populate the temporary parameter name input
+  - OS-level `Set-Clipboard` plus `Ctrl+V` did not populate the temporary parameter name input, likely because the Chrome extension-controlled tab was not the Windows foreground input target
+  - the form was cancelled and the visible Parameters panel returned to its original state
+- Conclusion:
+  - the user-proposed remove-and-recreate strategy is logically safer than editing an existing parameter form, but it still depends on reliable text entry into the create form
+  - in the current session, text entry into the QuantConnect Parameters panel is not reliable enough for automated real-parameter changes
+- Recommended next step:
+  - user manually sets `replacement-score-gap=10` and later `replacement-score-gap=12`
+  - Codex can then automate/assist with visual verification, launching the backtest, downloading artifacts, normalization, and analysis
+  - alternatively, fix the Chrome text-entry path before attempting any automated parameter mutation
+
+### Existing parameter update workaround strict review
+
+- Review scope:
+  - temporary QuantConnect Parameters-panel create-form interaction
+  - project-note update
+- Review result:
+  - no temporary parameter was created
+  - no real Aegis parameter was changed
+  - no source file, build, backtest, optimization, live deployment, brokerage state, or Object Store state was changed
+- Safety/correctness findings:
+  - stopping after failed temporary text-entry verification was the correct behavior
+  - continuing to real parameter remove/recreate would risk deleting a valid parameter without being able to recreate it
+- Residual risk:
+  - the QuantConnect tab remains open for handoff, but automated parameter mutation should remain blocked until text entry is proven on a temporary parameter
+
+### Existing parameter update workaround foreground retry planned
+
+- Date: 2026-06-06.
+- User observed that OS-level paste appeared to target the Codex desktop app instead of Chrome.
+- Updated hypothesis:
+  - the browser/extension click visually focused the QuantConnect field, but Windows foreground focus remained with Codex
+  - OS-level clipboard and `SendKeys` may work if Chrome is explicitly foregrounded before the paste step
+- Planned retry:
+  - bring Chrome to foreground
+  - open `Add New Parameter`
+  - create temporary parameter `codex-recreate-test=1`
+  - verify it appears
+  - remove/recreate only if the first create succeeds
+  - cancel/cleanup immediately if text entry still fails
+- Safety boundary:
+  - temporary parameter only
+  - no real Aegis parameter change
+  - no build, backtest, optimization, live deployment, brokerage action, or Object Store action
+
+### Existing parameter update workaround foreground retry root cause
+
+- Date: 2026-06-06.
+- Failure observed during retry:
+  - `codex-recreate-test` pasted successfully into the QuantConnect temporary parameter name field after Chrome was foregrounded
+  - the value paste did not reliably land in the QuantConnect value field
+  - the temporary form was left partially filled with the name but no confirmed value
+- User-identified root cause:
+  - Codex approval prompts appeared between browser focus and OS-level paste/type commands
+  - clicking the approval prompt moved Windows focus back to the Codex desktop app
+  - subsequent OS-level paste commands targeted Codex instead of Chrome
+- Corrected protocol:
+  - request/obtain all needed command approvals before touching Chrome inputs
+  - after approvals, bring Chrome foreground again
+  - focus the exact QuantConnect input field
+  - use only already-approved clipboard/paste commands during the critical input sequence
+  - verify visually before creating, removing, or recreating any parameter
+- Safety boundary:
+  - cleanup the partially filled temporary form before retrying
+  - retry only the temporary parameter workflow
+  - do not touch real Aegis parameters until temporary remove/recreate is proven end-to-end
+
+### Existing parameter update workaround corrected retry result
+
+- Date: 2026-06-06.
+- Corrected workflow used:
+  - obtain command approvals before browser input
+  - bring Chrome/QuantConnect foreground
+  - set clipboard values before each paste
+  - focus the exact QuantConnect field immediately before OS-level `Ctrl+V`
+  - visually verify each field before creating the parameter
+- Test sequence completed:
+  - created temporary parameter `codex-recreate-test=1`
+  - visually verified the row appeared with value `1`
+  - removed `codex-recreate-test`
+  - recreated temporary parameter `codex-recreate-test=2`
+  - visually verified the row appeared with value `2`
+  - removed `codex-recreate-test`
+- Result:
+  - the user-proposed remove-and-recreate workflow is viable when no Codex approval prompt interrupts Windows focus
+  - temporary cleanup was completed; `codex-recreate-test` is no longer visible in the Parameters panel
+- Safety boundary maintained:
+  - no real Aegis parameter was changed
+  - no source file, build, backtest, optimization, live deployment, brokerage state, or Object Store state was changed
+- Operational rule for future parameter changes:
+  - request/complete all required approvals before starting the browser input sequence
+  - after every approval prompt, explicitly bring Chrome back to foreground before pasting
+  - never delete a real parameter unless the replacement name and value clipboard commands are already approved and Chrome focus is verified
+
+### Existing parameter update workaround corrected retry strict review
+
+- Review scope:
+  - temporary QuantConnect Parameters-panel remove-and-recreate workflow
+  - cleanup of temporary parameter
+  - project-note update
+- Review result:
+  - no issues found in the corrected temporary workflow
+  - the workflow proves real parameter updates can be performed by remove-and-recreate, but only under the approval/focus protocol above
+- Safety/correctness findings:
+  - deleting the temporary parameter after the test left the cloud project clean
+  - visual verification before every create action prevented blind mutation
+- Residual risk:
+  - real parameter updates still carry a risk if Chrome focus is lost after deleting the old parameter and before recreating it
+  - mitigation is to pre-stage approvals, verify clipboard values, and perform one real parameter at a time with visual confirmation
+
+### Manual grid Stage 2 resumed with corrected parameter workflow
+
+- Date: 2026-06-06.
+- User approved resuming the real optimization workflow after the temporary remove-and-recreate parameter test succeeded.
+- Resumption point:
+  - previous Stage 2 attempt was blocked while trying to set `replacement-score-gap=10`
+  - current visible parameter state is expected to remain `replacement-score-gap=8`, `hold-stability-bonus=2`, `tolerance-band-scale=1.0`
+- Approved first real run:
+  - set `replacement-score-gap=10`
+  - keep `hold-stability-bonus=2`
+  - keep `tolerance-band-scale=1.0`
+  - keep fixed parameters from the Stage 2 approved scope unchanged
+- Required corrected workflow:
+  - obtain needed command approvals before browser input
+  - bring Chrome/QuantConnect foreground
+  - use remove-and-recreate for `replacement-score-gap` only
+  - visually verify `replacement-score-gap=10` before launch
+  - launch one normal backtest only
+  - download overview JSON, orders CSV, and logs TXT after completion
+  - normalize/index the log and compare against baseline and Stage 1
+- Safety boundary:
+  - do not change algorithm source files
+  - do not change live deployment, brokerage state, or Object Store state
+  - do not start the `replacement-score-gap=12` run until the `10` run is completed and reported
+
+### Manual grid Stage 2 run 1 parameter setup
+
+- Date: 2026-06-06.
+- Target run:
+  - `replacement-score-gap=10`
+  - `hold-stability-bonus=2`
+  - `tolerance-band-scale=1.0`
+- Parameter update method:
+  - removed the existing visible `replacement-score-gap=8` row
+  - recreated `replacement-score-gap` with value `10`
+  - verified the final visible row shows `replacement-score-gap=10`
+- Fixed parameter state visually retained:
+  - `backtest-start=2023-01-01`
+  - `backtest-end=2026-01-01`
+  - `crisis-diagnostics=true`
+  - `pre-weak-guard-enabled=true`
+  - `weak-stress-overlay-enabled=false`
+  - `severe-crash-override-enabled=false`
+  - `favorable-breadth-threshold=0.85`
+  - `weak-stress-threshold=33`
+  - `growth-atr-eligibility-limit=0.06`
+  - `severe-stress-gap=4`
+- Launch boundary:
+  - launch one normal backtest only after this setup
+  - do not start the `replacement-score-gap=12` run until the `10` result is downloaded, analyzed, and reported
+
+### Manual grid Stage 2 run 1 launch result
+
+- Date: 2026-06-06.
+- Launched one normal QuantConnect backtest after verifying `replacement-score-gap=10`.
+- Cloud run name:
+  - `Pensive Blue Dogfish`
+- Visible completion state:
+  - result page rendered successfully
+  - top-line metrics became visible after waiting for completion
+- Visible preliminary metrics:
+  - Equity: `$56,410.84`
+  - Holdings: `$41,927.05`
+  - Net Profit: `$22,469.48`
+  - PSR: `80.373%`
+  - Return: `88.03%`
+- Next step:
+  - download overview JSON, orders CSV, and logs TXT for this completed run
+  - normalize/index the log before analysis
+
+### Manual grid Stage 2 run 1 resume checkpoint
+
+- Date: 2026-06-07.
+- User reopened the QuantConnect backtest project in Chrome and asked to continue.
+- Resume assumption:
+  - continue with the completed `Pensive Blue Dogfish` run for `replacement-score-gap=10`, `hold-stability-bonus=2`, `tolerance-band-scale=1.0`
+- Next action:
+  - reconnect to the open Chrome tab
+  - locate the completed result tabs
+  - download overview JSON, orders CSV, and logs TXT
+- Safety boundary:
+  - do not start another backtest or modify parameters during this resume step
+
+### Manual grid Stage 2 run 1 resume observation
+
+- Date: 2026-06-07.
+- Reconnected to the open QuantConnect project tab.
+- Observation:
+  - the tab reopened on the source-code view, not on the completed `Pensive Blue Dogfish` result tab
+  - no result download action has been taken yet in this resumed session
+- Safe continuation:
+  - verify the visible parameter state still matches the Stage 2 run 1 target
+  - if the completed result tab cannot be recovered, rerun only the same `replacement-score-gap=10`, `hold-stability-bonus=2`, `tolerance-band-scale=1.0` backtest
+  - do not advance to `replacement-score-gap=12`
+
+### Manual grid Stage 2 run 1 rerun decision
+
+- Date: 2026-06-07.
+- Visible parameter verification before rerun:
+  - `replacement-score-gap=10`
+  - `hold-stability-bonus=2`
+  - `tolerance-band-scale=1.0`
+  - fixed Stage 2 parameters remained visible and unchanged where inspected
+- Reason for rerun:
+  - the previously completed result tab was not active after reopening the project
+  - the result files had not yet been downloaded
+- Decision:
+  - rerun only the same Stage 2 run 1 combo
+  - no parameter changes and no Stage 2 run 2 launch
+
+### Manual grid Stage 2 run 1 rerun launched
+
+- Date: 2026-06-07.
+- Rerun launched after verifying the parameter state.
+- Cloud run name:
+  - `Hyper Active Yellow Green Tapir`
+- Cloud terminal completion evidence:
+  - Algorithm Id: `916353c69f4c2bfb3233495364de6733`
+  - completed successfully after processing `22,413` data points
+- Next action:
+  - wait for the active result tab to render downloadable result content
+  - download the overview JSON, orders CSV, and logs TXT
+
+### Backtest result render fallback rule
+
+- Date: 2026-06-07.
+- User clarified the correct fallback when a completed backtest result tab does not render visual results after roughly 30 seconds.
+- Recovery workflow:
+  - close the non-rendering individual backtest result tab
+  - click the `Backtest Results` button, visually shown as the three-triangles/results icon beside the lightning icon
+  - open the `Backtest Results` tab
+  - click the first row, which should be the newest completed backtest
+- Current target row:
+  - `Hyper Active Yellow Green Tapir`
+  - Status: `Completed`
+  - PSR: `80.373`
+  - Sharpe Ratio: `1.017`
+  - Orders: `533`
+  - Requested: `2026-06-07 07:01:07`
+- Safety boundary:
+  - use this only to recover/download the already completed Stage 2 run 1 result
+  - do not launch or modify another backtest
+
+### Manual grid Stage 2 run 1 download complete
+
+- Date: 2026-06-07.
+- Downloaded files from the rendered `Hyper Active Yellow Green Tapir` result tab:
+  - `Hyper Active Yellow Green Tapir.json`
+  - `Hyper Active Yellow Green Tapir_orders.csv`
+  - `Hyper Active Yellow Green Tapir_logs.txt`
+- Source download folder:
+  - `C:\Users\douya\Downloads`
+- Result metrics visible before download:
+  - PSR: `80.373%`
+  - Sharpe Ratio: `1.017`
+  - Total Orders: `533`
+  - Compounding Annual Return: `23.411%`
+  - Drawdown: `10.900%`
+  - End Equity: `$56,410.04`
+- Log parameter confirmation:
+  - `ReplacementScoreGap=10`
+  - `HoldStabilityBonus=2`
+  - `ToleranceBandScale=1.0`
+- Next action:
+  - move/rename the downloaded files into `Algorithm.CSharp/MyAlgorithms/AegisGrowthAllocation/BackTestLogs`
+  - normalize/index the log and analyze the result
+
+### Manual grid Stage 2 run 1 analysis
+
+- Date: 2026-06-07.
+- Result file set:
+  - `ManualGrid_Stage2_01_RSG10_HSB2_TBS1.0_2023-2026.json`
+  - `ManualGrid_Stage2_01_RSG10_HSB2_TBS1.0_2023-2026_orders.csv`
+  - `2026-06-07_172300__AegisGrowthAllocation__ManualGrid_Stage2_01_RSG10_HSB2_TBS1-0_2023-2026_logs.txt`
+- Confirmed run parameters from log:
+  - `ReplacementScoreGap=10`
+  - `HoldStabilityBonus=2`
+  - `ToleranceBandScale=1.0`
+  - `FavorableBreadthThreshold=0.85`
+  - `WeakStressThreshold=33`
+  - `SevereStressGap=4`
+  - `GrowthAtrEligibilityLimit=0.06`
+- Result comparison:
+  - Baseline `Logical Sky Blue Pelican`: PSR `80.910%`, Sharpe `1.028`, Sortino `1.275`, CAR `23.598%`, Net Profit `88.887%`, Drawdown `10.900%`, Orders `534`, Fees `$534.04`, End Equity `$56,666.12`
+  - Stage 1 `RSG8_HSB2_TBS1.0`: PSR `77.445%`, Sharpe `0.960`, Sortino `1.190`, CAR `22.471%`, Net Profit `83.767%`, Drawdown `10.800%`, Orders `542`, Fees `$542.01`, End Equity `$55,130.03`
+  - Stage 2 `RSG10_HSB2_TBS1.0`: PSR `80.373%`, Sharpe `1.017`, Sortino `1.258`, CAR `23.411%`, Net Profit `88.033%`, Drawdown `10.900%`, Orders `533`, Fees `$533.04`, End Equity `$56,410.04`
+- Interpretation:
+  - raising `replacement-score-gap` from `8` to `10` substantially repaired the Stage 1 performance loss
+  - `RSG10` is close to the baseline but still slightly worse on PSR, Sharpe, Sortino, CAR, Net Profit, and End Equity
+  - drawdown is unchanged versus baseline at `10.900%`
+  - order count and fees are marginally lower than baseline, but the reduced turnover did not improve risk-adjusted return enough to beat baseline
+- Orders review:
+  - total rows: `533`
+  - all orders are `Market` orders
+  - most active symbols by order count: `NFLX=51`, `SGOV=46`, `AVGO=46`, `NVDA=43`, `USMV=39`, `VIG=36`, `META=34`, `COST=31`
+- Diagnostic log review:
+  - `PreWeakWeeks=21`, `NonPreWeakWeeks=136`, `SevereCrashWeeks=0`, `WeakRegimeWeeks=3`
+  - `PreWeakAvgDrawdown=0.0717`, `NonPreWeakAvgDrawdown=0.0184`
+  - `PreWeakAvgTarget=G0.2400/D0.3000/C0.4600`
+  - `NonPreWeakAvgTarget=G0.5452/D0.2507/C0.2040`
+- Strict review:
+  - no issue found with file normalization or metric extraction
+  - no evidence the wrong parameter combination was tested
+  - residual risk: this is still a single 2023-2026 window result; do not promote `RSG10` based only on this result because it does not beat the current baseline in this window
+- Recommendation:
+  - continue the planned Stage 2 sequence with `replacement-score-gap=12`, `hold-stability-bonus=2`, `tolerance-band-scale=1.0`
+  - only after `RSG12` is analyzed should we decide whether to abandon the RSG sweep or refine another parameter
+
+### QuantConnect visual workflow default rule
+
+- Date: 2026-06-07.
+- User requested that future QuantConnect backtest/optimization automation avoid DOM snapshot unless absolutely necessary.
+- Rule for future sessions:
+  - default to visual workflow for QuantConnect Cloud IDE operations
+  - use screenshots and visible UI verification before each click or parameter mutation
+  - avoid DOM snapshot as the primary workflow because QuantConnect IDE content is iframe-heavy/custom-rendered and DOM snapshots often omit the useful controls
+  - use DOM snapshot only as a last-resort diagnostic when visual workflow is blocked
+- Practical implication:
+  - parameter editing, result-tab recovery, result downloads, and optimization wizard interactions should be driven by visible screenshots and confirmed screen state
+
+### Approval mode and Chrome plugin sandbox guidance
+
+- Date: 2026-06-07.
+- User asked whether switching from `Ask for approval` to `Approve for me` is safe, because Codex prompts to set up the agent sandbox and previous sandbox setup appeared to break Chrome plugin connectivity.
+- Existing recorded root cause:
+  - Chrome plugin control previously failed when `C:\Users\douya\.codex\config.toml` contained `[windows] sandbox = "elevated"`
+  - removing only `sandbox = "elevated"` restored Chrome plugin control through the bundled Chrome plugin path
+  - if the sandbox setup workflow reintroduces `sandbox = "elevated"`, Chrome plugin control may fail again
+- Recommended operating mode for QuantConnect Chrome automation:
+  - keep using `Ask for approval` when Chrome plugin control is required, unless we first verify that `Approve for me` does not re-add `[windows] sandbox = "elevated"`
+  - if switching to `Approve for me`, immediately inspect `C:\Users\douya\.codex\config.toml` before running Chrome automation
+  - if `sandbox = "elevated"` is present under `[windows]`, remove only that line and retry Chrome plugin connectivity
+  - prefer persistent approvals for stable project commands instead of broad full access or sandbox changes that may destabilize Chrome control
+- Commands/categories that can be safely approved persistently for this project when offered by the UI:
+  - repo-local project-note appends under `D:\Projects\Git\Lean-1\project-notes`
+  - listing `C:\Users\douya\Downloads`
+  - moving known QuantConnect download files from `C:\Users\douya\Downloads` into `Algorithm.CSharp/MyAlgorithms/AegisGrowthAllocation/BackTestLogs`
+  - running `Algorithm.CSharp/MyAlgorithms/AegisGrowthAllocation/BackTestLogs/Invoke-BackTestLogRename.ps1` with process-level execution-policy bypass
+  - updating `BackTestLogs/log-index.csv`
+  - `git -c safe.directory=D:/Projects/Git/Lean-1 status` and other read-only git inspection commands
+- Commands/categories that should not be broadly pre-approved:
+  - deleting files
+  - live deployment or brokerage-affecting actions
+  - Object Store changes
+  - broad unrestricted PowerShell or Python execution
+  - `git reset`, `git clean`, or destructive git commands
+
+### Approve-for-me Chrome plugin connectivity check
+
+- Date: 2026-06-07.
+- User switched Codex to `Approve for me` mode and asked to retry Chrome tab connectivity.
+- Pre-check result:
+  - `C:\Users\douya\.codex\config.toml` contains `[windows] sandbox = "elevated"`
+  - this matches the previously recorded Chrome plugin failure trigger
+- Test plan:
+  - attempt Chrome plugin connection once in the current mode
+  - if it fails with the same sandbox/runtime symptom, remove only `sandbox = "elevated"` from `[windows]` and retry after user confirmation
+- Test result:
+  - Chrome plugin connection failed
+  - failure symptom: `windows sandbox failed: spawn setup refresh`
+  - this confirms `Approve for me` sandbox setup reintroduced the same Chrome plugin blocker
+- Recommended fix:
+  - remove only `sandbox = "elevated"` from `C:\Users\douya\.codex\config.toml`
+  - keep the rest of the `Approve for me` mode unchanged
+  - retry Chrome plugin connection after the edit
+
+### Approve-for-me sandbox fix applied
+
+- Date: 2026-06-07.
+- User asked to remove the known bad sandbox line from the Codex config and retry Chrome.
+- Config change:
+  - backed up `C:\Users\douya\.codex\config.toml` to `C:\Users\douya\.codex\config.toml.backup-before-approve-for-me-chrome-fix-20260607`
+  - removed only `sandbox = "elevated"` from the `[windows]` section
+  - left the rest of the config unchanged
+- Next action:
+  - retry Chrome plugin connectivity through the bundled Chrome plugin path
+- Verification result:
+  - Chrome plugin connectivity succeeded after removing the sandbox line
+  - open tabs were visible, including `Algorithmic Trading Platform - QuantConnect.com` at `https://www.quantconnect.com/project/28209469`
+- Finding:
+  - `Approve for me` can be used with Chrome automation if `sandbox = "elevated"` is removed from `[windows]`
+  - if Codex setup re-adds that line later, the same failure is expected to recur
+
+### Manual grid Stage 2 run 2 start checkpoint
+
+- Date: 2026-06-07.
+- User approved the next step after Stage 2 run 1 analysis.
+- Planned sequence:
+  - commit the completed `RSG10 / HSB2 / TBS1.0` result files and note/index updates first
+  - then run exactly one new backtest for `RSG12 / HSB2 / TBS1.0`
+  - use visual workflow only unless blocked
+  - download and analyze overview JSON, orders CSV, and logs TXT after completion
+- Safety boundary:
+  - do not modify algorithm source files
+  - do not launch optimization wizard
+  - do not advance beyond the `RSG12` run until it is downloaded, analyzed, and reported
