@@ -31,6 +31,9 @@ namespace QuantConnect.Algorithm.CSharp
         public const string HoldStabilityBonusParameter = "hold-stability-bonus";
         public const string GrowthAtrEligibilityLimitParameter = "growth-atr-eligibility-limit";
         public const string RebalanceToleranceBandScaleParameter = "tolerance-band-scale";
+        public const string PreWeakGrowthTargetParameter = "pre-weak-growth-target";
+        public const string PreWeakDefensiveTargetParameter = "pre-weak-def-target";
+        public const string WeakGrowthTargetParameter = "weak-growth-target";
         public const string LiveStateKey = "AegisGrowthAllocation_LiveState_V2";
         public const int LiveStateSchemaVersion = 2;
         public const decimal LiveStateQuantityTolerance = 0.0001m;
@@ -80,6 +83,10 @@ namespace QuantConnect.Algorithm.CSharp
         public const decimal MaxSevereStressThreshold = 45m;
         public const bool DefaultPreWeakGuardEnabled = true;
         public const decimal DefaultPreWeakGuardDrawdownThreshold = 0.05m;
+        public const decimal DefaultPreWeakGrowthTarget = 0.24m;
+        public const decimal DefaultPreWeakDefensiveTarget = 0.30m;
+        public const decimal DefaultWeakGrowthTarget = 0.10m;
+        public const decimal WeakDefensiveTarget = 0.40m;
         public const decimal DefaultSevereCrashOverrideDrawdownThreshold = 0.10m;
         public const decimal DefaultSevereCrashOverrideExitDrawdownThreshold = 0.07m;
 
@@ -92,7 +99,7 @@ namespace QuantConnect.Algorithm.CSharp
         public static decimal SevereStressThreshold { get; private set; } = DefaultSevereStressThreshold;
         public static int UpgradeConfirmationWeeks { get; private set; } = DefaultUpgradeConfirmationWeeks;
 
-        public static readonly IReadOnlyDictionary<RiskRegime, SleeveTargets> SleeveTargetsByRegime =
+        private static readonly IReadOnlyDictionary<RiskRegime, SleeveTargets> DefaultSleeveTargetsByRegime =
             new Dictionary<RiskRegime, SleeveTargets>
             {
                 [RiskRegime.Favorable] = new SleeveTargets(
@@ -116,15 +123,25 @@ namespace QuantConnect.Algorithm.CSharp
                     cashMin: 0.20m,
                     cashMax: 0.30m),
                 [RiskRegime.Weak] = new SleeveTargets(
-                    growthTarget: 0.10m,
-                    defensiveTarget: 0.40m,
-                    cashTarget: 0.50m,
+                    growthTarget: DefaultWeakGrowthTarget,
+                    defensiveTarget: WeakDefensiveTarget,
+                    cashTarget: 1m - DefaultWeakGrowthTarget - WeakDefensiveTarget,
                     growthMin: 0.05m,
                     growthMax: 0.15m,
                     defensiveMin: 0.35m,
                     defensiveMax: 0.45m,
                     cashMin: 0.40m,
                     cashMax: 0.55m)
+            };
+
+        private static SleeveTargets _weakSleeveTargets = DefaultSleeveTargetsByRegime[RiskRegime.Weak];
+
+        public static IReadOnlyDictionary<RiskRegime, SleeveTargets> SleeveTargetsByRegime =>
+            new Dictionary<RiskRegime, SleeveTargets>
+            {
+                [RiskRegime.Favorable] = DefaultSleeveTargetsByRegime[RiskRegime.Favorable],
+                [RiskRegime.Neutral] = DefaultSleeveTargetsByRegime[RiskRegime.Neutral],
+                [RiskRegime.Weak] = _weakSleeveTargets
             };
 
         public static readonly SleeveTargets WeakStressOverlaySleeveTargets = new SleeveTargets(
@@ -138,16 +155,11 @@ namespace QuantConnect.Algorithm.CSharp
             cashMin: 0.75m,
             cashMax: 1.00m);
 
-        public static readonly SleeveTargets PreWeakGuardSleeveTargets = new SleeveTargets(
-            growthTarget: 0.24m,
-            defensiveTarget: 0.30m,
-            cashTarget: 0.46m,
-            growthMin: 0.20m,
-            growthMax: 0.30m,
-            defensiveMin: 0.25m,
-            defensiveMax: 0.35m,
-            cashMin: 0.40m,
-            cashMax: 0.55m);
+        private static SleeveTargets _preWeakGuardSleeveTargets = BuildPreWeakGuardSleeveTargets(
+            DefaultPreWeakGrowthTarget,
+            DefaultPreWeakDefensiveTarget);
+
+        public static SleeveTargets PreWeakGuardSleeveTargets => _preWeakGuardSleeveTargets;
 
         public static readonly SleeveTargets SevereCrashOverrideSleeveTargets = new SleeveTargets(
             growthTarget: 0.00m,
@@ -213,10 +225,15 @@ namespace QuantConnect.Algorithm.CSharp
         public static decimal ReplacementScoreGap { get; private set; } = DefaultReplacementScoreGap;
         public static decimal HoldStabilityBonus { get; private set; } = DefaultHoldStabilityBonus;
         public static decimal RebalanceToleranceBandScale { get; private set; } = DefaultRebalanceToleranceBandScale;
+        public static decimal PreWeakGrowthTarget { get; private set; } = DefaultPreWeakGrowthTarget;
+        public static decimal PreWeakDefensiveTarget { get; private set; } = DefaultPreWeakDefensiveTarget;
+        public static decimal WeakGrowthTarget { get; private set; } = DefaultWeakGrowthTarget;
 
         public static SleeveTargets GetSleeveTargets(RiskRegime regime)
         {
-            return SleeveTargetsByRegime[regime];
+            return regime == RiskRegime.Weak
+                ? _weakSleeveTargets
+                : DefaultSleeveTargetsByRegime[regime];
         }
 
         public static void ResetRuntimeParameters()
@@ -230,6 +247,13 @@ namespace QuantConnect.Algorithm.CSharp
             ReplacementScoreGap = DefaultReplacementScoreGap;
             HoldStabilityBonus = DefaultHoldStabilityBonus;
             RebalanceToleranceBandScale = DefaultRebalanceToleranceBandScale;
+            PreWeakGrowthTarget = DefaultPreWeakGrowthTarget;
+            PreWeakDefensiveTarget = DefaultPreWeakDefensiveTarget;
+            WeakGrowthTarget = DefaultWeakGrowthTarget;
+            _preWeakGuardSleeveTargets = BuildPreWeakGuardSleeveTargets(
+                DefaultPreWeakGrowthTarget,
+                DefaultPreWeakDefensiveTarget);
+            _weakSleeveTargets = BuildWeakSleeveTargets(DefaultWeakGrowthTarget);
         }
 
         public static void ConfigureRuntimeParameters(
@@ -240,7 +264,10 @@ namespace QuantConnect.Algorithm.CSharp
             decimal growthAtrEligibilityLimit,
             decimal replacementScoreGap,
             decimal holdStabilityBonus,
-            decimal rebalanceToleranceBandScale)
+            decimal rebalanceToleranceBandScale,
+            decimal preWeakGrowthTarget,
+            decimal preWeakDefensiveTarget,
+            decimal weakGrowthTarget)
         {
             FavorableBreadthThreshold = favorableBreadthThreshold;
             WeakStressThreshold = weakStressThreshold;
@@ -251,6 +278,61 @@ namespace QuantConnect.Algorithm.CSharp
             ReplacementScoreGap = replacementScoreGap;
             HoldStabilityBonus = holdStabilityBonus;
             RebalanceToleranceBandScale = rebalanceToleranceBandScale;
+            PreWeakGrowthTarget = preWeakGrowthTarget;
+            PreWeakDefensiveTarget = preWeakDefensiveTarget;
+            WeakGrowthTarget = weakGrowthTarget;
+            _preWeakGuardSleeveTargets = BuildPreWeakGuardSleeveTargets(
+                preWeakGrowthTarget,
+                preWeakDefensiveTarget);
+            _weakSleeveTargets = BuildWeakSleeveTargets(weakGrowthTarget);
+        }
+
+        public static (decimal PreWeakGrowthTarget, decimal PreWeakDefensiveTarget, decimal WeakGrowthTarget) ParseSleeveTargetParameters(
+            Func<string, string> getParameter,
+            Action<string> debug)
+        {
+            var preWeakGrowthValid = TryParseOptionalDecimalParameter(
+                getParameter,
+                debug,
+                PreWeakGrowthTargetParameter,
+                DefaultPreWeakGrowthTarget,
+                value => value >= 0m && value <= 0.50m,
+                out var preWeakGrowthTarget);
+            var preWeakDefensiveValid = TryParseOptionalDecimalParameter(
+                getParameter,
+                debug,
+                PreWeakDefensiveTargetParameter,
+                DefaultPreWeakDefensiveTarget,
+                value => value >= 0m && value <= 0.60m,
+                out var preWeakDefensiveTarget);
+            var weakGrowthValid = TryParseOptionalDecimalParameter(
+                getParameter,
+                debug,
+                WeakGrowthTargetParameter,
+                DefaultWeakGrowthTarget,
+                value => value >= 0m && value <= 0.30m,
+                out var weakGrowthTarget);
+
+            if (!preWeakGrowthValid ||
+                !preWeakDefensiveValid ||
+                !weakGrowthValid ||
+                preWeakGrowthTarget + preWeakDefensiveTarget >= 1m ||
+                weakGrowthTarget + WeakDefensiveTarget >= 1m)
+            {
+                debug(
+                    string.Format(
+                        CultureInfo.InvariantCulture,
+                        "[AEGIS] Invalid sleeve target parameters pre-weak-growth-target={0} pre-weak-def-target={1} weak-growth-target={2}. Using defaults preWeakGrowth={3} preWeakDef={4} weakGrowth={5}.",
+                        preWeakGrowthTarget,
+                        preWeakDefensiveTarget,
+                        weakGrowthTarget,
+                        DefaultPreWeakGrowthTarget,
+                        DefaultPreWeakDefensiveTarget,
+                        DefaultWeakGrowthTarget));
+                return (DefaultPreWeakGrowthTarget, DefaultPreWeakDefensiveTarget, DefaultWeakGrowthTarget);
+            }
+
+            return (preWeakGrowthTarget, preWeakDefensiveTarget, weakGrowthTarget);
         }
 
         public static (decimal WeakStressThreshold, decimal SevereStressGap) ParseStressBandParameters(
@@ -325,6 +407,38 @@ namespace QuantConnect.Algorithm.CSharp
             }
 
             return true;
+        }
+
+        private static SleeveTargets BuildPreWeakGuardSleeveTargets(decimal growthTarget, decimal defensiveTarget)
+        {
+            var cashTarget = 1m - growthTarget - defensiveTarget;
+
+            return new SleeveTargets(
+                growthTarget: growthTarget,
+                defensiveTarget: defensiveTarget,
+                cashTarget: cashTarget,
+                growthMin: Math.Max(0m, growthTarget - 0.04m),
+                growthMax: Math.Min(1m, growthTarget + 0.06m),
+                defensiveMin: Math.Max(0m, defensiveTarget - 0.05m),
+                defensiveMax: Math.Min(1m, defensiveTarget + 0.05m),
+                cashMin: Math.Max(0m, cashTarget - 0.06m),
+                cashMax: Math.Min(1m, cashTarget + 0.09m));
+        }
+
+        private static SleeveTargets BuildWeakSleeveTargets(decimal growthTarget)
+        {
+            var cashTarget = 1m - growthTarget - WeakDefensiveTarget;
+
+            return new SleeveTargets(
+                growthTarget: growthTarget,
+                defensiveTarget: WeakDefensiveTarget,
+                cashTarget: cashTarget,
+                growthMin: Math.Max(0m, growthTarget - 0.05m),
+                growthMax: Math.Min(1m, growthTarget + 0.05m),
+                defensiveMin: 0.35m,
+                defensiveMax: 0.45m,
+                cashMin: Math.Max(0m, cashTarget - 0.10m),
+                cashMax: Math.Min(1m, cashTarget + 0.05m));
         }
     }
 

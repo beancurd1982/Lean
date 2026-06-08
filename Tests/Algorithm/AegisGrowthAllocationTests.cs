@@ -178,6 +178,66 @@ namespace QuantConnect.Tests.Algorithm
         }
 
         [Test]
+        public void UsesDefaultRuntimeSleeveTargets()
+        {
+            CreateAlgorithm();
+
+            var weakTargets = QuantConnect.Algorithm.CSharp.StrategyConfig.GetSleeveTargets(
+                QuantConnect.Algorithm.CSharp.RiskRegime.Weak);
+            var preWeakTargets = QuantConnect.Algorithm.CSharp.StrategyConfig.PreWeakGuardSleeveTargets;
+
+            Assert.That(weakTargets.GrowthTarget, Is.EqualTo(0.10m));
+            Assert.That(weakTargets.DefensiveTarget, Is.EqualTo(0.40m));
+            Assert.That(weakTargets.CashTarget, Is.EqualTo(0.50m));
+            Assert.That(preWeakTargets.GrowthTarget, Is.EqualTo(0.24m));
+            Assert.That(preWeakTargets.DefensiveTarget, Is.EqualTo(0.30m));
+            Assert.That(preWeakTargets.CashTarget, Is.EqualTo(0.46m));
+        }
+
+        [Test]
+        public void UsesConfiguredRuntimeSleeveTargets()
+        {
+            CreateAlgorithm(new Dictionary<string, string>
+            {
+                ["pre-weak-growth-target"] = "0.18",
+                ["pre-weak-def-target"] = "0.35",
+                ["weak-growth-target"] = "0.05"
+            });
+
+            var weakTargets = QuantConnect.Algorithm.CSharp.StrategyConfig.GetSleeveTargets(
+                QuantConnect.Algorithm.CSharp.RiskRegime.Weak);
+            var preWeakTargets = QuantConnect.Algorithm.CSharp.StrategyConfig.PreWeakGuardSleeveTargets;
+
+            Assert.That(weakTargets.GrowthTarget, Is.EqualTo(0.05m));
+            Assert.That(weakTargets.DefensiveTarget, Is.EqualTo(0.40m));
+            Assert.That(weakTargets.CashTarget, Is.EqualTo(0.55m));
+            Assert.That(preWeakTargets.GrowthTarget, Is.EqualTo(0.18m));
+            Assert.That(preWeakTargets.DefensiveTarget, Is.EqualTo(0.35m));
+            Assert.That(preWeakTargets.CashTarget, Is.EqualTo(0.47m));
+        }
+
+        [Test]
+        public void InvalidRuntimeSleeveTargetsFallBackToDefaults()
+        {
+            CreateAlgorithm(new Dictionary<string, string>
+            {
+                ["pre-weak-growth-target"] = "0.80",
+                ["pre-weak-def-target"] = "0.40",
+                ["weak-growth-target"] = "0.70"
+            });
+
+            var weakTargets = QuantConnect.Algorithm.CSharp.StrategyConfig.GetSleeveTargets(
+                QuantConnect.Algorithm.CSharp.RiskRegime.Weak);
+            var preWeakTargets = QuantConnect.Algorithm.CSharp.StrategyConfig.PreWeakGuardSleeveTargets;
+
+            Assert.That(weakTargets.GrowthTarget, Is.EqualTo(0.10m));
+            Assert.That(weakTargets.CashTarget, Is.EqualTo(0.50m));
+            Assert.That(preWeakTargets.GrowthTarget, Is.EqualTo(0.24m));
+            Assert.That(preWeakTargets.DefensiveTarget, Is.EqualTo(0.30m));
+            Assert.That(preWeakTargets.CashTarget, Is.EqualTo(0.46m));
+        }
+
+        [Test]
         public void EnablesPreWeakGuardByDefault()
         {
             var algorithm = CreateAlgorithm();

@@ -151,6 +151,8 @@ namespace QuantConnect.Algorithm.CSharp
 
             Debug(
                 $"AegisGrowthAllocation initialized. GrowthUniverse={StrategyConfig.GrowthTickers.Count} DefensiveUniverse={StrategyConfig.DefensiveTickers.Count} UndeployedReserve={_undeployedCapitalReserve.ToString(CultureInfo.InvariantCulture)} FavorableBreadthThreshold={StrategyConfig.FavorableBreadthThreshold.ToString(CultureInfo.InvariantCulture)} WeakStressThreshold={StrategyConfig.WeakStressThreshold.ToString(CultureInfo.InvariantCulture)} SevereStressGap={StrategyConfig.SevereStressGap.ToString(CultureInfo.InvariantCulture)} SevereStressThreshold={StrategyConfig.SevereStressThreshold.ToString(CultureInfo.InvariantCulture)} UpgradeConfirmationWeeks={StrategyConfig.UpgradeConfirmationWeeks} GrowthAtrEligibilityLimit={StrategyConfig.GrowthAtrEligibilityLimit.ToString(CultureInfo.InvariantCulture)} ReplacementScoreGap={StrategyConfig.ReplacementScoreGap.ToString(CultureInfo.InvariantCulture)} HoldStabilityBonus={StrategyConfig.HoldStabilityBonus.ToString(CultureInfo.InvariantCulture)} ToleranceBandScale={StrategyConfig.RebalanceToleranceBandScale.ToString(CultureInfo.InvariantCulture)}");
+            Debug(
+                $"AegisGrowthAllocation sleeve targets. PreWeakGrowthTarget={StrategyConfig.PreWeakGrowthTarget.ToString(CultureInfo.InvariantCulture)} PreWeakDefensiveTarget={StrategyConfig.PreWeakDefensiveTarget.ToString(CultureInfo.InvariantCulture)} WeakGrowthTarget={StrategyConfig.WeakGrowthTarget.ToString(CultureInfo.InvariantCulture)}");
         }
 
         public override void OnData(Slice slice)
@@ -280,7 +282,7 @@ namespace QuantConnect.Algorithm.CSharp
                 UpdateDefensiveOverrideHighWaterMark(totalPortfolioValue);
             }
             var drawdownFromHigh = CalculateDrawdownFromHigh(totalPortfolioValue);
-            var baseSleeveTargets = StrategyConfig.SleeveTargetsByRegime[regimeSnapshot.ActiveRegime];
+            var baseSleeveTargets = StrategyConfig.GetSleeveTargets(regimeSnapshot.ActiveRegime);
             var sleeveTargetsOverride = (SleeveTargets)null;
             var severeCrashOverrideActive = UpdateSevereCrashMode(regimeSnapshot, totalPortfolioValue);
             var preWeakGuardActive = false;
@@ -597,6 +599,7 @@ namespace QuantConnect.Algorithm.CSharp
                 StrategyConfig.RebalanceToleranceBandScaleParameter,
                 StrategyConfig.DefaultRebalanceToleranceBandScale,
                 value => value > 0m && value <= 2m);
+            var sleeveTargets = StrategyConfig.ParseSleeveTargetParameters(name => GetParameter(name), message => Debug(message));
 
             StrategyConfig.ConfigureRuntimeParameters(
                 favorableBreadthThreshold,
@@ -606,7 +609,10 @@ namespace QuantConnect.Algorithm.CSharp
                 growthAtrEligibilityLimit,
                 replacementScoreGap,
                 holdStabilityBonus,
-                rebalanceToleranceBandScale);
+                rebalanceToleranceBandScale,
+                sleeveTargets.PreWeakGrowthTarget,
+                sleeveTargets.PreWeakDefensiveTarget,
+                sleeveTargets.WeakGrowthTarget);
         }
 
         private DateTime ParseBacktestStartDate()

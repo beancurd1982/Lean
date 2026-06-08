@@ -175,7 +175,10 @@ namespace QuantConnect.Tests.Algorithm
                 QuantConnect.Algorithm.CSharp.StrategyConfig.DefaultGrowthAtrEligibilityLimit,
                 QuantConnect.Algorithm.CSharp.StrategyConfig.DefaultReplacementScoreGap,
                 QuantConnect.Algorithm.CSharp.StrategyConfig.DefaultHoldStabilityBonus,
-                rebalanceToleranceBandScale: 0.5m);
+                rebalanceToleranceBandScale: 0.5m,
+                QuantConnect.Algorithm.CSharp.StrategyConfig.DefaultPreWeakGrowthTarget,
+                QuantConnect.Algorithm.CSharp.StrategyConfig.DefaultPreWeakDefensiveTarget,
+                QuantConnect.Algorithm.CSharp.StrategyConfig.DefaultWeakGrowthTarget);
 
             var growthSymbols = new[]
             {
