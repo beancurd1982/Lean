@@ -43,7 +43,7 @@ Stateful severe-crash parameters:
 - `sev-crash-recovery-wks=2`
 
 Important constraint:
-- Do not set `pre-weak-guard-drawdown-threshold` in cloud runs. It is longer than the 30-character cloud parameter limit.
+- Use `pre-weak-dd-threshold` for cloud runs. The older `pre-weak-guard-drawdown-threshold` name is longer than the 30-character cloud parameter limit.
 - For this matrix, pre-weak uses its current default threshold of `0.05`.
 
 ## Step 3: Configurations
@@ -297,7 +297,7 @@ Date:
 Review result:
 - No blocking issue found.
 - The run sheet uses current cloud-safe parameter names for stateful severe-crash settings.
-- The long `pre-weak-guard-drawdown-threshold` parameter is explicitly excluded from cloud setup.
+- The older long `pre-weak-guard-drawdown-threshold` parameter is explicitly excluded from cloud setup; use `pre-weak-dd-threshold` instead.
 - The plan avoids new code and limits the next action to same-code-version validation.
 - Phase 1 is intentionally crisis-only; Phase 2 control/full-period runs are conditional to reduce unnecessary cloud runs.
 
@@ -2013,6 +2013,10 @@ Date:
 Scope:
 - Identify the best current parameter combination for a paper/live default before deploying the improved algorithm to Interactive Brokers paper.
 
+Supersession note:
+- This 2026-05-18 default recommendation has been superseded by the 2026-06-08 Candidate B weak-sleeve default in `project-notes/Aegis_Weak_Sleeve_Target_Parameterization_2026-06-08.md`.
+- Current defaults are `pre-weak-dd-threshold=0.04`, `pre-weak-growth-target=0.12`, `pre-weak-def-target=0.30`, and `weak-growth-target=0.10`.
+
 Recommendation:
 - Use `C-pre-weak-only` as the current live-ready default.
 - Default values should be:
@@ -2020,7 +2024,7 @@ Recommendation:
   - `weak-stress-overlay-enabled=false`
   - `pre-weak-guard-enabled=true`
   - `severe-crash-override-enabled=false`
-  - `pre-weak-guard-drawdown-threshold=0.05`
+  - `pre-weak-dd-threshold=0.05`
   - keep severe-crash numeric defaults unchanged but inactive: `sev-crash-dd-entry=0.10`, `sev-crash-dd-exit=0.07`, `sev-crash-recovery-wks=2`
 
 Reason:

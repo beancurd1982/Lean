@@ -24,6 +24,15 @@ Initial constraints:
 Planned parameter:
 - `pre-weak-guard-enabled`
 
+Current cloud-safe drawdown threshold parameter:
+- `pre-weak-dd-threshold`
+- The original `pre-weak-guard-drawdown-threshold` name exceeded QuantConnect's 30-character cloud parameter limit and should not be used for new cloud runs.
+- As of 2026-06-08, the accepted default is Candidate B:
+  - `pre-weak-dd-threshold=0.04`
+  - `pre-weak-growth-target=0.12`
+  - `pre-weak-def-target=0.30`
+  - `weak-growth-target=0.10`
+
 Initial design direction:
 - When current active regime is Neutral or Favorable, and risk signals deteriorate enough to warn before formal Weak activation, use a lower-risk sleeve override.
 - Candidate conservative sleeve target: Growth `0.24`, Defensive `0.30`, Cash `0.46`.

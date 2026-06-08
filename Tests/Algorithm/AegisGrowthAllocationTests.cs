@@ -180,7 +180,7 @@ namespace QuantConnect.Tests.Algorithm
         [Test]
         public void UsesDefaultRuntimeSleeveTargets()
         {
-            CreateAlgorithm();
+            var algorithm = CreateAlgorithm();
 
             var weakTargets = QuantConnect.Algorithm.CSharp.StrategyConfig.GetSleeveTargets(
                 QuantConnect.Algorithm.CSharp.RiskRegime.Weak);
@@ -189,9 +189,12 @@ namespace QuantConnect.Tests.Algorithm
             Assert.That(weakTargets.GrowthTarget, Is.EqualTo(0.10m));
             Assert.That(weakTargets.DefensiveTarget, Is.EqualTo(0.40m));
             Assert.That(weakTargets.CashTarget, Is.EqualTo(0.50m));
-            Assert.That(preWeakTargets.GrowthTarget, Is.EqualTo(0.24m));
+            Assert.That(preWeakTargets.GrowthTarget, Is.EqualTo(0.12m));
             Assert.That(preWeakTargets.DefensiveTarget, Is.EqualTo(0.30m));
-            Assert.That(preWeakTargets.CashTarget, Is.EqualTo(0.46m));
+            Assert.That(preWeakTargets.CashTarget, Is.EqualTo(0.58m));
+            Assert.That(
+                GetPreWeakGuardDrawdownThreshold(algorithm),
+                Is.EqualTo(0.04m));
         }
 
         [Test]
@@ -284,7 +287,7 @@ namespace QuantConnect.Tests.Algorithm
             var algorithm = CreateAlgorithm(new Dictionary<string, string>
             {
                 ["pre-weak-guard-enabled"] = "true",
-                ["pre-weak-guard-drawdown-threshold"] = "0.04"
+                ["pre-weak-dd-threshold"] = "0.04"
             });
 
             Assert.That(GetPreWeakGuardDrawdownThreshold(algorithm), Is.EqualTo(0.04m));

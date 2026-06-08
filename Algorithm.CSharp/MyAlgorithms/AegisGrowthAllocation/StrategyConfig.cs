@@ -18,7 +18,7 @@ namespace QuantConnect.Algorithm.CSharp
         public const string CrisisDiagnosticsParameter = "crisis-diagnostics";
         public const string WeakStressOverlayParameter = "weak-stress-overlay-enabled";
         public const string PreWeakGuardParameter = "pre-weak-guard-enabled";
-        public const string PreWeakGuardDrawdownThresholdParameter = "pre-weak-guard-drawdown-threshold";
+        public const string PreWeakGuardDrawdownThresholdParameter = "pre-weak-dd-threshold";
         public const string SevereCrashOverrideParameter = "severe-crash-override-enabled";
         public const string SevereCrashOverrideDrawdownThresholdParameter = "sev-crash-dd-entry";
         public const string SevereCrashOverrideExitDrawdownThresholdParameter = "sev-crash-dd-exit";
@@ -82,8 +82,8 @@ namespace QuantConnect.Algorithm.CSharp
         public const decimal MaxWeakStressThreshold = 40m;
         public const decimal MaxSevereStressThreshold = 45m;
         public const bool DefaultPreWeakGuardEnabled = true;
-        public const decimal DefaultPreWeakGuardDrawdownThreshold = 0.05m;
-        public const decimal DefaultPreWeakGrowthTarget = 0.24m;
+        public const decimal DefaultPreWeakGuardDrawdownThreshold = 0.04m;
+        public const decimal DefaultPreWeakGrowthTarget = 0.12m;
         public const decimal DefaultPreWeakDefensiveTarget = 0.30m;
         public const decimal DefaultWeakGrowthTarget = 0.10m;
         public const decimal WeakDefensiveTarget = 0.40m;
