@@ -10,10 +10,11 @@ This file captures the working rules and habits for this project so future work 
 4. Preserve auditable records for anything affecting live trading behavior, persistence/Object Store, order handling, deployment safety, parameter selection, or algorithm decisions derived from backtests.
 
 ## Documentation Rules
-1. Use the `project-notes/` folder for durable workflow logs, plans, decision records, safety reviews, and optimization summaries.
-2. Do not create project notes for routine exploration, small edits, formatting, minor tooling work, or ordinary low-risk reviews unless the user asks.
-3. When a project note is required, include date, summary, files touched, verification, unresolved risks, and open questions.
-4. Record reusable workflow lessons in project notes only when they are likely to prevent repeated future failures.
+1. Use `project-notes/` as a low-token knowledge base, not a running diary. Start with `project-notes/README.md`, then the relevant `project-notes/_indexes/*.md` file, then open linked detailed notes only when needed.
+2. Do not scan or open `project-notes/archive/` directly unless an index points there or the user requests historical investigation.
+3. Create markdown notes only for safety-critical, decision-grade, reusable workflow, multi-agent debate, or user-requested work. Routine exploration, small edits, formatting, minor tooling work, and ordinary low-risk reviews belong in the final response.
+4. When a project note is required, include metadata or a short agent summary, date, summary, files touched, verification, unresolved risks, and open questions.
+5. Keep durable note indexes current with compact entries that link to detailed notes instead of duplicating content.
 
 ## Token And Memory Rules
 1. Use AgentMemory for stable, reusable project knowledge: workflow lessons, durable decisions, repeated failure/root-cause fixes, user preferences, deployment assumptions, and important algorithm defaults.
@@ -21,7 +22,8 @@ This file captures the working rules and habits for this project so future work 
 3. Use the context-compression skill for long sessions, phase changes, major QuantConnect automation work, multi-agent debates, backtest/optimization rounds, or before restarting Codex.
 4. Prefer anchored structured compression with these sections when useful: session intent, current state, decisions made, files modified, files read, backtest/optimization results, known risks, and next steps.
 5. Optimize for tokens per completed task, not smallest possible context; preserve file paths, parameter values, error messages, decisions, and next actions to avoid costly re-discovery.
-6. At major task boundaries, save durable lessons to AgentMemory and compress context only when useful; create or update markdown notes only when required by the Documentation Rules.
+6. For project note retrieval, read `project-notes/README.md` first, then one relevant `_indexes/*.md` file, then only the linked note required for the task. Avoid archive-wide reads unless rebuilding indexes or investigating history.
+7. At major task boundaries, save durable lessons to AgentMemory and compress context only when useful; create or update markdown notes only when required by the Documentation Rules.
 
 ## Implementation Rules
 1. Make minimal, focused changes per step.
@@ -42,7 +44,8 @@ This file captures the working rules and habits for this project so future work 
 5. When choosing which Aegis log to analyze, prefer:
    - the newest `status=unreviewed` row in `log-index.csv`
    - otherwise the newest normalized `.txt` file in `BackTestLogs`
-6. Every backtest or optimization artifact must stay traceable through structured records such as `log-index.csv`; markdown notes are required only when the analysis affects a decision, exposes risk, compares runs, or recommends an algorithm/configuration change.
+6. Treat `log-index.csv` as the source of truth for routine backtest/log reviews. Markdown notes are required only when the analysis affects a decision, exposes risk, compares runs/candidates, or recommends an algorithm/configuration change.
+7. Keep decision-relevant backtest markdown discoverable through `project-notes/_indexes/backtest-index.md` rather than searching archived notes directly.
 
 ## Multi-Agent Workflow Rules
 1. Default agent model:

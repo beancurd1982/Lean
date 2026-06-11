@@ -1,0 +1,34 @@
+# Decision Index
+
+Use this index for durable choices that may affect trading behavior, live deployment, persistence, order handling, parameter defaults, or algorithm direction. Open archived notes only when the short entry is insufficient.
+
+## Aegis Live Safety And Deployment
+
+| Date | Topic | Impact | Ref |
+|---|---|---|---|
+| 2026-04-12 | Live hardening implementation | Live-trading safety and operational behavior | [Aegis_Live_Hardening_Implementation_2026-04-12](../archive/2026-04/Aegis_Live_Hardening_Implementation_2026-04-12.md) |
+| 2026-05-19 | Defensive state persistence | State recovery and persistence behavior | [Aegis_Defensive_State_Persistence_Implementation_2026-05-19](../archive/2026-05/Aegis_Defensive_State_Persistence_Implementation_2026-05-19.md) |
+| 2026-05-23 | Live state startup diagnostics | Startup diagnostics and live state confidence | [Aegis_Live_State_Startup_Diagnostics_2026-05-23](../archive/2026-05/Aegis_Live_State_Startup_Diagnostics_2026-05-23.md) |
+| 2026-05-23 | Deployment identity metadata | Deployment traceability and metadata | [Aegis_Deployment_Identity_Metadata_2026-05-23](../archive/2026-05/Aegis_Deployment_Identity_Metadata_2026-05-23.md) |
+| 2026-05-25 | Paper live stable tag | Stable paper-live reference point | [Aegis_Paper_Live_Stable_Tag_2026-05-25](../archive/2026-05/Aegis_Paper_Live_Stable_Tag_2026-05-25.md) |
+| 2026-05-26 | Operational hardening | Deployment and operational safety hardening | [Aegis_Operational_Hardening_Implementation_2026-05-26](../archive/2026-05/Aegis_Operational_Hardening_Implementation_2026-05-26.md) |
+
+## Aegis Order And Execution Behavior
+
+| Date | Topic | Impact | Ref |
+|---|---|---|---|
+| 2026-04-21 | Execution realism fix | Backtest realism and fill assumptions | [Aegis_Execution_Realism_Fix_2026-04-21](../archive/2026-04/Aegis_Execution_Realism_Fix_2026-04-21.md) |
+| 2026-04-23 | Order fills warning root cause | Order/fill diagnostics and warning interpretation | [Aegis_OrderFillsWarning_RootCause_2026-04-23](../archive/2026-04/Aegis_OrderFillsWarning_RootCause_2026-04-23.md) |
+
+## Aegis Parameter And Algorithm Decisions
+
+| Date | Topic | Impact | Ref |
+|---|---|---|---|
+| 2026-04-18 | Regime parameterization | Regime model parameter behavior | [Aegis_Regime_Parameterization_2026-04-18](../archive/2026-04/Aegis_Regime_Parameterization_2026-04-18.md) |
+| 2026-05-09 | Weak stress overlay implementation | Defensive overlay behavior | [Aegis_Weak_Stress_Overlay_Implementation_2026-05-09](../archive/2026-05/Aegis_Weak_Stress_Overlay_Implementation_2026-05-09.md) |
+| 2026-05-09 | Pre-weak guard implementation | Defensive guard behavior | [Aegis_PreWeak_Guard_Implementation_2026-05-09](../archive/2026-05/Aegis_PreWeak_Guard_Implementation_2026-05-09.md) |
+| 2026-05-10 | Severe crash override implementation | Crash regime allocation behavior | [Aegis_Severe_Crash_Override_Implementation_2026-05-10](../archive/2026-05/Aegis_Severe_Crash_Override_Implementation_2026-05-10.md) |
+| 2026-05-13 | Stateful severe crash mode | Stateful crash/recovery behavior | [Aegis_Stateful_Severe_Crash_Mode_Implementation_2026-05-13](../archive/2026-05/Aegis_Stateful_Severe_Crash_Mode_Implementation_2026-05-13.md) |
+| 2026-05-20 | Stress band parameterization | Defensive stress-band configuration | [Aegis_Stress_Band_Parameterization_Implementation_2026-05-20](../archive/2026-05/Aegis_Stress_Band_Parameterization_Implementation_2026-05-20.md) |
+| 2026-05-23 | Promote OptStress defaults | Default parameter promotion | [Aegis_Promote_OptStress_Defaults_2026-05-23](../archive/2026-05/Aegis_Promote_OptStress_Defaults_2026-05-23.md) |
+| 2026-06-08 | Weak sleeve target parameterization | Weak sleeve target configuration | [Aegis_Weak_Sleeve_Target_Parameterization_2026-06-08](../archive/2026-06/Aegis_Weak_Sleeve_Target_Parameterization_2026-06-08.md) |
