@@ -235,9 +235,9 @@ namespace QuantConnect.Tests.Algorithm
 
             Assert.That(weakTargets.GrowthTarget, Is.EqualTo(0.10m));
             Assert.That(weakTargets.CashTarget, Is.EqualTo(0.50m));
-            Assert.That(preWeakTargets.GrowthTarget, Is.EqualTo(0.24m));
+            Assert.That(preWeakTargets.GrowthTarget, Is.EqualTo(0.12m));
             Assert.That(preWeakTargets.DefensiveTarget, Is.EqualTo(0.30m));
-            Assert.That(preWeakTargets.CashTarget, Is.EqualTo(0.46m));
+            Assert.That(preWeakTargets.CashTarget, Is.EqualTo(0.58m));
         }
 
         [Test]
