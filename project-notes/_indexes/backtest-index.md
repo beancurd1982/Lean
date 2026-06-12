@@ -23,3 +23,4 @@ Only open the markdown notes below when the run affected a decision, exposed ris
 | 2026-05-20 | OptA 2016-2026 analysis | Long-window candidate evidence | [Aegis_OptA_2016_2026_Analysis_2026-05-20](../archive/2026-05/Aegis_OptA_2016_2026_Analysis_2026-05-20.md) |
 | 2026-05-21 | Stress band optimization analysis | Stress-band parameter evidence | [Aegis_Stress_Band_Optimization_Analysis_2026-05-21](../archive/2026-05/Aegis_Stress_Band_Optimization_Analysis_2026-05-21.md) |
 | 2026-05-23 | OptStress validation analysis | Evidence for promoted defaults | [Aegis_OptStress_Validation_Analysis_2026-05-23](../archive/2026-05/Aegis_OptStress_Validation_Analysis_2026-05-23.md) |
+| 2026-06-12 | Candidate B next optimization proposal | Validation-first holdout/control plan | [Aegis_CandidateB_Next_Optimization_Proposal_2026-06-12](../archive/2026-06/Aegis_CandidateB_Next_Optimization_Proposal_2026-06-12.md) |

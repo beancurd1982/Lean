@@ -32,3 +32,4 @@ Use this index for durable choices that may affect trading behavior, live deploy
 | 2026-05-20 | Stress band parameterization | Defensive stress-band configuration | [Aegis_Stress_Band_Parameterization_Implementation_2026-05-20](../archive/2026-05/Aegis_Stress_Band_Parameterization_Implementation_2026-05-20.md) |
 | 2026-05-23 | Promote OptStress defaults | Default parameter promotion | [Aegis_Promote_OptStress_Defaults_2026-05-23](../archive/2026-05/Aegis_Promote_OptStress_Defaults_2026-05-23.md) |
 | 2026-06-08 | Weak sleeve target parameterization | Weak sleeve target configuration | [Aegis_Weak_Sleeve_Target_Parameterization_2026-06-08](../archive/2026-06/Aegis_Weak_Sleeve_Target_Parameterization_2026-06-08.md) |
+| 2026-06-12 | Candidate B next optimization proposal | Validation-first constraint before severe-crash changes | [Aegis_CandidateB_Next_Optimization_Proposal_2026-06-12](../archive/2026-06/Aegis_CandidateB_Next_Optimization_Proposal_2026-06-12.md) |
