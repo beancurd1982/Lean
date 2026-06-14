@@ -284,23 +284,32 @@ namespace QuantConnect.Algorithm.CSharp
             var drawdownFromHigh = CalculateDrawdownFromHigh(totalPortfolioValue);
             var baseSleeveTargets = StrategyConfig.GetSleeveTargets(regimeSnapshot.ActiveRegime);
             var sleeveTargetsOverride = (SleeveTargets)null;
+            var sleeveOverride = "none";
+            var overrideReason = "base-regime";
             var severeCrashOverrideActive = UpdateSevereCrashMode(regimeSnapshot, totalPortfolioValue);
             var preWeakGuardActive = false;
             if (severeCrashOverrideActive)
             {
                 sleeveTargetsOverride = StrategyConfig.SevereCrashOverrideSleeveTargets;
+                sleeveOverride = "severe-crash";
+                overrideReason = $"severe-crash-{_severeCrashModeState}";
             }
             else if (ShouldApplyWeakStressOverlay(regimeSnapshot))
             {
                 sleeveTargetsOverride = StrategyConfig.WeakStressOverlaySleeveTargets;
+                sleeveOverride = "weak-stress";
+                overrideReason = "weak-stress-overlay";
             }
             else if (ShouldApplyPreWeakGuard(regimeSnapshot, totalPortfolioValue))
             {
                 sleeveTargetsOverride = StrategyConfig.PreWeakGuardSleeveTargets;
+                sleeveOverride = "pre-weak";
+                overrideReason = "drawdown-signals";
                 preWeakGuardActive = true;
             }
 
             var finalSleeveTargets = sleeveTargetsOverride ?? baseSleeveTargets;
+            var reserveBeforeReview = _undeployedCapitalReserve;
             var plan = _portfolioManager.BuildPlan(
                 regimeSnapshot.PreviousRegime,
                 regimeSnapshot.ActiveRegime,
@@ -324,6 +333,25 @@ namespace QuantConnect.Algorithm.CSharp
 
             if (_crisisDiagnosticsEnabled)
             {
+                Debug(FormatCrisisDiagnostics(
+                    plan,
+                    regimeSnapshot,
+                    growthSelection,
+                    defensiveSelection,
+                    currentWeights,
+                    breadth,
+                    vixAverage5,
+                    reserveBeforeReview,
+                    preWeakGuardActive,
+                    severeCrashOverrideActive,
+                    sleeveOverride,
+                    overrideReason,
+                    drawdownFromHigh,
+                    baseSleeveTargets,
+                    finalSleeveTargets,
+                    _severeCrashModeState,
+                    _severeCrashRecoveryWeeks,
+                    _severeCrashExitReason));
                 RecordCrisisDiagnosticObservation(
                     Time.Date,
                     totalPortfolioValue,
@@ -903,6 +931,8 @@ namespace QuantConnect.Algorithm.CSharp
         private string FormatCrisisDiagnostics(
             PortfolioPlan plan,
             RegimeSnapshot regimeSnapshot,
+            GrowthSelection growthSelection,
+            DefensiveSelection defensiveSelection,
             IReadOnlyDictionary<Symbol, decimal> currentWeights,
             decimal breadth,
             decimal vixAverage5,
@@ -929,42 +959,29 @@ namespace QuantConnect.Algorithm.CSharp
 
             return string.Format(
                 CultureInfo.InvariantCulture,
-                "[AEGIS-DIAG] {0:yyyy-MM-dd} Equity={1:0.00} Cash={2:0.00} Prev={3} Act={4} Raw={5} Trend={6} BreadthState={7} Stress={8} Severe={9} Inputs=SpyClose:{10:0.00},SpySma200:{11:0.00},SpySma200Lookback:{12:0.00},Breadth:{13:0.0000},Vix5:{14:0.00} Curr=G{15:0.0000}/D{16:0.0000}/C{17:0.0000} Target=G{18:0.0000}/D{19:0.0000}/C{20:0.0000} {21} Bands={22} SelectionChange={23} Rebalance={24} Trim={25} Forced={26} OptRepl={27} NewEntries={28} ReserveBefore={29:0.####} ReserveAfter={30:0.####} ReleasedReserve={31:0.####} Growth={32} Defensive={33} CurrentWeights={34} TargetWeights={35}",
+                "[AEGIS-DIAG-WEEK] {0:yyyy-MM-dd} Eq={1:0.00} Act={2} Raw={3} Trend={4} Breadth={5}/{6:0.0000} Stress={7}/{8:0.00} Severe={9} DD={10:0.0000} Override={11} Reason={12} Curr=G{13:0.0000}/D{14:0.0000}/C{15:0.0000} Target=G{16:0.0000}/D{17:0.0000}/C{18:0.0000} Sleeve={19} Rebalance={20} SelectionChange={21} Trim={22} Forced={23} OptRepl={24} NewEntries={25} Reserve={26:0.####}->{27:0.####} Released={28:0.####} Growth={29} Defensive={30} TopGrowth={31} TopDef={32}",
                 Time,
                 Portfolio.TotalPortfolioValue,
-                Portfolio.Cash,
-                plan.PreviousRegime,
                 plan.ActiveRegime,
                 regimeSnapshot.RawRegime,
                 regimeSnapshot.TrendState,
                 regimeSnapshot.BreadthState,
-                regimeSnapshot.StressState,
-                regimeSnapshot.SevereStress,
-                _marketState.CurrentClose,
-                _marketState.CurrentSma200,
-                _marketState.LookbackSma200,
                 breadth,
+                regimeSnapshot.StressState,
                 vixAverage5,
+                regimeSnapshot.SevereStress,
+                drawdownFromHigh,
+                sleeveOverride,
+                overrideReason,
                 plan.CurrentGrowthWeight,
                 plan.CurrentDefensiveWeight,
                 currentCashWeight,
                 targetGrowthWeight,
                 targetDefensiveWeight,
                 targetCashWeight,
-                FormatOverrideDiagnostics(
-                    preWeakGuardActive,
-                    severeCrashOverrideActive,
-                    sleeveOverride,
-                    overrideReason,
-                    drawdownFromHigh,
-                    baseSleeveTargets,
-                    finalSleeveTargets,
-                    severeCrashModeState,
-                    severeCrashRecoveryWeeks,
-                    severeCrashExitReason),
-                plan.SleevesWithinToleranceBands,
-                plan.HasSelectionChange,
+                FormatSleeveTargets(finalSleeveTargets),
                 plan.HasRebalanceTrigger,
+                plan.HasSelectionChange,
                 plan.TrimOnly,
                 FormatSymbolList(plan.ForcedExitSymbols),
                 plan.OptimizationReplacementsUsed,
@@ -974,8 +991,8 @@ namespace QuantConnect.Algorithm.CSharp
                 plan.ReleasedReserve,
                 FormatSymbolList(plan.SelectedGrowthSymbols),
                 FormatSymbolList(plan.SelectedDefensiveSymbols),
-                FormatSymbolWeights(currentWeights),
-                FormatSymbolWeights(plan.TargetWeights));
+                FormatGrowthCandidateScores(growthSelection.RankedCandidates, maxCount: 3),
+                FormatDefensiveCandidateScores(defensiveSelection.RankedCandidates, maxCount: 3));
         }
 
         private string FormatOverrideDiagnostics(
@@ -1079,6 +1096,45 @@ namespace QuantConnect.Algorithm.CSharp
                 weights
                     .OrderBy(pair => pair.Key.Value, StringComparer.Ordinal)
                     .Select(pair => string.Format(CultureInfo.InvariantCulture, "{0}:{1:0.0000}", pair.Key.Value, pair.Value)));
+        }
+
+        private static string FormatGrowthCandidateScores(IReadOnlyCollection<GrowthCandidate> candidates, int maxCount)
+        {
+            if (candidates.Count == 0)
+            {
+                return "none";
+            }
+
+            return string.Join(
+                ",",
+                candidates
+                    .OrderBy(candidate => candidate.Ticker, StringComparer.Ordinal)
+                    .Take(maxCount)
+                    .Select(candidate => string.Format(
+                        CultureInfo.InvariantCulture,
+                        "{0}:{1:0.00}/{2:0.00}",
+                        candidate.Ticker,
+                        candidate.AdjustedScore,
+                        candidate.FinalScore)));
+        }
+
+        private static string FormatDefensiveCandidateScores(IReadOnlyCollection<DefensiveCandidate> candidates, int maxCount)
+        {
+            if (candidates.Count == 0)
+            {
+                return "none";
+            }
+
+            return string.Join(
+                ",",
+                candidates
+                    .OrderBy(candidate => candidate.Ticker, StringComparer.Ordinal)
+                    .Take(maxCount)
+                    .Select(candidate => string.Format(
+                        CultureInfo.InvariantCulture,
+                        "{0}:{1:0.00}",
+                        candidate.Ticker,
+                        candidate.Score)));
         }
 
         private sealed class DiagnosticAttributionTracker

@@ -1013,6 +1013,49 @@ namespace QuantConnect.Tests.Algorithm
         }
 
         [Test]
+        public void FormatsCompactWeeklyAttributionDiagnosticWithTopCandidateScores()
+        {
+            var algorithm = CreateAlgorithm(new Dictionary<string, string>
+            {
+                ["crisis-diagnostics"] = "true"
+            });
+            var fixture = BuildDiagnosticPlanFixture();
+            var diagnostics = FormatCrisisDiagnostics(
+                algorithm,
+                fixture.Plan,
+                CreateNeutralDeterioratingSnapshot(),
+                fixture.GrowthSelection,
+                fixture.DefensiveSelection,
+                fixture.CurrentWeights,
+                breadth: 0.3333m,
+                vixAverage5: 34.5m,
+                reserveBeforeReview: 0.10m,
+                preWeakGuardActive: true,
+                severeCrashOverrideActive: false,
+                sleeveOverride: "pre-weak",
+                overrideReason: "drawdown-signals",
+                drawdownFromHigh: 0.0612m,
+                baseSleeveTargets: QuantConnect.Algorithm.CSharp.StrategyConfig.SleeveTargetsByRegime[QuantConnect.Algorithm.CSharp.RiskRegime.Neutral],
+                finalSleeveTargets: QuantConnect.Algorithm.CSharp.StrategyConfig.PreWeakGuardSleeveTargets,
+                severeCrashModeState: "none",
+                severeCrashRecoveryWeeks: 0,
+                severeCrashExitReason: "none");
+
+            Assert.That(diagnostics, Does.Contain("[AEGIS-DIAG-WEEK]"));
+            Assert.That(diagnostics, Does.Contain("Override=pre-weak"));
+            Assert.That(diagnostics, Does.Contain("Reason=drawdown-signals"));
+            Assert.That(diagnostics, Does.Contain("DD=0.0612"));
+            Assert.That(diagnostics, Does.Contain("Sleeve=G0.1200/D0.3000/C0.5800"));
+            Assert.That(diagnostics, Does.Contain("Growth=AAPL"));
+            Assert.That(diagnostics, Does.Contain("Defensive=SGOV"));
+            Assert.That(diagnostics, Does.Contain("TopGrowth=AAPL:32.00/30.00"));
+            Assert.That(diagnostics, Does.Contain("TopDef=SGOV:1.00"));
+            Assert.That(diagnostics, Does.Not.Contain("GrowthScores="));
+            Assert.That(diagnostics, Does.Not.Contain("CurrentWeights="));
+            Assert.That(diagnostics, Does.Not.Contain("TargetWeights="));
+        }
+
+        [Test]
         public void FormatsCompactCrisisDiagnosticSummaryWithForwardReturns()
         {
             var algorithm = CreateAlgorithm(new Dictionary<string, string>
@@ -1410,6 +1453,56 @@ namespace QuantConnect.Tests.Algorithm
                 });
         }
 
+        private static string FormatCrisisDiagnostics(
+            QuantConnect.Algorithm.CSharp.AegisGrowthAllocation algorithm,
+            QuantConnect.Algorithm.CSharp.PortfolioPlan plan,
+            QuantConnect.Algorithm.CSharp.RegimeSnapshot regimeSnapshot,
+            QuantConnect.Algorithm.CSharp.GrowthSelection growthSelection,
+            QuantConnect.Algorithm.CSharp.DefensiveSelection defensiveSelection,
+            IReadOnlyDictionary<QuantConnect.Symbol, decimal> currentWeights,
+            decimal breadth,
+            decimal vixAverage5,
+            decimal reserveBeforeReview,
+            bool preWeakGuardActive,
+            bool severeCrashOverrideActive,
+            string sleeveOverride,
+            string overrideReason,
+            decimal drawdownFromHigh,
+            QuantConnect.Algorithm.CSharp.SleeveTargets baseSleeveTargets,
+            QuantConnect.Algorithm.CSharp.SleeveTargets finalSleeveTargets,
+            string severeCrashModeState,
+            int severeCrashRecoveryWeeks,
+            string severeCrashExitReason)
+        {
+            var method = typeof(QuantConnect.Algorithm.CSharp.AegisGrowthAllocation)
+                .GetMethod("FormatCrisisDiagnostics", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+
+            Assert.That(method, Is.Not.Null);
+            return (string)method.Invoke(
+                algorithm,
+                new object[]
+                {
+                    plan,
+                    regimeSnapshot,
+                    growthSelection,
+                    defensiveSelection,
+                    currentWeights,
+                    breadth,
+                    vixAverage5,
+                    reserveBeforeReview,
+                    preWeakGuardActive,
+                    severeCrashOverrideActive,
+                    sleeveOverride,
+                    overrideReason,
+                    drawdownFromHigh,
+                    baseSleeveTargets,
+                    finalSleeveTargets,
+                    severeCrashModeState,
+                    severeCrashRecoveryWeeks,
+                    severeCrashExitReason
+                });
+        }
+
         private static void RecordCrisisDiagnosticObservation(
             QuantConnect.Algorithm.CSharp.AegisGrowthAllocation algorithm,
             DateTime date,
@@ -1589,6 +1682,53 @@ namespace QuantConnect.Tests.Algorithm
                 sleeveTargetsOverride: sleeveTargetsOverride);
         }
 
+        private static DiagnosticPlanFixture BuildDiagnosticPlanFixture()
+        {
+            var growthSymbol = QuantConnect.Symbol.Create("AAPL", QuantConnect.SecurityType.Equity, QuantConnect.Market.USA);
+            var defensiveSymbol = QuantConnect.Symbol.Create("SGOV", QuantConnect.SecurityType.Equity, QuantConnect.Market.USA);
+            var growthSnapshot = CreateSnapshot(growthSymbol, "AAPL", isGrowth: true, isDefensive: false, isSgov: false);
+            var defensiveSnapshot = CreateSnapshot(defensiveSymbol, "SGOV", isGrowth: false, isDefensive: true, isSgov: true);
+            var growthSelection = new QuantConnect.Algorithm.CSharp.GrowthSelection(
+                new[] { growthSnapshot },
+                new[]
+                {
+                    new QuantConnect.Algorithm.CSharp.GrowthCandidate(
+                        growthSnapshot,
+                        isCurrentHolding: true,
+                        trendScore: 10m,
+                        relativeStrengthScore: 10m,
+                        stabilityScore: 10m,
+                        penalty: 0m,
+                        finalScore: 30m,
+                        adjustedScore: 32m)
+                },
+                Array.Empty<QuantConnect.Symbol>(),
+                targetHoldingCount: 1);
+            var defensiveSelection = new QuantConnect.Algorithm.CSharp.DefensiveSelection(
+                new[] { defensiveSnapshot },
+                new[]
+                {
+                    new QuantConnect.Algorithm.CSharp.DefensiveCandidate(defensiveSnapshot, score: 1m)
+                },
+                targetHoldingCount: 1);
+            var currentWeights = new Dictionary<QuantConnect.Symbol, decimal>
+            {
+                [growthSymbol] = 0.45m,
+                [defensiveSymbol] = 0.30m
+            };
+            var plan = new QuantConnect.Algorithm.CSharp.PortfolioManager().BuildPlan(
+                QuantConnect.Algorithm.CSharp.RiskRegime.Neutral,
+                QuantConnect.Algorithm.CSharp.RiskRegime.Neutral,
+                growthSelection,
+                defensiveSelection,
+                currentWeights,
+                undeployedCapitalReserve: 0m,
+                totalPortfolioValue: 100000m,
+                sleeveTargetsOverride: QuantConnect.Algorithm.CSharp.StrategyConfig.PreWeakGuardSleeveTargets);
+
+            return new DiagnosticPlanFixture(plan, growthSelection, defensiveSelection, currentWeights);
+        }
+
         private static QuantConnect.Algorithm.CSharp.AssetSnapshot CreateSnapshot(
             QuantConnect.Symbol symbol,
             string ticker,
@@ -1612,6 +1752,26 @@ namespace QuantConnect.Tests.Algorithm
                 return126: 0.08m,
                 volatility63: 0.10m,
                 drawdown63: -0.02m);
+        }
+
+        private sealed class DiagnosticPlanFixture
+        {
+            public DiagnosticPlanFixture(
+                QuantConnect.Algorithm.CSharp.PortfolioPlan plan,
+                QuantConnect.Algorithm.CSharp.GrowthSelection growthSelection,
+                QuantConnect.Algorithm.CSharp.DefensiveSelection defensiveSelection,
+                IReadOnlyDictionary<QuantConnect.Symbol, decimal> currentWeights)
+            {
+                Plan = plan;
+                GrowthSelection = growthSelection;
+                DefensiveSelection = defensiveSelection;
+                CurrentWeights = currentWeights;
+            }
+
+            public QuantConnect.Algorithm.CSharp.PortfolioPlan Plan { get; }
+            public QuantConnect.Algorithm.CSharp.GrowthSelection GrowthSelection { get; }
+            public QuantConnect.Algorithm.CSharp.DefensiveSelection DefensiveSelection { get; }
+            public IReadOnlyDictionary<QuantConnect.Symbol, decimal> CurrentWeights { get; }
         }
 
         private sealed class CapturingRealTimeHandler : IRealTimeHandler

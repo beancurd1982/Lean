@@ -13,6 +13,7 @@ related:
   - project-notes/archive/2026-06/Aegis_OptS09A_2016_2026_Backtest_Analysis_2026-06-13.md
   - project-notes/archive/2026-06/Aegis_OptS09A_Stress04_2021_2022_Backtest_Analysis_2026-06-13.md
   - project-notes/archive/2026-06/Aegis_OptS07A_Stress04_2021_2022_Backtest_Analysis_2026-06-14.md
+  - project-notes/archive/2026-06/Aegis_CandidateB_Diagnostic_Stress04_2021_2022_Analysis_2026-06-14.md
 files:
   - Algorithm.CSharp/MyAlgorithms/AegisGrowthAllocation/StrategyConfig.cs
   - Algorithm.CSharp/MyAlgorithms/AegisGrowthAllocation/AegisGrowthAllocation.cs
@@ -80,6 +81,61 @@ Audit the algorithm for possible stress-first improvements in these areas:
 - attribution of which assets and weeks drove Candidate B's stress advantage.
 
 The audit should propose possible next moves and prioritize them by expected decision value, implementation risk, and validation cost.
+
+## Multi-Agent Source Audit Feedback
+
+Three read-only agents reviewed the same next-move question from separate angles: regime transitions, allocation mechanics, and validation/attribution. They converged on the same core conclusion: do not continue by raising fixed PreWeak growth. The failure mode is more likely that the current PreWeak mechanism is too binary and under-instrumented.
+
+Consensus findings:
+
+- High-growth PreWeak variants changed more than growth exposure. OptS07A/OptS09A moved from Candidate B's `G0.12/D0.30/C0.58` to `G0.24/D0.25/C0.51`, reducing both defensive exposure and cash while stress forward returns were still weak.
+- Candidate B's `2021-2022` advantage may come from the sleeve mix, activation timing, defensive asset choices, lower churn, or some combination. Current exported results do not prove which mechanism dominated.
+- Current `crisis-diagnostics=true` is useful for compact summaries, but not enough for source-level optimization. It does not emit one comparable weekly decision row with regime state, override reason, sleeve targets, selected symbols, scores, target weights, replacements, and forward returns.
+- PreWeak currently applies a fixed sleeve once drawdown exceeds the threshold and at least one signal is not fully favorable. It has no separate recovery confirmation/hysteresis.
+- PreWeak selection still uses the active regime's holding counts. A Neutral + PreWeak week can still select Neutral-style growth count while applying a smaller growth sleeve.
+- Defensive selection deserves audit before changing defaults. SGOV is eligibility-protected, but the defensive ranking still emphasizes 126-day return, inverse volatility, and inverse drawdown, which may not be sufficient in rate/inflation stress.
+
+Ranked next levers from the audit:
+
+1. Add richer weekly attribution diagnostics first, so future backtests can explain whether stress failures came from exposure, assets, churn, timing, or cash.
+2. Design a graded/stateful PreWeak guard rather than a single fixed target. Stress-like cases should remain near Candidate B; cleaner recovery cases can re-risk modestly, likely capped below `0.24` growth.
+3. Evaluate PreWeak exit hysteresis/recovery confirmation to reduce noisy weekly in/out behavior.
+4. Evaluate PreWeak-specific holding counts and stress-specific defensive ranking only after attribution shows they are material.
+5. Treat severe-crash and weak-stress overlay changes as later guarded opt-ins because they touch more sensitive state and live behavior.
+
+## Weekly Attribution Diagnostic Implementation
+
+Implementation started from the first ranked lever. The diagnostics path now emits a distinct weekly row when `crisis-diagnostics=true`:
+
+- prefix: `[AEGIS-DIAG-WEEK]`;
+- date, equity, active/raw regime, trend, breadth state/value, stress state/value, and severe flag;
+- drawdown from high;
+- sleeve override and reason;
+- current and target sleeve totals;
+- final sleeve target;
+- rebalance, selection-change, trim, forced-exit, replacement, new-entry, reserve, and released-reserve fields;
+- selected growth/defensive symbols;
+- top 3 growth and top 3 defensive candidate scores.
+
+This is intentionally diagnostics-only. It should not change allocation decisions, default parameters, order handling, Object Store persistence, or live-state recovery.
+
+Verification note: `dotnet build Tests/QuantConnect.Tests.csproj -nologo` completed successfully on 2026-06-14. Filtered `dotnet test` execution was blocked by an unrelated test-host startup crash:
+
+- `LocalDiskMapFileProvider.GetMapFileResolver(sgx): The specified directory does not exist: ../../../Data/equity/sgx/map_files`
+- `System.InvalidOperationException: GIL must always be released, and it must be released from the same thread that acquired it.`
+
+Do not spend future analysis time debugging the weekly diagnostic formatter from this failure unless the SGX map-file/Python test-host issue is the active task.
+
+## Diagnostic Result Update
+
+The compact diagnostic rerun completed the full `2021-2022` stress window and is recorded in [Aegis_CandidateB_Diagnostic_Stress04_2021_2022_Analysis_2026-06-14](Aegis_CandidateB_Diagnostic_Stress04_2021_2022_Analysis_2026-06-14.md).
+
+Key result:
+
+- Candidate B reproduced its baseline stress-window metrics: `19.771%` net profit, `12.500%` drawdown, Sharpe `0.694`, PSR `36.307%`, and `301` orders.
+- Compact diagnostics emitted all `104` weekly rows from `2021-01-04` through `2022-12-27` without hitting the QuantConnect log cap.
+- PreWeak weeks had negative forward reads: next-week avg `-0.12%`, forward 4-week avg `-0.30%`, forward 8-week avg `-1.38%`, forward 12-week avg `-1.79%`, and 4-week win rate `40.91%`.
+- This argues against simply raising fixed PreWeak growth exposure. The better next hypothesis is a recovery-gated or graded PreWeak mechanism that remains Candidate-B-defensive during stress, then re-risks only after measurable improvement.
 
 ## Research And Tooling Order
 

@@ -109,6 +109,8 @@ This index preserves access to legacy markdown notes after the project-notes reo
 
 ## 2026-06
 
+- [Aegis_CandidateB_Diagnostic_Stress04_2021_2022_Analysis_2026-06-14](../archive/2026-06/Aegis_CandidateB_Diagnostic_Stress04_2021_2022_Analysis_2026-06-14.md)
+- [Aegis_Next_Optimization_Strategy_2026-06-14](../archive/2026-06/Aegis_Next_Optimization_Strategy_2026-06-14.md)
 - [Aegis_Weak_Sleeve_Target_Parameterization_2026-06-08](../archive/2026-06/Aegis_Weak_Sleeve_Target_Parameterization_2026-06-08.md)
 - [Codex_Plugin_Page_Troubleshooting_2026-06-04](../archive/2026-06/Codex_Plugin_Page_Troubleshooting_2026-06-04.md)
 - [Workflow_Efficiency_Review_2026-06-07](../archive/2026-06/Workflow_Efficiency_Review_2026-06-07.md)
