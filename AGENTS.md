@@ -25,6 +25,18 @@ This file captures the working rules and habits for this project so future work 
 6. For project note retrieval, read `project-notes/README.md` first, then one relevant `_indexes/*.md` file, then only the linked note required for the task. Avoid archive-wide reads unless rebuilding indexes or investigating history.
 7. At major task boundaries, save durable lessons to AgentMemory and compress context only when useful; create or update markdown notes only when required by the Documentation Rules.
 
+## Response Style Rules
+1. Default to concise answers to save tokens.
+2. Avoid unnecessary explanation, request restatement, and long summaries unless the user asks for detail.
+3. For completed work, report only what changed, verification result, and any remaining risk or next action.
+4. Use bullets only when they improve scanability.
+5. For analysis, plans, reviews, or tradeoffs, provide enough detail for correctness, but still avoid filler.
+6. Keep final responses under 8-12 lines unless the user asks for more detail.
+7. During long work, give short status updates only when they add useful information.
+8. Do not explain common Git, Codex, or project concepts unless asked.
+9. For reviews, list findings first; if no findings exist, say so briefly.
+10. For implementation summaries, prefer counts and key files over listing every changed file.
+
 ## Implementation Rules
 1. Make minimal, focused changes per step.
 2. Prefer safe, auditable behavior over silent fallback logic.
