@@ -7,6 +7,7 @@ Use this index for reusable operating procedures, automation findings, troublesh
 | Topic | Ref |
 |---|---|
 | Project notes maintenance | [project-notes-maintenance](../runbooks/project-notes-maintenance.md) |
+| QuantConnect optimization usage | [quantconnect-optimization-usage](../runbooks/quantconnect-optimization-usage.md) |
 
 ## Reusable Workflow History
 
