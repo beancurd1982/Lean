@@ -20,6 +20,7 @@ Use this index for reusable operating procedures, automation findings, troublesh
 | 2026-05-30 | QuantConnect Chrome automation findings | Browser/GUI automation constraints | [Aegis_QuantConnect_Chrome_Automation_Findings_2026-05-30](../archive/2026-05/Aegis_QuantConnect_Chrome_Automation_Findings_2026-05-30.md) |
 | 2026-06-04 | Codex plugin page troubleshooting | Plugin troubleshooting history | [Codex_Plugin_Page_Troubleshooting_2026-06-04](../archive/2026-06/Codex_Plugin_Page_Troubleshooting_2026-06-04.md) |
 | 2026-06-07 | Workflow efficiency review | Why note thresholds were tightened | [Workflow_Efficiency_Review_2026-06-07](../archive/2026-06/Workflow_Efficiency_Review_2026-06-07.md) |
+| 2026-06-16 | QuantConnect file-size limit | Cloud compile errors after partial source upload | [Aegis_QuantConnect_File_Size_Limit_2026-06-16](../archive/2026-06/Aegis_QuantConnect_File_Size_Limit_2026-06-16.md) |
 
 ## Git And Project Setup History
 

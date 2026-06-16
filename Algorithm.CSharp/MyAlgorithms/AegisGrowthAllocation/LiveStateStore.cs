@@ -51,7 +51,7 @@ namespace QuantConnect.Algorithm.CSharp
                 _lastSavedFingerprint = BuildFingerprint(state);
 
                 _algorithm.Debug(
-                    $"[AEGIS-LIVE] {_algorithm.Time}: state restored. AlgorithmVersion={state.AlgorithmVersion} SourceRevision={state.SourceRevision} Holdings={state.BrokerHoldingsByTicker.Count} OpenOrders={state.OpenOrders.Count} LastReview={state.LastCompletedWeeklyReviewUtc?.ToString("u") ?? "none"} DefensiveHighWater={state.DefensiveOverrideEquityHighWaterMark:0.##} SevereActive={state.SevereCrashModeActive} SevereState={state.SevereCrashModeState} SevereWeeks={state.SevereCrashRecoveryWeeks} SevereExit={state.SevereCrashExitReason}");
+                    $"[AEGIS-LIVE] {_algorithm.Time}: state restored. AlgorithmVersion={state.AlgorithmVersion} SourceRevision={state.SourceRevision} Holdings={state.BrokerHoldingsByTicker.Count} OpenOrders={state.OpenOrders.Count} LastReview={state.LastCompletedWeeklyReviewUtc?.ToString("u") ?? "none"} DefensiveHighWater={state.DefensiveOverrideEquityHighWaterMark:0.##} SevereActive={state.SevereCrashModeActive} SevereState={state.SevereCrashModeState} SevereWeeks={state.SevereCrashRecoveryWeeks} SevereExit={state.SevereCrashExitReason} PreWeakRecoveryActive={state.PreWeakRecoveryActive} PreWeakRecoverySegment={state.PreWeakRecoverySegmentId} PreWeakRecoveryConfirm={state.PreWeakRecoveryConfirmationWeeks} PreWeakRecoveryReset={state.PreWeakRecoveryLastResetReason}");
                 return state;
             }
             catch (Exception ex)
@@ -85,7 +85,7 @@ namespace QuantConnect.Algorithm.CSharp
                 _algorithm.ObjectStore.SaveJson(StrategyConfig.LiveStateKey, state);
                 _lastSavedFingerprint = fingerprint;
                 _algorithm.Debug(
-                    $"[AEGIS-LIVE] {_algorithm.Time}: state saved. AlgorithmVersion={state.AlgorithmVersion} SourceRevision={state.SourceRevision} Holdings={state.BrokerHoldingsByTicker.Count} OpenOrders={state.OpenOrders.Count} DefensiveHighWater={state.DefensiveOverrideEquityHighWaterMark:0.##} SevereActive={state.SevereCrashModeActive} SevereState={state.SevereCrashModeState} SevereWeeks={state.SevereCrashRecoveryWeeks} SevereExit={state.SevereCrashExitReason} Reason={reason ?? "unspecified"}");
+                    $"[AEGIS-LIVE] {_algorithm.Time}: state saved. AlgorithmVersion={state.AlgorithmVersion} SourceRevision={state.SourceRevision} Holdings={state.BrokerHoldingsByTicker.Count} OpenOrders={state.OpenOrders.Count} DefensiveHighWater={state.DefensiveOverrideEquityHighWaterMark:0.##} SevereActive={state.SevereCrashModeActive} SevereState={state.SevereCrashModeState} SevereWeeks={state.SevereCrashRecoveryWeeks} SevereExit={state.SevereCrashExitReason} PreWeakRecoveryActive={state.PreWeakRecoveryActive} PreWeakRecoverySegment={state.PreWeakRecoverySegmentId} PreWeakRecoveryConfirm={state.PreWeakRecoveryConfirmationWeeks} PreWeakRecoveryReset={state.PreWeakRecoveryLastResetReason} Reason={reason ?? "unspecified"}");
             }
             catch (Exception ex)
             {
@@ -112,6 +112,12 @@ namespace QuantConnect.Algorithm.CSharp
             state.SevereCrashExitReason = string.IsNullOrWhiteSpace(state.SevereCrashExitReason)
                 ? "none"
                 : state.SevereCrashExitReason;
+            state.PreWeakRecoverySegmentId = Math.Max(0, state.PreWeakRecoverySegmentId);
+            state.PreWeakRecoveryLocalTroughDrawdown = Math.Max(0m, state.PreWeakRecoveryLocalTroughDrawdown);
+            state.PreWeakRecoveryConfirmationWeeks = Math.Max(0, state.PreWeakRecoveryConfirmationWeeks);
+            state.PreWeakRecoveryLastResetReason = string.IsNullOrWhiteSpace(state.PreWeakRecoveryLastResetReason)
+                ? "none"
+                : state.PreWeakRecoveryLastResetReason;
         }
 
         private static string BuildFingerprint(AegisLiveState state)
@@ -129,6 +135,12 @@ namespace QuantConnect.Algorithm.CSharp
             builder.Append("sevWeeks=").Append(state.SevereCrashRecoveryWeeks).Append('|');
             builder.Append("sevState=").Append(state.SevereCrashModeState ?? string.Empty).Append('|');
             builder.Append("sevExit=").Append(state.SevereCrashExitReason ?? string.Empty).Append('|');
+            builder.Append("pwrPrev=").Append(state.PreWeakRecoveryPreviousPreWeakActive).Append('|');
+            builder.Append("pwrSeg=").Append(state.PreWeakRecoverySegmentId).Append('|');
+            builder.Append("pwrTrough=").Append(state.PreWeakRecoveryLocalTroughDrawdown.ToString("0.########", System.Globalization.CultureInfo.InvariantCulture)).Append('|');
+            builder.Append("pwrConfirm=").Append(state.PreWeakRecoveryConfirmationWeeks).Append('|');
+            builder.Append("pwrActive=").Append(state.PreWeakRecoveryActive).Append('|');
+            builder.Append("pwrReset=").Append(state.PreWeakRecoveryLastResetReason ?? string.Empty).Append('|');
 
             foreach (var holding in (state.BrokerHoldingsByTicker ?? new Dictionary<string, decimal>()).OrderBy(kvp => kvp.Key, StringComparer.Ordinal))
             {
@@ -170,6 +182,12 @@ namespace QuantConnect.Algorithm.CSharp
         public int SevereCrashRecoveryWeeks { get; set; }
         public string SevereCrashModeState { get; set; } = "none";
         public string SevereCrashExitReason { get; set; } = "none";
+        public bool PreWeakRecoveryPreviousPreWeakActive { get; set; }
+        public int PreWeakRecoverySegmentId { get; set; }
+        public decimal PreWeakRecoveryLocalTroughDrawdown { get; set; }
+        public int PreWeakRecoveryConfirmationWeeks { get; set; }
+        public bool PreWeakRecoveryActive { get; set; }
+        public string PreWeakRecoveryLastResetReason { get; set; } = "none";
         public Dictionary<string, decimal> LastPlannedTargetWeights { get; set; } = new Dictionary<string, decimal>();
         public Dictionary<string, decimal> BrokerHoldingsByTicker { get; set; } = new Dictionary<string, decimal>();
         public List<AegisOpenOrderState> OpenOrders { get; set; } = new List<AegisOpenOrderState>();

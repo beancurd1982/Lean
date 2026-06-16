@@ -178,6 +178,8 @@ namespace QuantConnect.Tests.Algorithm
                 rebalanceToleranceBandScale: 0.5m,
                 QuantConnect.Algorithm.CSharp.StrategyConfig.DefaultPreWeakGrowthTarget,
                 QuantConnect.Algorithm.CSharp.StrategyConfig.DefaultPreWeakDefensiveTarget,
+                QuantConnect.Algorithm.CSharp.StrategyConfig.DefaultPreWeakRecoveryGrowthTarget,
+                QuantConnect.Algorithm.CSharp.StrategyConfig.DefaultPreWeakRecoveryDefensiveTarget,
                 QuantConnect.Algorithm.CSharp.StrategyConfig.DefaultWeakGrowthTarget);
 
             var growthSymbols = new[]

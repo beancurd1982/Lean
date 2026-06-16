@@ -1,4 +1,4 @@
-#region imports
+﻿#region imports
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -36,11 +36,21 @@ namespace QuantConnect.Algorithm.CSharp
         private bool _crisisDiagnosticsEnabled;
         private bool _weakStressOverlayEnabled;
         private bool _preWeakGuardEnabled = StrategyConfig.DefaultPreWeakGuardEnabled;
+        private bool _preWeakRecoveryEnabled = StrategyConfig.DefaultPreWeakRecoveryEnabled;
         private bool _severeCrashOverrideEnabled;
         private decimal _preWeakGuardDrawdownThreshold = StrategyConfig.DefaultPreWeakGuardDrawdownThreshold;
+        private decimal _preWeakRecoveryDrawdownImprovement = StrategyConfig.DefaultPreWeakRecoveryDrawdownImprovement;
+        private decimal _preWeakRecoveryMaxDrawdown = StrategyConfig.DefaultPreWeakRecoveryMaxDrawdown;
         private decimal _severeCrashOverrideDrawdownThreshold = StrategyConfig.DefaultSevereCrashOverrideDrawdownThreshold;
         private decimal _severeCrashOverrideExitDrawdownThreshold = StrategyConfig.DefaultSevereCrashOverrideExitDrawdownThreshold;
         private int _severeCrashOverrideRecoveryConfirmationWeeks = StrategyConfig.DefaultSevereCrashOverrideRecoveryConfirmationWeeks;
+        private int _preWeakRecoveryConfirmationWeeksRequired = StrategyConfig.DefaultPreWeakRecoveryConfirmationWeeks;
+        private bool _preWeakRecoveryPreviousPreWeakActive;
+        private int _preWeakRecoverySegmentId;
+        private decimal _preWeakRecoveryLocalTroughDrawdown;
+        private int _preWeakRecoveryConfirmationWeeks;
+        private bool _preWeakRecoveryActive;
+        private string _preWeakRecoveryLastResetReason = "none";
         private bool _severeCrashModeActive;
         private int _severeCrashRecoveryWeeks;
         private string _severeCrashModeState = "none";
@@ -62,11 +72,26 @@ namespace QuantConnect.Algorithm.CSharp
                 _preWeakGuardEnabled = ParseBooleanParameter(
                     StrategyConfig.PreWeakGuardParameter,
                     StrategyConfig.DefaultPreWeakGuardEnabled);
+                _preWeakRecoveryEnabled = ParseBooleanParameter(
+                    StrategyConfig.PreWeakRecoveryParameter,
+                    StrategyConfig.DefaultPreWeakRecoveryEnabled);
                 _severeCrashOverrideEnabled = ParseBooleanParameter(StrategyConfig.SevereCrashOverrideParameter, false);
                 _preWeakGuardDrawdownThreshold = ParseDecimalParameter(
                     StrategyConfig.PreWeakGuardDrawdownThresholdParameter,
                     StrategyConfig.DefaultPreWeakGuardDrawdownThreshold,
                     value => value > 0m && value < 1m);
+                _preWeakRecoveryDrawdownImprovement = ParseDecimalParameter(
+                    StrategyConfig.PreWeakRecoveryDrawdownImprovementParameter,
+                    StrategyConfig.DefaultPreWeakRecoveryDrawdownImprovement,
+                    value => value > 0m && value <= 0.10m);
+                _preWeakRecoveryMaxDrawdown = ParseDecimalParameter(
+                    StrategyConfig.PreWeakRecoveryMaxDrawdownParameter,
+                    StrategyConfig.DefaultPreWeakRecoveryMaxDrawdown,
+                    value => value > 0m && value < 1m);
+                _preWeakRecoveryConfirmationWeeksRequired = ParseIntParameter(
+                    StrategyConfig.PreWeakRecoveryConfirmationWeeksParameter,
+                    StrategyConfig.DefaultPreWeakRecoveryConfirmationWeeks,
+                    value => value >= 1 && value <= 8);
                 _severeCrashOverrideDrawdownThreshold = ParseDecimalParameter(
                     StrategyConfig.SevereCrashOverrideDrawdownThresholdParameter,
                     StrategyConfig.DefaultSevereCrashOverrideDrawdownThreshold,
@@ -152,7 +177,7 @@ namespace QuantConnect.Algorithm.CSharp
             Debug(
                 $"AegisGrowthAllocation initialized. GrowthUniverse={StrategyConfig.GrowthTickers.Count} DefensiveUniverse={StrategyConfig.DefensiveTickers.Count} UndeployedReserve={_undeployedCapitalReserve.ToString(CultureInfo.InvariantCulture)} FavorableBreadthThreshold={StrategyConfig.FavorableBreadthThreshold.ToString(CultureInfo.InvariantCulture)} WeakStressThreshold={StrategyConfig.WeakStressThreshold.ToString(CultureInfo.InvariantCulture)} SevereStressGap={StrategyConfig.SevereStressGap.ToString(CultureInfo.InvariantCulture)} SevereStressThreshold={StrategyConfig.SevereStressThreshold.ToString(CultureInfo.InvariantCulture)} UpgradeConfirmationWeeks={StrategyConfig.UpgradeConfirmationWeeks} GrowthAtrEligibilityLimit={StrategyConfig.GrowthAtrEligibilityLimit.ToString(CultureInfo.InvariantCulture)} ReplacementScoreGap={StrategyConfig.ReplacementScoreGap.ToString(CultureInfo.InvariantCulture)} HoldStabilityBonus={StrategyConfig.HoldStabilityBonus.ToString(CultureInfo.InvariantCulture)} ToleranceBandScale={StrategyConfig.RebalanceToleranceBandScale.ToString(CultureInfo.InvariantCulture)}");
             Debug(
-                $"AegisGrowthAllocation sleeve targets. PreWeakGrowthTarget={StrategyConfig.PreWeakGrowthTarget.ToString(CultureInfo.InvariantCulture)} PreWeakDefensiveTarget={StrategyConfig.PreWeakDefensiveTarget.ToString(CultureInfo.InvariantCulture)} WeakGrowthTarget={StrategyConfig.WeakGrowthTarget.ToString(CultureInfo.InvariantCulture)}");
+                $"AegisGrowthAllocation sleeve targets. PreWeakGrowthTarget={StrategyConfig.PreWeakGrowthTarget.ToString(CultureInfo.InvariantCulture)} PreWeakDefensiveTarget={StrategyConfig.PreWeakDefensiveTarget.ToString(CultureInfo.InvariantCulture)} PreWeakRecoveryEnabled={_preWeakRecoveryEnabled} PreWeakRecoveryGrowthTarget={StrategyConfig.PreWeakRecoveryGrowthTarget.ToString(CultureInfo.InvariantCulture)} PreWeakRecoveryDefensiveTarget={StrategyConfig.PreWeakRecoveryDefensiveTarget.ToString(CultureInfo.InvariantCulture)} WeakGrowthTarget={StrategyConfig.WeakGrowthTarget.ToString(CultureInfo.InvariantCulture)}");
         }
 
         public override void OnData(Slice slice)
@@ -288,17 +313,21 @@ namespace QuantConnect.Algorithm.CSharp
             var overrideReason = "base-regime";
             var severeCrashOverrideActive = UpdateSevereCrashMode(regimeSnapshot, totalPortfolioValue);
             var preWeakGuardActive = false;
+            var preWeakRecoveryActive = false;
+            var preWeakRecoveryAmount = 0m;
             if (severeCrashOverrideActive)
             {
                 sleeveTargetsOverride = StrategyConfig.SevereCrashOverrideSleeveTargets;
                 sleeveOverride = "severe-crash";
                 overrideReason = $"severe-crash-{_severeCrashModeState}";
+                UpdatePreWeakRecoveryState(regimeSnapshot, normalPreWeakActive: false, drawdownFromHigh);
             }
             else if (ShouldApplyWeakStressOverlay(regimeSnapshot))
             {
                 sleeveTargetsOverride = StrategyConfig.WeakStressOverlaySleeveTargets;
                 sleeveOverride = "weak-stress";
                 overrideReason = "weak-stress-overlay";
+                UpdatePreWeakRecoveryState(regimeSnapshot, normalPreWeakActive: false, drawdownFromHigh);
             }
             else if (ShouldApplyPreWeakGuard(regimeSnapshot, totalPortfolioValue))
             {
@@ -306,6 +335,21 @@ namespace QuantConnect.Algorithm.CSharp
                 sleeveOverride = "pre-weak";
                 overrideReason = "drawdown-signals";
                 preWeakGuardActive = true;
+                preWeakRecoveryActive = UpdatePreWeakRecoveryState(
+                    regimeSnapshot,
+                    normalPreWeakActive: true,
+                    drawdownFromHigh);
+                preWeakRecoveryAmount = Math.Max(0m, _preWeakRecoveryLocalTroughDrawdown - drawdownFromHigh);
+                if (preWeakRecoveryActive)
+                {
+                    sleeveTargetsOverride = StrategyConfig.PreWeakRecoverySleeveTargets;
+                    sleeveOverride = "pre-weak-recovery";
+                    overrideReason = "pre-weak-recovery-confirmed";
+                }
+            }
+            else
+            {
+                UpdatePreWeakRecoveryState(regimeSnapshot, normalPreWeakActive: false, drawdownFromHigh);
             }
 
             var finalSleeveTargets = sleeveTargetsOverride ?? baseSleeveTargets;
@@ -346,6 +390,12 @@ namespace QuantConnect.Algorithm.CSharp
                     severeCrashOverrideActive,
                     sleeveOverride,
                     overrideReason,
+                    preWeakRecoveryActive,
+                    _preWeakRecoverySegmentId,
+                    _preWeakRecoveryLocalTroughDrawdown,
+                    preWeakRecoveryAmount,
+                    _preWeakRecoveryConfirmationWeeks,
+                    _preWeakRecoveryLastResetReason,
                     drawdownFromHigh,
                     baseSleeveTargets,
                     finalSleeveTargets,
@@ -357,6 +407,7 @@ namespace QuantConnect.Algorithm.CSharp
                     totalPortfolioValue,
                     regimeSnapshot.ActiveRegime,
                     preWeakGuardActive,
+                    preWeakRecoveryActive,
                     severeCrashOverrideActive,
                     drawdownFromHigh,
                     finalSleeveTargets);
@@ -378,76 +429,7 @@ namespace QuantConnect.Algorithm.CSharp
             LogStressDiagnostic("WarmupFinished");
         }
 
-        private static double GetWeeklyDecisionMinutesAfterMarketOpen()
-        {
-            var decisionOffset = StrategyConfig.WeeklyDecisionTime - UsaRegularMarketOpenTime;
-            return Math.Max(0d, decisionOffset.TotalMinutes);
-        }
 
-        private void ConfigureBacktestDates()
-        {
-            var startDate = ParseBacktestStartDate();
-            SetStartDate(startDate);
-
-            var endDate = ParseOptionalBacktestDate(StrategyConfig.BacktestEndParameter);
-            if (!endDate.HasValue)
-            {
-                return;
-            }
-
-            if (endDate.Value.Date < startDate.Date)
-            {
-                Debug(
-                    $"[AEGIS] Backtest end date {endDate.Value:yyyy-MM-dd} is before start date {startDate:yyyy-MM-dd}. Ignoring {StrategyConfig.BacktestEndParameter}.");
-                return;
-            }
-
-            SetEndDate(endDate.Value);
-        }
-
-        private void LogStressDiagnostic(string phase)
-        {
-            if (!LiveMode)
-            {
-                return;
-            }
-
-            var stressCount = _stressWindow.Count;
-            var latestStressClose = stressCount > 0
-                ? (decimal?)_stressWindow[0]
-                : null;
-            var stressReady = stressCount >= StrategyConfig.VixAverageWindow;
-            var stressAverage5 = stressReady
-                ? (decimal?)_stressWindow.Average()
-                : null;
-
-            Debug(FormatStressDiagnostic(
-                phase,
-                _stressSymbol?.Value ?? StrategyConfig.StressTicker,
-                stressCount,
-                latestStressClose,
-                stressAverage5,
-                stressReady));
-        }
-
-        private static string FormatStressDiagnostic(
-            string phase,
-            string stressSymbol,
-            int stressCount,
-            decimal? latestStressClose,
-            decimal? stressAverage5,
-            bool isReady)
-        {
-            return string.Format(
-                CultureInfo.InvariantCulture,
-                "[AEGIS-STRESS-DIAG] Phase={0} StressSymbol={1} StressCount={2} LatestStressClose={3} StressAverage5={4} StressReady={5}",
-                phase,
-                stressSymbol,
-                stressCount,
-                latestStressClose.HasValue ? latestStressClose.Value.ToString("0.####", CultureInfo.InvariantCulture) : "none",
-                stressAverage5.HasValue ? stressAverage5.Value.ToString("0.####", CultureInfo.InvariantCulture) : "none",
-                isReady);
-        }
 
         private void ExecutePlan(PortfolioPlan plan, IReadOnlyDictionary<Symbol, decimal> currentWeights)
         {
@@ -596,698 +578,6 @@ namespace QuantConnect.Algorithm.CSharp
             }
 
             return maxDrawdown;
-        }
-
-        private void ConfigureRuntimeParameters()
-        {
-            var favorableBreadthThreshold = ParseDecimalParameter(
-                StrategyConfig.FavorableBreadthThresholdParameter,
-                StrategyConfig.DefaultFavorableBreadthThreshold,
-                value => value > StrategyConfig.WeakBreadthThreshold && value <= 1m);
-            var stressBand = StrategyConfig.ParseStressBandParameters(name => GetParameter(name), message => Debug(message));
-            var weakStressThreshold = stressBand.WeakStressThreshold;
-            var severeStressGap = stressBand.SevereStressGap;
-            var upgradeConfirmationWeeks = ParseIntParameter(
-                StrategyConfig.UpgradeConfirmationWeeksParameter,
-                StrategyConfig.DefaultUpgradeConfirmationWeeks,
-                value => value >= 1 && value <= 8);
-            var growthAtrEligibilityLimit = ParseDecimalParameter(
-                StrategyConfig.GrowthAtrEligibilityLimitParameter,
-                StrategyConfig.DefaultGrowthAtrEligibilityLimit,
-                value => value >= 0.03m && value <= StrategyConfig.GrowthAtrForcedExitLimit);
-            var replacementScoreGap = ParseDecimalParameter(
-                StrategyConfig.ReplacementScoreGapParameter,
-                StrategyConfig.DefaultReplacementScoreGap,
-                value => value >= 0m && value <= 20m);
-            var holdStabilityBonus = ParseDecimalParameter(
-                StrategyConfig.HoldStabilityBonusParameter,
-                StrategyConfig.DefaultHoldStabilityBonus,
-                value => value >= 0m && value <= 20m);
-            var rebalanceToleranceBandScale = ParseDecimalParameter(
-                StrategyConfig.RebalanceToleranceBandScaleParameter,
-                StrategyConfig.DefaultRebalanceToleranceBandScale,
-                value => value > 0m && value <= 2m);
-            var sleeveTargets = StrategyConfig.ParseSleeveTargetParameters(name => GetParameter(name), message => Debug(message));
-
-            StrategyConfig.ConfigureRuntimeParameters(
-                favorableBreadthThreshold,
-                weakStressThreshold,
-                severeStressGap,
-                upgradeConfirmationWeeks,
-                growthAtrEligibilityLimit,
-                replacementScoreGap,
-                holdStabilityBonus,
-                rebalanceToleranceBandScale,
-                sleeveTargets.PreWeakGrowthTarget,
-                sleeveTargets.PreWeakDefensiveTarget,
-                sleeveTargets.WeakGrowthTarget);
-        }
-
-        private DateTime ParseBacktestStartDate()
-        {
-            var defaultValue = StrategyConfig.DefaultBacktestStartDate;
-            var parsed = ParseOptionalBacktestDate(StrategyConfig.BacktestStartParameter);
-            if (parsed.HasValue)
-            {
-                return parsed.Value;
-            }
-
-            return defaultValue;
-        }
-
-        private DateTime? ParseOptionalBacktestDate(string name)
-        {
-            var raw = GetParameter(name);
-            if (string.IsNullOrWhiteSpace(raw))
-            {
-                return null;
-            }
-
-            if (!TryParseBacktestDate(raw, out var value))
-            {
-                Debug($"[AEGIS] Invalid backtest date parameter {name}={raw}. Ignoring value.");
-                return null;
-            }
-
-            return value.Date;
-        }
-
-        private static bool TryParseBacktestDate(string raw, out DateTime value)
-        {
-            return DateTime.TryParse(
-                raw,
-                CultureInfo.InvariantCulture,
-                DateTimeStyles.AllowWhiteSpaces | DateTimeStyles.AssumeUniversal,
-                out value);
-        }
-
-        private decimal ParseDecimalParameter(string name, decimal defaultValue, Func<decimal, bool> validator)
-        {
-            var raw = GetParameter(name);
-            if (string.IsNullOrWhiteSpace(raw))
-            {
-                return defaultValue;
-            }
-
-            if (!decimal.TryParse(raw, NumberStyles.Any, CultureInfo.InvariantCulture, out var value))
-            {
-                Debug($"[AEGIS] Invalid decimal parameter {name}={raw}. Using default {defaultValue.ToString(CultureInfo.InvariantCulture)}.");
-                return defaultValue;
-            }
-
-            if (!validator(value))
-            {
-                Debug($"[AEGIS] Out-of-range decimal parameter {name}={value.ToString(CultureInfo.InvariantCulture)}. Using default {defaultValue.ToString(CultureInfo.InvariantCulture)}.");
-                return defaultValue;
-            }
-
-            return value;
-        }
-
-        private int ParseIntParameter(string name, int defaultValue, Func<int, bool> validator)
-        {
-            var raw = GetParameter(name);
-            if (string.IsNullOrWhiteSpace(raw))
-            {
-                return defaultValue;
-            }
-
-            if (!int.TryParse(raw, NumberStyles.Integer, CultureInfo.InvariantCulture, out var value))
-            {
-                Debug($"[AEGIS] Invalid integer parameter {name}={raw}. Using default {defaultValue}.");
-                return defaultValue;
-            }
-
-            if (!validator(value))
-            {
-                Debug($"[AEGIS] Out-of-range integer parameter {name}={value}. Using default {defaultValue}.");
-                return defaultValue;
-            }
-
-            return value;
-        }
-
-        private void UpdateDefensiveOverrideHighWaterMark(decimal totalPortfolioValue)
-        {
-            if (totalPortfolioValue > _defensiveOverrideEquityHighWaterMark)
-            {
-                _defensiveOverrideEquityHighWaterMark = totalPortfolioValue;
-            }
-        }
-
-        private decimal CalculateDrawdownFromHigh(decimal totalPortfolioValue)
-        {
-            if (totalPortfolioValue <= 0m || _defensiveOverrideEquityHighWaterMark <= 0m)
-            {
-                return 0m;
-            }
-
-            return Math.Max(0m, 1m - totalPortfolioValue / _defensiveOverrideEquityHighWaterMark);
-        }
-
-        private bool ShouldApplyWeakStressOverlay(RegimeSnapshot regimeSnapshot)
-        {
-            return _weakStressOverlayEnabled &&
-                   regimeSnapshot.ActiveRegime == RiskRegime.Weak &&
-                   (regimeSnapshot.SevereStress ||
-                    regimeSnapshot.StressState == SignalState.Weak ||
-                    (regimeSnapshot.TrendState == SignalState.Weak && regimeSnapshot.BreadthState == SignalState.Weak));
-        }
-
-        private bool ShouldApplyPreWeakGuard(RegimeSnapshot regimeSnapshot, decimal totalPortfolioValue)
-        {
-            if (!_preWeakGuardEnabled ||
-                regimeSnapshot.ActiveRegime == RiskRegime.Weak ||
-                totalPortfolioValue <= 0m ||
-                _defensiveOverrideEquityHighWaterMark <= 0m)
-            {
-                return false;
-            }
-
-            var drawdown = CalculateDrawdownFromHigh(totalPortfolioValue);
-            if (drawdown < _preWeakGuardDrawdownThreshold)
-            {
-                return false;
-            }
-
-            return regimeSnapshot.TrendState != SignalState.Favorable ||
-                   regimeSnapshot.BreadthState != SignalState.Favorable ||
-                   regimeSnapshot.StressState == SignalState.Weak;
-        }
-
-        private bool ShouldApplySevereCrashOverride(RegimeSnapshot regimeSnapshot, decimal totalPortfolioValue)
-        {
-            if (!_severeCrashOverrideEnabled ||
-                regimeSnapshot.ActiveRegime != RiskRegime.Weak ||
-                !regimeSnapshot.SevereStress ||
-                totalPortfolioValue <= 0m ||
-                _defensiveOverrideEquityHighWaterMark <= 0m)
-            {
-                return false;
-            }
-
-            if (CalculateDrawdownFromHigh(totalPortfolioValue) < _severeCrashOverrideDrawdownThreshold)
-            {
-                return false;
-            }
-
-            return CountWeakSignals(regimeSnapshot) >= 2;
-        }
-
-        private bool UpdateSevereCrashMode(RegimeSnapshot regimeSnapshot, decimal totalPortfolioValue)
-        {
-            _severeCrashModeState = "none";
-            _severeCrashExitReason = "none";
-
-            if (!_severeCrashOverrideEnabled)
-            {
-                _severeCrashModeActive = false;
-                _severeCrashRecoveryWeeks = 0;
-                return false;
-            }
-
-            if (!_severeCrashModeActive)
-            {
-                _severeCrashRecoveryWeeks = 0;
-                if (!ShouldApplySevereCrashOverride(regimeSnapshot, totalPortfolioValue))
-                {
-                    return false;
-                }
-
-                _severeCrashModeActive = true;
-                _severeCrashModeState = "enter";
-                return true;
-            }
-
-            var drawdown = CalculateDrawdownFromHigh(totalPortfolioValue);
-            if (drawdown < _severeCrashOverrideExitDrawdownThreshold)
-            {
-                _severeCrashModeActive = false;
-                _severeCrashRecoveryWeeks = 0;
-                _severeCrashModeState = "exit";
-                _severeCrashExitReason = "drawdown-recovered";
-                return false;
-            }
-
-            if (IsSevereCrashRecoveredRegime(regimeSnapshot.ActiveRegime))
-            {
-                _severeCrashRecoveryWeeks++;
-                if (_severeCrashRecoveryWeeks >= _severeCrashOverrideRecoveryConfirmationWeeks)
-                {
-                    _severeCrashModeActive = false;
-                    _severeCrashModeState = "exit";
-                    _severeCrashExitReason = "regime-recovered";
-                    return false;
-                }
-            }
-            else
-            {
-                _severeCrashRecoveryWeeks = 0;
-            }
-
-            _severeCrashModeState = "hold";
-            return true;
-        }
-
-        private static bool IsSevereCrashRecoveredRegime(RiskRegime regime)
-        {
-            return regime == RiskRegime.Neutral ||
-                   regime == RiskRegime.Favorable;
-        }
-
-        private static int CountWeakSignals(RegimeSnapshot regimeSnapshot)
-        {
-            var count = 0;
-            if (regimeSnapshot.TrendState == SignalState.Weak)
-            {
-                count++;
-            }
-
-            if (regimeSnapshot.BreadthState == SignalState.Weak)
-            {
-                count++;
-            }
-
-            if (regimeSnapshot.StressState == SignalState.Weak)
-            {
-                count++;
-            }
-
-            return count;
-        }
-
-        private bool ParseBooleanParameter(string name, bool defaultValue)
-        {
-            var raw = GetParameter(name);
-            if (string.IsNullOrWhiteSpace(raw))
-            {
-                return defaultValue;
-            }
-
-            if (bool.TryParse(raw, out var value))
-            {
-                return value;
-            }
-
-            Debug($"[AEGIS] Invalid boolean parameter {name}={raw}. Using default {defaultValue}.");
-            return defaultValue;
-        }
-
-        private string FormatWeeklySummary(PortfolioPlan plan, RegimeSnapshot regimeSnapshot)
-        {
-            var currentCashWeight = Math.Max(0m, 1m - plan.CurrentGrowthWeight - plan.CurrentDefensiveWeight);
-            var targetGrowthWeight = plan.TargetWeights
-                .Where(pair => _assetStates.TryGetValue(pair.Key, out var assetState) && assetState.IsGrowth)
-                .Sum(pair => pair.Value);
-            var targetDefensiveWeight = plan.TargetWeights
-                .Where(pair => _assetStates.TryGetValue(pair.Key, out var assetState) && assetState.IsDefensive)
-                .Sum(pair => pair.Value);
-            var targetCashWeight = Math.Max(0m, 1m - targetGrowthWeight - targetDefensiveWeight);
-
-            return string.Format(
-                CultureInfo.InvariantCulture,
-                "[AEGIS] {0:yyyy-MM-dd} Prev={1} Act={2} Raw={3} Trend={4} Breadth={5} Stress={6} Severe={7} Curr=G{8:0.00}/D{9:0.00}/C{10:0.00} Target=G{11:0.00}/D{12:0.00}/C{13:0.00} Growth{14} Def{15} Forced={16} Trim={17} Reserve={18:0.##}",
-                Time,
-                plan.PreviousRegime,
-                plan.ActiveRegime,
-                regimeSnapshot.RawRegime,
-                regimeSnapshot.TrendState,
-                regimeSnapshot.BreadthState,
-                regimeSnapshot.StressState,
-                regimeSnapshot.SevereStress,
-                plan.CurrentGrowthWeight,
-                plan.CurrentDefensiveWeight,
-                currentCashWeight,
-                targetGrowthWeight,
-                targetDefensiveWeight,
-                targetCashWeight,
-                FormatSymbolPreview(plan.SelectedGrowthSymbols),
-                FormatSymbolPreview(plan.SelectedDefensiveSymbols),
-                plan.ForcedExitSymbols.Count,
-                plan.TrimOnly,
-                plan.ReleasedReserve);
-        }
-
-        private string FormatCrisisDiagnostics(
-            PortfolioPlan plan,
-            RegimeSnapshot regimeSnapshot,
-            GrowthSelection growthSelection,
-            DefensiveSelection defensiveSelection,
-            IReadOnlyDictionary<Symbol, decimal> currentWeights,
-            decimal breadth,
-            decimal vixAverage5,
-            decimal reserveBeforeReview,
-            bool preWeakGuardActive,
-            bool severeCrashOverrideActive,
-            string sleeveOverride,
-            string overrideReason,
-            decimal drawdownFromHigh,
-            SleeveTargets baseSleeveTargets,
-            SleeveTargets finalSleeveTargets,
-            string severeCrashModeState,
-            int severeCrashRecoveryWeeks,
-            string severeCrashExitReason)
-        {
-            var currentCashWeight = Math.Max(0m, 1m - plan.CurrentGrowthWeight - plan.CurrentDefensiveWeight);
-            var targetGrowthWeight = plan.TargetWeights
-                .Where(pair => _assetStates.TryGetValue(pair.Key, out var assetState) && assetState.IsGrowth)
-                .Sum(pair => pair.Value);
-            var targetDefensiveWeight = plan.TargetWeights
-                .Where(pair => _assetStates.TryGetValue(pair.Key, out var assetState) && assetState.IsDefensive)
-                .Sum(pair => pair.Value);
-            var targetCashWeight = Math.Max(0m, 1m - targetGrowthWeight - targetDefensiveWeight);
-
-            return string.Format(
-                CultureInfo.InvariantCulture,
-                "[AEGIS-DIAG-WEEK] {0:yyyy-MM-dd} Eq={1:0.00} Act={2} Raw={3} Trend={4} Breadth={5}/{6:0.0000} Stress={7}/{8:0.00} Severe={9} DD={10:0.0000} Override={11} Reason={12} Curr=G{13:0.0000}/D{14:0.0000}/C{15:0.0000} Target=G{16:0.0000}/D{17:0.0000}/C{18:0.0000} Sleeve={19} Rebalance={20} SelectionChange={21} Trim={22} Forced={23} OptRepl={24} NewEntries={25} Reserve={26:0.####}->{27:0.####} Released={28:0.####} Growth={29} Defensive={30} TopGrowth={31} TopDef={32}",
-                Time,
-                Portfolio.TotalPortfolioValue,
-                plan.ActiveRegime,
-                regimeSnapshot.RawRegime,
-                regimeSnapshot.TrendState,
-                regimeSnapshot.BreadthState,
-                breadth,
-                regimeSnapshot.StressState,
-                vixAverage5,
-                regimeSnapshot.SevereStress,
-                drawdownFromHigh,
-                sleeveOverride,
-                overrideReason,
-                plan.CurrentGrowthWeight,
-                plan.CurrentDefensiveWeight,
-                currentCashWeight,
-                targetGrowthWeight,
-                targetDefensiveWeight,
-                targetCashWeight,
-                FormatSleeveTargets(finalSleeveTargets),
-                plan.HasRebalanceTrigger,
-                plan.HasSelectionChange,
-                plan.TrimOnly,
-                FormatSymbolList(plan.ForcedExitSymbols),
-                plan.OptimizationReplacementsUsed,
-                plan.NewEntriesUsed,
-                reserveBeforeReview,
-                _undeployedCapitalReserve,
-                plan.ReleasedReserve,
-                FormatSymbolList(plan.SelectedGrowthSymbols),
-                FormatSymbolList(plan.SelectedDefensiveSymbols),
-                FormatGrowthCandidateScores(growthSelection.RankedCandidates, maxCount: 3),
-                FormatDefensiveCandidateScores(defensiveSelection.RankedCandidates, maxCount: 3));
-        }
-
-        private string FormatOverrideDiagnostics(
-            bool preWeakGuardActive,
-            bool severeCrashOverrideActive,
-            string sleeveOverride,
-            string overrideReason,
-            decimal drawdownFromHigh,
-            SleeveTargets baseSleeveTargets,
-            SleeveTargets finalSleeveTargets,
-            string severeCrashModeState,
-            int severeCrashRecoveryWeeks,
-            string severeCrashExitReason)
-        {
-            return string.Format(
-                CultureInfo.InvariantCulture,
-                "PreWeakGuardActive={0} SevereCrashOverrideActive={1} SleeveOverride={2} OverrideReason={3} DrawdownFromHigh={4:0.0000} BaseTarget={5} FinalTarget={6} SevereCrashModeState={7} SevereCrashRecoveryWeeks={8} SevereCrashExitReason={9}",
-                preWeakGuardActive,
-                severeCrashOverrideActive,
-                sleeveOverride,
-                overrideReason,
-                drawdownFromHigh,
-                FormatSleeveTargets(baseSleeveTargets),
-                FormatSleeveTargets(finalSleeveTargets),
-                severeCrashModeState,
-                severeCrashRecoveryWeeks,
-                severeCrashExitReason);
-        }
-
-        private void RecordCrisisDiagnosticObservation(
-            DateTime date,
-            decimal equity,
-            RiskRegime activeRegime,
-            bool preWeakGuardActive,
-            bool severeCrashOverrideActive,
-            decimal drawdownFromHigh,
-            SleeveTargets finalSleeveTargets)
-        {
-            _diagnosticAttributionTracker.Record(
-                date,
-                equity,
-                activeRegime,
-                preWeakGuardActive,
-                severeCrashOverrideActive,
-                drawdownFromHigh,
-                finalSleeveTargets);
-        }
-
-        private string FormatCompactCrisisDiagnosticSummary()
-        {
-            return _diagnosticAttributionTracker.FormatSummary();
-        }
-
-        private static string FormatSleeveTargets(SleeveTargets targets)
-        {
-            return string.Format(
-                CultureInfo.InvariantCulture,
-                "G{0:0.0000}/D{1:0.0000}/C{2:0.0000}",
-                targets.GrowthTarget,
-                targets.DefensiveTarget,
-                targets.CashTarget);
-        }
-
-        private static string FormatSymbolPreview(IReadOnlyList<Symbol> symbols)
-        {
-            if (symbols.Count == 0)
-            {
-                return "[0]";
-            }
-
-            const int previewCount = 3;
-            var preview = string.Join(",", symbols.Take(previewCount).Select(symbol => symbol.Value));
-            var extraCount = symbols.Count - previewCount;
-
-            return extraCount > 0
-                ? $"[{symbols.Count}]={preview}+{extraCount}"
-                : $"[{symbols.Count}]={preview}";
-        }
-
-        private static string FormatSymbolList(IEnumerable<Symbol> symbols)
-        {
-            var values = symbols
-                .Select(symbol => symbol.Value)
-                .OrderBy(value => value, StringComparer.Ordinal)
-                .ToList();
-
-            return values.Count == 0
-                ? "none"
-                : string.Join(",", values);
-        }
-
-        private static string FormatSymbolWeights(IReadOnlyDictionary<Symbol, decimal> weights)
-        {
-            if (weights.Count == 0)
-            {
-                return "none";
-            }
-
-            return string.Join(
-                ",",
-                weights
-                    .OrderBy(pair => pair.Key.Value, StringComparer.Ordinal)
-                    .Select(pair => string.Format(CultureInfo.InvariantCulture, "{0}:{1:0.0000}", pair.Key.Value, pair.Value)));
-        }
-
-        private static string FormatGrowthCandidateScores(IReadOnlyCollection<GrowthCandidate> candidates, int maxCount)
-        {
-            if (candidates.Count == 0)
-            {
-                return "none";
-            }
-
-            return string.Join(
-                ",",
-                candidates
-                    .OrderBy(candidate => candidate.Ticker, StringComparer.Ordinal)
-                    .Take(maxCount)
-                    .Select(candidate => string.Format(
-                        CultureInfo.InvariantCulture,
-                        "{0}:{1:0.00}/{2:0.00}",
-                        candidate.Ticker,
-                        candidate.AdjustedScore,
-                        candidate.FinalScore)));
-        }
-
-        private static string FormatDefensiveCandidateScores(IReadOnlyCollection<DefensiveCandidate> candidates, int maxCount)
-        {
-            if (candidates.Count == 0)
-            {
-                return "none";
-            }
-
-            return string.Join(
-                ",",
-                candidates
-                    .OrderBy(candidate => candidate.Ticker, StringComparer.Ordinal)
-                    .Take(maxCount)
-                    .Select(candidate => string.Format(
-                        CultureInfo.InvariantCulture,
-                        "{0}:{1:0.00}",
-                        candidate.Ticker,
-                        candidate.Score)));
-        }
-
-        private sealed class DiagnosticAttributionTracker
-        {
-            private readonly List<DiagnosticObservation> _observations = new List<DiagnosticObservation>();
-
-            public void Record(
-                DateTime date,
-                decimal equity,
-                RiskRegime activeRegime,
-                bool preWeakGuardActive,
-                bool severeCrashOverrideActive,
-                decimal drawdownFromHigh,
-                SleeveTargets finalSleeveTargets)
-            {
-                if (equity <= 0m)
-                {
-                    return;
-                }
-
-                var newIndex = _observations.Count;
-                for (var index = 0; index < _observations.Count; index++)
-                {
-                    var weeksForward = newIndex - index;
-                    var forwardReturn = equity / _observations[index].Equity - 1m;
-                    if (weeksForward == 1)
-                    {
-                        _observations[index].NextReturn = forwardReturn;
-                    }
-                    else if (weeksForward == 4)
-                    {
-                        _observations[index].Forward4WeekReturn = forwardReturn;
-                    }
-                    else if (weeksForward == 8)
-                    {
-                        _observations[index].Forward8WeekReturn = forwardReturn;
-                    }
-                    else if (weeksForward == 12)
-                    {
-                        _observations[index].Forward12WeekReturn = forwardReturn;
-                    }
-                }
-
-                _observations.Add(new DiagnosticObservation
-                {
-                    Date = date,
-                    Equity = equity,
-                    ActiveRegime = activeRegime,
-                    PreWeakGuardActive = preWeakGuardActive,
-                    SevereCrashOverrideActive = severeCrashOverrideActive,
-                    DrawdownFromHigh = Math.Max(0m, drawdownFromHigh),
-                    FinalGrowthTarget = finalSleeveTargets.GrowthTarget,
-                    FinalDefensiveTarget = finalSleeveTargets.DefensiveTarget,
-                    FinalCashTarget = finalSleeveTargets.CashTarget
-                });
-            }
-
-            public string FormatSummary()
-            {
-                var preWeak = _observations.Where(observation => observation.PreWeakGuardActive).ToList();
-                var nonPreWeak = _observations.Where(observation => !observation.PreWeakGuardActive).ToList();
-                var severeCrash = _observations.Where(observation => observation.SevereCrashOverrideActive).ToList();
-                var weakRegime = _observations.Where(observation => observation.ActiveRegime == RiskRegime.Weak).ToList();
-
-                return string.Format(
-                    CultureInfo.InvariantCulture,
-                    "[AEGIS-DIAG-SUMMARY] Weeks={0} Start={1} End={2} PreWeakWeeks={3} NonPreWeakWeeks={4} SevereCrashWeeks={5} WeakRegimeWeeks={6} PreWeakAvgDrawdown={7} NonPreWeakAvgDrawdown={8} SevereCrashAvgDrawdown={9} PreWeakNextReturnAvg={10} NonPreWeakNextReturnAvg={11} PreWeakFwd4Avg={12} PreWeakFwd8Avg={13} PreWeakFwd12Avg={14} PreWeakFwd4WinRate={15} PreWeakAvgTarget=G{16}/D{17}/C{18} NonPreWeakAvgTarget=G{19}/D{20}/C{21}",
-                    _observations.Count,
-                    _observations.Count == 0 ? "none" : _observations[0].Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
-                    _observations.Count == 0 ? "none" : _observations[_observations.Count - 1].Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
-                    preWeak.Count,
-                    nonPreWeak.Count,
-                    severeCrash.Count,
-                    weakRegime.Count,
-                    FormatDecimal(Average(preWeak, observation => observation.DrawdownFromHigh)),
-                    FormatDecimal(Average(nonPreWeak, observation => observation.DrawdownFromHigh)),
-                    FormatDecimal(Average(severeCrash, observation => observation.DrawdownFromHigh)),
-                    FormatDecimal(AverageNullable(preWeak, observation => observation.NextReturn)),
-                    FormatDecimal(AverageNullable(nonPreWeak, observation => observation.NextReturn)),
-                    FormatDecimal(AverageNullable(preWeak, observation => observation.Forward4WeekReturn)),
-                    FormatDecimal(AverageNullable(preWeak, observation => observation.Forward8WeekReturn)),
-                    FormatDecimal(AverageNullable(preWeak, observation => observation.Forward12WeekReturn)),
-                    FormatDecimal(WinRate(preWeak, observation => observation.Forward4WeekReturn)),
-                    FormatDecimal(Average(preWeak, observation => observation.FinalGrowthTarget)),
-                    FormatDecimal(Average(preWeak, observation => observation.FinalDefensiveTarget)),
-                    FormatDecimal(Average(preWeak, observation => observation.FinalCashTarget)),
-                    FormatDecimal(Average(nonPreWeak, observation => observation.FinalGrowthTarget)),
-                    FormatDecimal(Average(nonPreWeak, observation => observation.FinalDefensiveTarget)),
-                    FormatDecimal(Average(nonPreWeak, observation => observation.FinalCashTarget)));
-            }
-
-            private static decimal? Average(
-                IReadOnlyCollection<DiagnosticObservation> observations,
-                Func<DiagnosticObservation, decimal> selector)
-            {
-                return observations.Count == 0
-                    ? null
-                    : observations.Average(selector);
-            }
-
-            private static decimal? AverageNullable(
-                IEnumerable<DiagnosticObservation> observations,
-                Func<DiagnosticObservation, decimal?> selector)
-            {
-                var values = observations
-                    .Select(selector)
-                    .Where(value => value.HasValue)
-                    .Select(value => value.Value)
-                    .ToList();
-
-                return values.Count == 0
-                    ? null
-                    : values.Average();
-            }
-
-            private static decimal? WinRate(
-                IEnumerable<DiagnosticObservation> observations,
-                Func<DiagnosticObservation, decimal?> selector)
-            {
-                var values = observations
-                    .Select(selector)
-                    .Where(value => value.HasValue)
-                    .Select(value => value.Value)
-                    .ToList();
-
-                return values.Count == 0
-                    ? null
-                    : values.Count(value => value > 0m) / (decimal)values.Count;
-            }
-
-            private static string FormatDecimal(decimal? value)
-            {
-                return value.HasValue
-                    ? value.Value.ToString("0.0000", CultureInfo.InvariantCulture)
-                    : "n/a";
-            }
-        }
-
-        private sealed class DiagnosticObservation
-        {
-            public DateTime Date { get; set; }
-            public decimal Equity { get; set; }
-            public RiskRegime ActiveRegime { get; set; }
-            public bool PreWeakGuardActive { get; set; }
-            public bool SevereCrashOverrideActive { get; set; }
-            public decimal DrawdownFromHigh { get; set; }
-            public decimal FinalGrowthTarget { get; set; }
-            public decimal FinalDefensiveTarget { get; set; }
-            public decimal FinalCashTarget { get; set; }
-            public decimal? NextReturn { get; set; }
-            public decimal? Forward4WeekReturn { get; set; }
-            public decimal? Forward8WeekReturn { get; set; }
-            public decimal? Forward12WeekReturn { get; set; }
         }
 
         private sealed class AssetState

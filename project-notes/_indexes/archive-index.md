@@ -114,6 +114,7 @@ This index preserves access to legacy markdown notes after the project-notes reo
 - [Aegis_CandidateC_PreWeak_Recovery_v2_Second_Round_Review_2026-06-15](../archive/2026-06/Aegis_CandidateC_PreWeak_Recovery_v2_Second_Round_Review_2026-06-15.md)
 - [Aegis_Next_Optimization_Strategy_2026-06-14](../archive/2026-06/Aegis_Next_Optimization_Strategy_2026-06-14.md)
 - [Aegis_PreWeak_RecoveryStep_Proposal_Review_2026-06-15](../archive/2026-06/Aegis_PreWeak_RecoveryStep_Proposal_Review_2026-06-15.md)
+- [Aegis_QuantConnect_File_Size_Limit_2026-06-16](../archive/2026-06/Aegis_QuantConnect_File_Size_Limit_2026-06-16.md)
 - [Aegis_Weak_Sleeve_Target_Parameterization_2026-06-08](../archive/2026-06/Aegis_Weak_Sleeve_Target_Parameterization_2026-06-08.md)
 - [Codex_Plugin_Page_Troubleshooting_2026-06-04](../archive/2026-06/Codex_Plugin_Page_Troubleshooting_2026-06-04.md)
 - [Workflow_Efficiency_Review_2026-06-07](../archive/2026-06/Workflow_Efficiency_Review_2026-06-07.md)

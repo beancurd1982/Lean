@@ -38,6 +38,14 @@ namespace QuantConnect.Algorithm.CSharp
             _severeCrashExitReason = string.IsNullOrWhiteSpace(state.SevereCrashExitReason)
                 ? "none"
                 : state.SevereCrashExitReason;
+            _preWeakRecoveryPreviousPreWeakActive = state.PreWeakRecoveryPreviousPreWeakActive;
+            _preWeakRecoverySegmentId = Math.Max(0, state.PreWeakRecoverySegmentId);
+            _preWeakRecoveryLocalTroughDrawdown = Math.Max(0m, state.PreWeakRecoveryLocalTroughDrawdown);
+            _preWeakRecoveryConfirmationWeeks = Math.Max(0, state.PreWeakRecoveryConfirmationWeeks);
+            _preWeakRecoveryActive = state.PreWeakRecoveryActive;
+            _preWeakRecoveryLastResetReason = string.IsNullOrWhiteSpace(state.PreWeakRecoveryLastResetReason)
+                ? "none"
+                : state.PreWeakRecoveryLastResetReason;
         }
 
         private bool ReconcileLiveStartup()
@@ -137,6 +145,12 @@ namespace QuantConnect.Algorithm.CSharp
                 SevereCrashRecoveryWeeks = _severeCrashRecoveryWeeks,
                 SevereCrashModeState = _severeCrashModeState,
                 SevereCrashExitReason = _severeCrashExitReason,
+                PreWeakRecoveryPreviousPreWeakActive = _preWeakRecoveryPreviousPreWeakActive,
+                PreWeakRecoverySegmentId = _preWeakRecoverySegmentId,
+                PreWeakRecoveryLocalTroughDrawdown = _preWeakRecoveryLocalTroughDrawdown,
+                PreWeakRecoveryConfirmationWeeks = _preWeakRecoveryConfirmationWeeks,
+                PreWeakRecoveryActive = _preWeakRecoveryActive,
+                PreWeakRecoveryLastResetReason = _preWeakRecoveryLastResetReason,
                 LastPlannedTargetWeights = _lastPlannedTargetWeights
                     .ToDictionary(kvp => kvp.Key.Value, kvp => kvp.Value, StringComparer.Ordinal),
                 BrokerHoldingsByTicker = CaptureBrokerHoldingsByTicker(),

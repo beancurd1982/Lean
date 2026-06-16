@@ -34,6 +34,12 @@ namespace QuantConnect.Algorithm.CSharp
         public const string PreWeakGrowthTargetParameter = "pre-weak-growth-target";
         public const string PreWeakDefensiveTargetParameter = "pre-weak-def-target";
         public const string WeakGrowthTargetParameter = "weak-growth-target";
+        public const string PreWeakRecoveryParameter = "pre-weak-recovery-enabled";
+        public const string PreWeakRecoveryGrowthTargetParameter = "pre-weak-recovery-growth-target";
+        public const string PreWeakRecoveryDefensiveTargetParameter = "pre-weak-recovery-def-target";
+        public const string PreWeakRecoveryDrawdownImprovementParameter = "pre-weak-recovery-dd-improvement";
+        public const string PreWeakRecoveryMaxDrawdownParameter = "pre-weak-recovery-max-dd";
+        public const string PreWeakRecoveryConfirmationWeeksParameter = "pre-weak-recovery-confirmation-weeks";
         public const string LiveStateKey = "AegisGrowthAllocation_LiveState_V2";
         public const int LiveStateSchemaVersion = 2;
         public const decimal LiveStateQuantityTolerance = 0.0001m;
@@ -82,9 +88,14 @@ namespace QuantConnect.Algorithm.CSharp
         public const decimal MaxWeakStressThreshold = 40m;
         public const decimal MaxSevereStressThreshold = 45m;
         public const bool DefaultPreWeakGuardEnabled = true;
+        public const bool DefaultPreWeakRecoveryEnabled = false;
         public const decimal DefaultPreWeakGuardDrawdownThreshold = 0.04m;
         public const decimal DefaultPreWeakGrowthTarget = 0.12m;
         public const decimal DefaultPreWeakDefensiveTarget = 0.30m;
+        public const decimal DefaultPreWeakRecoveryGrowthTarget = 0.16m;
+        public const decimal DefaultPreWeakRecoveryDefensiveTarget = 0.30m;
+        public const decimal DefaultPreWeakRecoveryDrawdownImprovement = 0.02m;
+        public const decimal DefaultPreWeakRecoveryMaxDrawdown = 0.08m;
         public const decimal DefaultWeakGrowthTarget = 0.10m;
         public const decimal WeakDefensiveTarget = 0.40m;
         public const decimal DefaultSevereCrashOverrideDrawdownThreshold = 0.10m;
@@ -92,6 +103,7 @@ namespace QuantConnect.Algorithm.CSharp
 
         public const int DefaultUpgradeConfirmationWeeks = 1;
         public const int DefaultSevereCrashOverrideRecoveryConfirmationWeeks = 2;
+        public const int DefaultPreWeakRecoveryConfirmationWeeks = 2;
 
         public static decimal FavorableBreadthThreshold { get; private set; } = DefaultFavorableBreadthThreshold;
         public static decimal WeakStressThreshold { get; private set; } = DefaultWeakStressThreshold;
@@ -161,6 +173,12 @@ namespace QuantConnect.Algorithm.CSharp
 
         public static SleeveTargets PreWeakGuardSleeveTargets => _preWeakGuardSleeveTargets;
 
+        private static SleeveTargets _preWeakRecoverySleeveTargets = BuildPreWeakGuardSleeveTargets(
+            DefaultPreWeakRecoveryGrowthTarget,
+            DefaultPreWeakRecoveryDefensiveTarget);
+
+        public static SleeveTargets PreWeakRecoverySleeveTargets => _preWeakRecoverySleeveTargets;
+
         public static readonly SleeveTargets SevereCrashOverrideSleeveTargets = new SleeveTargets(
             growthTarget: 0.00m,
             defensiveTarget: 0.20m,
@@ -227,6 +245,8 @@ namespace QuantConnect.Algorithm.CSharp
         public static decimal RebalanceToleranceBandScale { get; private set; } = DefaultRebalanceToleranceBandScale;
         public static decimal PreWeakGrowthTarget { get; private set; } = DefaultPreWeakGrowthTarget;
         public static decimal PreWeakDefensiveTarget { get; private set; } = DefaultPreWeakDefensiveTarget;
+        public static decimal PreWeakRecoveryGrowthTarget { get; private set; } = DefaultPreWeakRecoveryGrowthTarget;
+        public static decimal PreWeakRecoveryDefensiveTarget { get; private set; } = DefaultPreWeakRecoveryDefensiveTarget;
         public static decimal WeakGrowthTarget { get; private set; } = DefaultWeakGrowthTarget;
 
         public static SleeveTargets GetSleeveTargets(RiskRegime regime)
@@ -249,10 +269,15 @@ namespace QuantConnect.Algorithm.CSharp
             RebalanceToleranceBandScale = DefaultRebalanceToleranceBandScale;
             PreWeakGrowthTarget = DefaultPreWeakGrowthTarget;
             PreWeakDefensiveTarget = DefaultPreWeakDefensiveTarget;
+            PreWeakRecoveryGrowthTarget = DefaultPreWeakRecoveryGrowthTarget;
+            PreWeakRecoveryDefensiveTarget = DefaultPreWeakRecoveryDefensiveTarget;
             WeakGrowthTarget = DefaultWeakGrowthTarget;
             _preWeakGuardSleeveTargets = BuildPreWeakGuardSleeveTargets(
                 DefaultPreWeakGrowthTarget,
                 DefaultPreWeakDefensiveTarget);
+            _preWeakRecoverySleeveTargets = BuildPreWeakGuardSleeveTargets(
+                DefaultPreWeakRecoveryGrowthTarget,
+                DefaultPreWeakRecoveryDefensiveTarget);
             _weakSleeveTargets = BuildWeakSleeveTargets(DefaultWeakGrowthTarget);
         }
 
@@ -267,6 +292,8 @@ namespace QuantConnect.Algorithm.CSharp
             decimal rebalanceToleranceBandScale,
             decimal preWeakGrowthTarget,
             decimal preWeakDefensiveTarget,
+            decimal preWeakRecoveryGrowthTarget,
+            decimal preWeakRecoveryDefensiveTarget,
             decimal weakGrowthTarget)
         {
             FavorableBreadthThreshold = favorableBreadthThreshold;
@@ -280,14 +307,19 @@ namespace QuantConnect.Algorithm.CSharp
             RebalanceToleranceBandScale = rebalanceToleranceBandScale;
             PreWeakGrowthTarget = preWeakGrowthTarget;
             PreWeakDefensiveTarget = preWeakDefensiveTarget;
+            PreWeakRecoveryGrowthTarget = preWeakRecoveryGrowthTarget;
+            PreWeakRecoveryDefensiveTarget = preWeakRecoveryDefensiveTarget;
             WeakGrowthTarget = weakGrowthTarget;
             _preWeakGuardSleeveTargets = BuildPreWeakGuardSleeveTargets(
                 preWeakGrowthTarget,
                 preWeakDefensiveTarget);
+            _preWeakRecoverySleeveTargets = BuildPreWeakGuardSleeveTargets(
+                preWeakRecoveryGrowthTarget,
+                preWeakRecoveryDefensiveTarget);
             _weakSleeveTargets = BuildWeakSleeveTargets(weakGrowthTarget);
         }
 
-        public static (decimal PreWeakGrowthTarget, decimal PreWeakDefensiveTarget, decimal WeakGrowthTarget) ParseSleeveTargetParameters(
+        public static (decimal PreWeakGrowthTarget, decimal PreWeakDefensiveTarget, decimal PreWeakRecoveryGrowthTarget, decimal PreWeakRecoveryDefensiveTarget, decimal WeakGrowthTarget) ParseSleeveTargetParameters(
             Func<string, string> getParameter,
             Action<string> debug)
         {
@@ -312,27 +344,58 @@ namespace QuantConnect.Algorithm.CSharp
                 DefaultWeakGrowthTarget,
                 value => value >= 0m && value <= 0.30m,
                 out var weakGrowthTarget);
+            var preWeakRecoveryGrowthValid = TryParseOptionalDecimalParameter(
+                getParameter,
+                debug,
+                PreWeakRecoveryGrowthTargetParameter,
+                DefaultPreWeakRecoveryGrowthTarget,
+                value => value >= 0m && value <= 0.30m,
+                out var preWeakRecoveryGrowthTarget);
+            var preWeakRecoveryDefensiveValid = TryParseOptionalDecimalParameter(
+                getParameter,
+                debug,
+                PreWeakRecoveryDefensiveTargetParameter,
+                DefaultPreWeakRecoveryDefensiveTarget,
+                value => value >= 0m && value <= 0.60m,
+                out var preWeakRecoveryDefensiveTarget);
 
             if (!preWeakGrowthValid ||
                 !preWeakDefensiveValid ||
                 !weakGrowthValid ||
+                !preWeakRecoveryGrowthValid ||
+                !preWeakRecoveryDefensiveValid ||
                 preWeakGrowthTarget + preWeakDefensiveTarget >= 1m ||
+                preWeakRecoveryGrowthTarget + preWeakRecoveryDefensiveTarget >= 1m ||
                 weakGrowthTarget + WeakDefensiveTarget >= 1m)
             {
                 debug(
                     string.Format(
                         CultureInfo.InvariantCulture,
-                        "[AEGIS] Invalid sleeve target parameters pre-weak-growth-target={0} pre-weak-def-target={1} weak-growth-target={2}. Using defaults preWeakGrowth={3} preWeakDef={4} weakGrowth={5}.",
+                        "[AEGIS] Invalid sleeve target parameters pre-weak-growth-target={0} pre-weak-def-target={1} pre-weak-recovery-growth-target={2} pre-weak-recovery-def-target={3} weak-growth-target={4}. Using defaults preWeakGrowth={5} preWeakDef={6} preWeakRecoveryGrowth={7} preWeakRecoveryDef={8} weakGrowth={9}.",
                         preWeakGrowthTarget,
                         preWeakDefensiveTarget,
+                        preWeakRecoveryGrowthTarget,
+                        preWeakRecoveryDefensiveTarget,
                         weakGrowthTarget,
                         DefaultPreWeakGrowthTarget,
                         DefaultPreWeakDefensiveTarget,
+                        DefaultPreWeakRecoveryGrowthTarget,
+                        DefaultPreWeakRecoveryDefensiveTarget,
                         DefaultWeakGrowthTarget));
-                return (DefaultPreWeakGrowthTarget, DefaultPreWeakDefensiveTarget, DefaultWeakGrowthTarget);
+                return (
+                    DefaultPreWeakGrowthTarget,
+                    DefaultPreWeakDefensiveTarget,
+                    DefaultPreWeakRecoveryGrowthTarget,
+                    DefaultPreWeakRecoveryDefensiveTarget,
+                    DefaultWeakGrowthTarget);
             }
 
-            return (preWeakGrowthTarget, preWeakDefensiveTarget, weakGrowthTarget);
+            return (
+                preWeakGrowthTarget,
+                preWeakDefensiveTarget,
+                preWeakRecoveryGrowthTarget,
+                preWeakRecoveryDefensiveTarget,
+                weakGrowthTarget);
         }
 
         public static (decimal WeakStressThreshold, decimal SevereStressGap) ParseStressBandParameters(

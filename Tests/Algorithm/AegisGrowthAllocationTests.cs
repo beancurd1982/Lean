@@ -185,6 +185,7 @@ namespace QuantConnect.Tests.Algorithm
             var weakTargets = QuantConnect.Algorithm.CSharp.StrategyConfig.GetSleeveTargets(
                 QuantConnect.Algorithm.CSharp.RiskRegime.Weak);
             var preWeakTargets = QuantConnect.Algorithm.CSharp.StrategyConfig.PreWeakGuardSleeveTargets;
+            var preWeakRecoveryTargets = QuantConnect.Algorithm.CSharp.StrategyConfig.PreWeakRecoverySleeveTargets;
 
             Assert.That(weakTargets.GrowthTarget, Is.EqualTo(0.10m));
             Assert.That(weakTargets.DefensiveTarget, Is.EqualTo(0.40m));
@@ -192,9 +193,13 @@ namespace QuantConnect.Tests.Algorithm
             Assert.That(preWeakTargets.GrowthTarget, Is.EqualTo(0.12m));
             Assert.That(preWeakTargets.DefensiveTarget, Is.EqualTo(0.30m));
             Assert.That(preWeakTargets.CashTarget, Is.EqualTo(0.58m));
+            Assert.That(preWeakRecoveryTargets.GrowthTarget, Is.EqualTo(0.16m));
+            Assert.That(preWeakRecoveryTargets.DefensiveTarget, Is.EqualTo(0.30m));
+            Assert.That(preWeakRecoveryTargets.CashTarget, Is.EqualTo(0.54m));
             Assert.That(
                 GetPreWeakGuardDrawdownThreshold(algorithm),
                 Is.EqualTo(0.04m));
+            Assert.That(IsPreWeakRecoveryEnabled(algorithm), Is.False);
         }
 
         [Test]
@@ -204,12 +209,15 @@ namespace QuantConnect.Tests.Algorithm
             {
                 ["pre-weak-growth-target"] = "0.18",
                 ["pre-weak-def-target"] = "0.35",
+                ["pre-weak-recovery-growth-target"] = "0.16",
+                ["pre-weak-recovery-def-target"] = "0.30",
                 ["weak-growth-target"] = "0.05"
             });
 
             var weakTargets = QuantConnect.Algorithm.CSharp.StrategyConfig.GetSleeveTargets(
                 QuantConnect.Algorithm.CSharp.RiskRegime.Weak);
             var preWeakTargets = QuantConnect.Algorithm.CSharp.StrategyConfig.PreWeakGuardSleeveTargets;
+            var recoveryTargets = QuantConnect.Algorithm.CSharp.StrategyConfig.PreWeakRecoverySleeveTargets;
 
             Assert.That(weakTargets.GrowthTarget, Is.EqualTo(0.05m));
             Assert.That(weakTargets.DefensiveTarget, Is.EqualTo(0.40m));
@@ -217,6 +225,9 @@ namespace QuantConnect.Tests.Algorithm
             Assert.That(preWeakTargets.GrowthTarget, Is.EqualTo(0.18m));
             Assert.That(preWeakTargets.DefensiveTarget, Is.EqualTo(0.35m));
             Assert.That(preWeakTargets.CashTarget, Is.EqualTo(0.47m));
+            Assert.That(recoveryTargets.GrowthTarget, Is.EqualTo(0.16m));
+            Assert.That(recoveryTargets.DefensiveTarget, Is.EqualTo(0.30m));
+            Assert.That(recoveryTargets.CashTarget, Is.EqualTo(0.54m));
         }
 
         [Test]
@@ -226,18 +237,35 @@ namespace QuantConnect.Tests.Algorithm
             {
                 ["pre-weak-growth-target"] = "0.80",
                 ["pre-weak-def-target"] = "0.40",
+                ["pre-weak-recovery-growth-target"] = "0.60",
+                ["pre-weak-recovery-def-target"] = "0.50",
                 ["weak-growth-target"] = "0.70"
             });
 
             var weakTargets = QuantConnect.Algorithm.CSharp.StrategyConfig.GetSleeveTargets(
                 QuantConnect.Algorithm.CSharp.RiskRegime.Weak);
             var preWeakTargets = QuantConnect.Algorithm.CSharp.StrategyConfig.PreWeakGuardSleeveTargets;
+            var recoveryTargets = QuantConnect.Algorithm.CSharp.StrategyConfig.PreWeakRecoverySleeveTargets;
 
             Assert.That(weakTargets.GrowthTarget, Is.EqualTo(0.10m));
             Assert.That(weakTargets.CashTarget, Is.EqualTo(0.50m));
             Assert.That(preWeakTargets.GrowthTarget, Is.EqualTo(0.12m));
             Assert.That(preWeakTargets.DefensiveTarget, Is.EqualTo(0.30m));
             Assert.That(preWeakTargets.CashTarget, Is.EqualTo(0.58m));
+            Assert.That(recoveryTargets.GrowthTarget, Is.EqualTo(0.16m));
+            Assert.That(recoveryTargets.DefensiveTarget, Is.EqualTo(0.30m));
+            Assert.That(recoveryTargets.CashTarget, Is.EqualTo(0.54m));
+        }
+
+        [Test]
+        public void EnablesPreWeakRecoveryOnlyWhenParameterIsTrue()
+        {
+            var algorithm = CreateAlgorithm(new Dictionary<string, string>
+            {
+                ["pre-weak-recovery-enabled"] = "true"
+            });
+
+            Assert.That(IsPreWeakRecoveryEnabled(algorithm), Is.True);
         }
 
         [Test]
@@ -351,6 +379,112 @@ namespace QuantConnect.Tests.Algorithm
             SetPrivateField(algorithm, "_defensiveOverrideEquityHighWaterMark", 100000m);
 
             Assert.That(ShouldApplyPreWeakGuard(algorithm, CreateNeutralDeterioratingSnapshot(), 94000m), Is.True);
+        }
+
+        [Test]
+        public void PreWeakRecoveryDoesNotActivateWhenDisabled()
+        {
+            var algorithm = CreateAlgorithm();
+
+            Assert.That(
+                UpdatePreWeakRecoveryState(algorithm, CreateNeutralSnapshot(), normalPreWeakActive: true, drawdownFromHigh: 0.06m),
+                Is.False);
+            Assert.That(IsPreWeakRecoveryActive(algorithm), Is.False);
+        }
+
+        [Test]
+        public void PreWeakRecoveryRequiresNormalPreWeak()
+        {
+            var algorithm = CreateAlgorithm(new Dictionary<string, string>
+            {
+                ["pre-weak-recovery-enabled"] = "true"
+            });
+
+            Assert.That(
+                UpdatePreWeakRecoveryState(algorithm, CreateNeutralSnapshot(), normalPreWeakActive: false, drawdownFromHigh: 0.06m),
+                Is.False);
+            Assert.That(GetPreWeakRecoveryLastResetReason(algorithm), Is.EqualTo("preweak-inactive"));
+        }
+
+        [Test]
+        public void PreWeakRecoveryRequiresAllSignalsNotWeak()
+        {
+            var algorithm = CreateAlgorithm(new Dictionary<string, string>
+            {
+                ["pre-weak-recovery-enabled"] = "true"
+            });
+
+            Assert.That(
+                UpdatePreWeakRecoveryState(algorithm, CreateNeutralDeterioratingSnapshot(), normalPreWeakActive: true, drawdownFromHigh: 0.06m),
+                Is.False);
+            Assert.That(GetPreWeakRecoveryLastResetReason(algorithm), Is.EqualTo("weak-signal"));
+        }
+
+        [Test]
+        public void PreWeakRecoveryActivatesAfterTwoConfirmedRecoveredWeeks()
+        {
+            var algorithm = CreateAlgorithm(new Dictionary<string, string>
+            {
+                ["pre-weak-recovery-enabled"] = "true"
+            });
+
+            Assert.That(
+                UpdatePreWeakRecoveryState(algorithm, CreateNeutralSnapshot(), normalPreWeakActive: true, drawdownFromHigh: 0.09m),
+                Is.False);
+            Assert.That(
+                UpdatePreWeakRecoveryState(algorithm, CreateNeutralSnapshot(), normalPreWeakActive: true, drawdownFromHigh: 0.07m),
+                Is.False);
+            Assert.That(GetPreWeakRecoveryConfirmationWeeks(algorithm), Is.EqualTo(1));
+            Assert.That(
+                UpdatePreWeakRecoveryState(algorithm, CreateNeutralSnapshot(), normalPreWeakActive: true, drawdownFromHigh: 0.065m),
+                Is.True);
+
+            Assert.That(IsPreWeakRecoveryActive(algorithm), Is.True);
+            Assert.That(GetPreWeakRecoveryLocalTroughDrawdown(algorithm), Is.EqualTo(0.09m));
+            Assert.That(GetPreWeakRecoverySegmentId(algorithm), Is.EqualTo(1));
+        }
+
+        [Test]
+        public void PreWeakRecoveryRejectsAbsoluteDrawdownAboveMax()
+        {
+            var algorithm = CreateAlgorithm(new Dictionary<string, string>
+            {
+                ["pre-weak-recovery-enabled"] = "true"
+            });
+
+            Assert.That(
+                UpdatePreWeakRecoveryState(algorithm, CreateNeutralSnapshot(), normalPreWeakActive: true, drawdownFromHigh: 0.12m),
+                Is.False);
+            Assert.That(
+                UpdatePreWeakRecoveryState(algorithm, CreateNeutralSnapshot(), normalPreWeakActive: true, drawdownFromHigh: 0.095m),
+                Is.False);
+
+            Assert.That(GetPreWeakRecoveryLastResetReason(algorithm), Is.EqualTo("drawdown-too-high"));
+        }
+
+        [Test]
+        public void PreWeakRecoveryNewTroughResetsConfirmation()
+        {
+            var algorithm = CreateAlgorithm(new Dictionary<string, string>
+            {
+                ["pre-weak-recovery-enabled"] = "true"
+            });
+
+            Assert.That(
+                UpdatePreWeakRecoveryState(algorithm, CreateNeutralSnapshot(), normalPreWeakActive: true, drawdownFromHigh: 0.09m),
+                Is.False);
+            Assert.That(
+                UpdatePreWeakRecoveryState(algorithm, CreateNeutralSnapshot(), normalPreWeakActive: true, drawdownFromHigh: 0.07m),
+                Is.False);
+            Assert.That(GetPreWeakRecoveryConfirmationWeeks(algorithm), Is.EqualTo(1));
+
+            Assert.That(
+                UpdatePreWeakRecoveryState(algorithm, CreateNeutralSnapshot(), normalPreWeakActive: true, drawdownFromHigh: 0.10m),
+                Is.False);
+
+            Assert.That(GetPreWeakRecoveryConfirmationWeeks(algorithm), Is.EqualTo(0));
+            Assert.That(IsPreWeakRecoveryActive(algorithm), Is.False);
+            Assert.That(GetPreWeakRecoveryLastResetReason(algorithm), Is.EqualTo("new-trough"));
         }
 
         [Test]
@@ -725,6 +859,12 @@ namespace QuantConnect.Tests.Algorithm
             SetPrivateField(algorithm, "_severeCrashRecoveryWeeks", 3);
             SetPrivateField(algorithm, "_severeCrashModeState", "hold");
             SetPrivateField(algorithm, "_severeCrashExitReason", "none");
+            SetPrivateField(algorithm, "_preWeakRecoveryPreviousPreWeakActive", true);
+            SetPrivateField(algorithm, "_preWeakRecoverySegmentId", 7);
+            SetPrivateField(algorithm, "_preWeakRecoveryLocalTroughDrawdown", 0.091m);
+            SetPrivateField(algorithm, "_preWeakRecoveryConfirmationWeeks", 2);
+            SetPrivateField(algorithm, "_preWeakRecoveryActive", true);
+            SetPrivateField(algorithm, "_preWeakRecoveryLastResetReason", "eligible");
 
             var state = BuildPersistedState(algorithm);
 
@@ -733,6 +873,12 @@ namespace QuantConnect.Tests.Algorithm
             Assert.That(state.SevereCrashRecoveryWeeks, Is.EqualTo(3));
             Assert.That(state.SevereCrashModeState, Is.EqualTo("hold"));
             Assert.That(state.SevereCrashExitReason, Is.EqualTo("none"));
+            Assert.That(state.PreWeakRecoveryPreviousPreWeakActive, Is.True);
+            Assert.That(state.PreWeakRecoverySegmentId, Is.EqualTo(7));
+            Assert.That(state.PreWeakRecoveryLocalTroughDrawdown, Is.EqualTo(0.091m));
+            Assert.That(state.PreWeakRecoveryConfirmationWeeks, Is.EqualTo(2));
+            Assert.That(state.PreWeakRecoveryActive, Is.True);
+            Assert.That(state.PreWeakRecoveryLastResetReason, Is.EqualTo("eligible"));
         }
 
         [Test]
@@ -910,7 +1056,13 @@ namespace QuantConnect.Tests.Algorithm
                 SevereCrashModeActive = true,
                 SevereCrashRecoveryWeeks = 2,
                 SevereCrashModeState = "hold",
-                SevereCrashExitReason = "none"
+                SevereCrashExitReason = "none",
+                PreWeakRecoveryPreviousPreWeakActive = true,
+                PreWeakRecoverySegmentId = 3,
+                PreWeakRecoveryLocalTroughDrawdown = 0.087m,
+                PreWeakRecoveryConfirmationWeeks = 1,
+                PreWeakRecoveryActive = true,
+                PreWeakRecoveryLastResetReason = "eligible"
             };
 
             RestorePersistedRuntimeState(algorithm, state);
@@ -920,6 +1072,11 @@ namespace QuantConnect.Tests.Algorithm
             Assert.That(GetSevereCrashRecoveryWeeks(algorithm), Is.EqualTo(2));
             Assert.That(GetSevereCrashModeState(algorithm), Is.EqualTo("hold"));
             Assert.That(GetSevereCrashExitReason(algorithm), Is.EqualTo("none"));
+            Assert.That(GetPreWeakRecoverySegmentId(algorithm), Is.EqualTo(3));
+            Assert.That(GetPreWeakRecoveryLocalTroughDrawdown(algorithm), Is.EqualTo(0.087m));
+            Assert.That(GetPreWeakRecoveryConfirmationWeeks(algorithm), Is.EqualTo(1));
+            Assert.That(IsPreWeakRecoveryActive(algorithm), Is.True);
+            Assert.That(GetPreWeakRecoveryLastResetReason(algorithm), Is.EqualTo("eligible"));
         }
 
         [Test]
@@ -932,7 +1089,9 @@ namespace QuantConnect.Tests.Algorithm
                 SevereCrashModeActive = true,
                 SevereCrashRecoveryWeeks = 1,
                 SevereCrashModeState = "hold",
-                SevereCrashExitReason = "none"
+                SevereCrashExitReason = "none",
+                PreWeakRecoverySegmentId = 1,
+                PreWeakRecoveryConfirmationWeeks = 1
             };
             var changed = new QuantConnect.Algorithm.CSharp.AegisLiveState
             {
@@ -941,7 +1100,9 @@ namespace QuantConnect.Tests.Algorithm
                 SevereCrashModeActive = true,
                 SevereCrashRecoveryWeeks = 1,
                 SevereCrashModeState = "hold",
-                SevereCrashExitReason = "none"
+                SevereCrashExitReason = "none",
+                PreWeakRecoverySegmentId = 1,
+                PreWeakRecoveryConfirmationWeeks = 2
             };
 
             Assert.That(BuildLiveStateFingerprint(changed), Is.Not.EqualTo(BuildLiveStateFingerprint(baseline)));
@@ -993,6 +1154,12 @@ namespace QuantConnect.Tests.Algorithm
                 severeCrashOverrideActive: true,
                 sleeveOverride: "severe-crash",
                 overrideReason: "weak-severe-dd10-signals2",
+                preWeakRecoveryActive: false,
+                preWeakRecoverySegmentId: 0,
+                preWeakRecoveryLocalTroughDrawdown: 0m,
+                preWeakRecoveryAmount: 0m,
+                preWeakRecoveryConfirmationWeeks: 0,
+                preWeakRecoveryResetReason: "none",
                 drawdownFromHigh: 0.1234m,
                 baseSleeveTargets: QuantConnect.Algorithm.CSharp.StrategyConfig.SleeveTargetsByRegime[QuantConnect.Algorithm.CSharp.RiskRegime.Weak],
                 finalSleeveTargets: QuantConnect.Algorithm.CSharp.StrategyConfig.SevereCrashOverrideSleeveTargets,
@@ -1032,20 +1199,32 @@ namespace QuantConnect.Tests.Algorithm
                 reserveBeforeReview: 0.10m,
                 preWeakGuardActive: true,
                 severeCrashOverrideActive: false,
-                sleeveOverride: "pre-weak",
-                overrideReason: "drawdown-signals",
+                sleeveOverride: "pre-weak-recovery",
+                overrideReason: "pre-weak-recovery-confirmed",
+                preWeakRecoveryActive: true,
+                preWeakRecoverySegmentId: 2,
+                preWeakRecoveryLocalTroughDrawdown: 0.0912m,
+                preWeakRecoveryAmount: 0.0300m,
+                preWeakRecoveryConfirmationWeeks: 2,
+                preWeakRecoveryResetReason: "eligible",
                 drawdownFromHigh: 0.0612m,
                 baseSleeveTargets: QuantConnect.Algorithm.CSharp.StrategyConfig.SleeveTargetsByRegime[QuantConnect.Algorithm.CSharp.RiskRegime.Neutral],
-                finalSleeveTargets: QuantConnect.Algorithm.CSharp.StrategyConfig.PreWeakGuardSleeveTargets,
+                finalSleeveTargets: QuantConnect.Algorithm.CSharp.StrategyConfig.PreWeakRecoverySleeveTargets,
                 severeCrashModeState: "none",
                 severeCrashRecoveryWeeks: 0,
                 severeCrashExitReason: "none");
 
             Assert.That(diagnostics, Does.Contain("[AEGIS-DIAG-WEEK]"));
-            Assert.That(diagnostics, Does.Contain("Override=pre-weak"));
-            Assert.That(diagnostics, Does.Contain("Reason=drawdown-signals"));
+            Assert.That(diagnostics, Does.Contain("Override=pre-weak-recovery"));
+            Assert.That(diagnostics, Does.Contain("Reason=pre-weak-recovery-confirmed"));
+            Assert.That(diagnostics, Does.Contain("PreWeakRecovery=True"));
+            Assert.That(diagnostics, Does.Contain("RecoverySegment=2"));
+            Assert.That(diagnostics, Does.Contain("RecoveryTroughDD=0.0912"));
+            Assert.That(diagnostics, Does.Contain("RecoveryAmount=0.0300"));
+            Assert.That(diagnostics, Does.Contain("RecoveryConfirm=2"));
+            Assert.That(diagnostics, Does.Contain("RecoveryReset=eligible"));
             Assert.That(diagnostics, Does.Contain("DD=0.0612"));
-            Assert.That(diagnostics, Does.Contain("Sleeve=G0.1200/D0.3000/C0.5800"));
+            Assert.That(diagnostics, Does.Contain("Sleeve=G0.1600/D0.3000/C0.5400"));
             Assert.That(diagnostics, Does.Contain("Growth=AAPL"));
             Assert.That(diagnostics, Does.Contain("Defensive=SGOV"));
             Assert.That(diagnostics, Does.Contain("TopGrowth=AAPL:32.00/30.00"));
@@ -1069,6 +1248,7 @@ namespace QuantConnect.Tests.Algorithm
                 100000m,
                 QuantConnect.Algorithm.CSharp.RiskRegime.Neutral,
                 preWeakGuardActive: true,
+                preWeakRecoveryActive: false,
                 severeCrashOverrideActive: false,
                 drawdownFromHigh: 0.05m,
                 finalSleeveTargets: QuantConnect.Algorithm.CSharp.StrategyConfig.PreWeakGuardSleeveTargets);
@@ -1078,6 +1258,7 @@ namespace QuantConnect.Tests.Algorithm
                 101000m,
                 QuantConnect.Algorithm.CSharp.RiskRegime.Neutral,
                 preWeakGuardActive: false,
+                preWeakRecoveryActive: false,
                 severeCrashOverrideActive: false,
                 drawdownFromHigh: 0.01m,
                 finalSleeveTargets: QuantConnect.Algorithm.CSharp.StrategyConfig.SleeveTargetsByRegime[QuantConnect.Algorithm.CSharp.RiskRegime.Neutral]);
@@ -1087,6 +1268,7 @@ namespace QuantConnect.Tests.Algorithm
                 102000m,
                 QuantConnect.Algorithm.CSharp.RiskRegime.Neutral,
                 preWeakGuardActive: false,
+                preWeakRecoveryActive: false,
                 severeCrashOverrideActive: false,
                 drawdownFromHigh: 0.02m,
                 finalSleeveTargets: QuantConnect.Algorithm.CSharp.StrategyConfig.SleeveTargetsByRegime[QuantConnect.Algorithm.CSharp.RiskRegime.Neutral]);
@@ -1096,6 +1278,7 @@ namespace QuantConnect.Tests.Algorithm
                 103000m,
                 QuantConnect.Algorithm.CSharp.RiskRegime.Neutral,
                 preWeakGuardActive: false,
+                preWeakRecoveryActive: false,
                 severeCrashOverrideActive: false,
                 drawdownFromHigh: 0.01m,
                 finalSleeveTargets: QuantConnect.Algorithm.CSharp.StrategyConfig.SleeveTargetsByRegime[QuantConnect.Algorithm.CSharp.RiskRegime.Neutral]);
@@ -1105,6 +1288,7 @@ namespace QuantConnect.Tests.Algorithm
                 104000m,
                 QuantConnect.Algorithm.CSharp.RiskRegime.Favorable,
                 preWeakGuardActive: false,
+                preWeakRecoveryActive: false,
                 severeCrashOverrideActive: true,
                 drawdownFromHigh: 0.12m,
                 finalSleeveTargets: QuantConnect.Algorithm.CSharp.StrategyConfig.SevereCrashOverrideSleeveTargets);
@@ -1114,6 +1298,8 @@ namespace QuantConnect.Tests.Algorithm
             Assert.That(summary, Does.Contain("[AEGIS-DIAG-SUMMARY]"));
             Assert.That(summary, Does.Contain("Weeks=5"));
             Assert.That(summary, Does.Contain("PreWeakWeeks=1"));
+            Assert.That(summary, Does.Contain("NormalPreWeakWeeks=1"));
+            Assert.That(summary, Does.Contain("RecoveryPreWeakWeeks=0"));
             Assert.That(summary, Does.Contain("SevereCrashWeeks=1"));
             Assert.That(summary, Does.Contain("PreWeakAvgDrawdown=0.0500"));
             Assert.That(summary, Does.Contain("PreWeakNextReturnAvg=0.0100"));
@@ -1135,6 +1321,35 @@ namespace QuantConnect.Tests.Algorithm
             Assert.That(summary, Does.Contain("Weeks=0"));
             Assert.That(summary, Does.Contain("PreWeakWeeks=0"));
             Assert.That(summary, Does.Contain("SevereCrashWeeks=0"));
+        }
+
+        [Test]
+        public void FormatsCompactCrisisDiagnosticSummaryWithRecoveryPreWeakSplit()
+        {
+            var algorithm = CreateAlgorithm(new Dictionary<string, string>
+            {
+                ["crisis-diagnostics"] = "true"
+            });
+
+            RecordCrisisDiagnosticObservation(
+                algorithm,
+                new DateTime(2022, 8, 15),
+                100000m,
+                QuantConnect.Algorithm.CSharp.RiskRegime.Neutral,
+                preWeakGuardActive: true,
+                preWeakRecoveryActive: true,
+                severeCrashOverrideActive: false,
+                drawdownFromHigh: 0.07m,
+                finalSleeveTargets: QuantConnect.Algorithm.CSharp.StrategyConfig.PreWeakRecoverySleeveTargets);
+
+            var summary = FormatCompactCrisisDiagnosticSummary(algorithm);
+
+            Assert.That(summary, Does.Contain("PreWeakWeeks=1"));
+            Assert.That(summary, Does.Contain("NormalPreWeakWeeks=0"));
+            Assert.That(summary, Does.Contain("RecoveryPreWeakWeeks=1"));
+            Assert.That(summary, Does.Contain("RecoveryPreWeakAvgDrawdown=0.0700"));
+            Assert.That(summary, Does.Contain("RecoveryPreWeakAvgTarget=G0.1600/D0.3000/C0.5400"));
+            Assert.That(summary, Does.Contain("RecoveryPreWeakWorstNextReturn=n/a"));
         }
 
         private static QuantConnect.Algorithm.CSharp.AegisGrowthAllocation CreateAlgorithm(
@@ -1173,6 +1388,15 @@ namespace QuantConnect.Tests.Algorithm
         {
             var field = typeof(QuantConnect.Algorithm.CSharp.AegisGrowthAllocation)
                 .GetField("_preWeakGuardEnabled", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+
+            Assert.That(field, Is.Not.Null);
+            return (bool)field.GetValue(algorithm);
+        }
+
+        private static bool IsPreWeakRecoveryEnabled(QuantConnect.Algorithm.CSharp.AegisGrowthAllocation algorithm)
+        {
+            var field = typeof(QuantConnect.Algorithm.CSharp.AegisGrowthAllocation)
+                .GetField("_preWeakRecoveryEnabled", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
 
             Assert.That(field, Is.Not.Null);
             return (bool)field.GetValue(algorithm);
@@ -1266,6 +1490,51 @@ namespace QuantConnect.Tests.Algorithm
 
             Assert.That(field, Is.Not.Null);
             return (decimal)field.GetValue(algorithm);
+        }
+
+        private static int GetPreWeakRecoverySegmentId(QuantConnect.Algorithm.CSharp.AegisGrowthAllocation algorithm)
+        {
+            var field = typeof(QuantConnect.Algorithm.CSharp.AegisGrowthAllocation)
+                .GetField("_preWeakRecoverySegmentId", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+
+            Assert.That(field, Is.Not.Null);
+            return (int)field.GetValue(algorithm);
+        }
+
+        private static decimal GetPreWeakRecoveryLocalTroughDrawdown(QuantConnect.Algorithm.CSharp.AegisGrowthAllocation algorithm)
+        {
+            var field = typeof(QuantConnect.Algorithm.CSharp.AegisGrowthAllocation)
+                .GetField("_preWeakRecoveryLocalTroughDrawdown", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+
+            Assert.That(field, Is.Not.Null);
+            return (decimal)field.GetValue(algorithm);
+        }
+
+        private static int GetPreWeakRecoveryConfirmationWeeks(QuantConnect.Algorithm.CSharp.AegisGrowthAllocation algorithm)
+        {
+            var field = typeof(QuantConnect.Algorithm.CSharp.AegisGrowthAllocation)
+                .GetField("_preWeakRecoveryConfirmationWeeks", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+
+            Assert.That(field, Is.Not.Null);
+            return (int)field.GetValue(algorithm);
+        }
+
+        private static bool IsPreWeakRecoveryActive(QuantConnect.Algorithm.CSharp.AegisGrowthAllocation algorithm)
+        {
+            var field = typeof(QuantConnect.Algorithm.CSharp.AegisGrowthAllocation)
+                .GetField("_preWeakRecoveryActive", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+
+            Assert.That(field, Is.Not.Null);
+            return (bool)field.GetValue(algorithm);
+        }
+
+        private static string GetPreWeakRecoveryLastResetReason(QuantConnect.Algorithm.CSharp.AegisGrowthAllocation algorithm)
+        {
+            var field = typeof(QuantConnect.Algorithm.CSharp.AegisGrowthAllocation)
+                .GetField("_preWeakRecoveryLastResetReason", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+
+            Assert.That(field, Is.Not.Null);
+            return (string)field.GetValue(algorithm);
         }
 
         private static QuantConnect.Algorithm.CSharp.AegisLiveState BuildPersistedState(
@@ -1419,12 +1688,31 @@ namespace QuantConnect.Tests.Algorithm
             return (bool)method.Invoke(algorithm, new object[] { regimeSnapshot, totalPortfolioValue });
         }
 
+        private static bool UpdatePreWeakRecoveryState(
+            QuantConnect.Algorithm.CSharp.AegisGrowthAllocation algorithm,
+            QuantConnect.Algorithm.CSharp.RegimeSnapshot regimeSnapshot,
+            bool normalPreWeakActive,
+            decimal drawdownFromHigh)
+        {
+            var method = typeof(QuantConnect.Algorithm.CSharp.AegisGrowthAllocation)
+                .GetMethod("UpdatePreWeakRecoveryState", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+
+            Assert.That(method, Is.Not.Null);
+            return (bool)method.Invoke(algorithm, new object[] { regimeSnapshot, normalPreWeakActive, drawdownFromHigh });
+        }
+
         private static string FormatOverrideDiagnostics(
             QuantConnect.Algorithm.CSharp.AegisGrowthAllocation algorithm,
             bool preWeakGuardActive,
             bool severeCrashOverrideActive,
             string sleeveOverride,
             string overrideReason,
+            bool preWeakRecoveryActive,
+            int preWeakRecoverySegmentId,
+            decimal preWeakRecoveryLocalTroughDrawdown,
+            decimal preWeakRecoveryAmount,
+            int preWeakRecoveryConfirmationWeeks,
+            string preWeakRecoveryResetReason,
             decimal drawdownFromHigh,
             QuantConnect.Algorithm.CSharp.SleeveTargets baseSleeveTargets,
             QuantConnect.Algorithm.CSharp.SleeveTargets finalSleeveTargets,
@@ -1444,6 +1732,12 @@ namespace QuantConnect.Tests.Algorithm
                     severeCrashOverrideActive,
                     sleeveOverride,
                     overrideReason,
+                    preWeakRecoveryActive,
+                    preWeakRecoverySegmentId,
+                    preWeakRecoveryLocalTroughDrawdown,
+                    preWeakRecoveryAmount,
+                    preWeakRecoveryConfirmationWeeks,
+                    preWeakRecoveryResetReason,
                     drawdownFromHigh,
                     baseSleeveTargets,
                     finalSleeveTargets,
@@ -1467,6 +1761,12 @@ namespace QuantConnect.Tests.Algorithm
             bool severeCrashOverrideActive,
             string sleeveOverride,
             string overrideReason,
+            bool preWeakRecoveryActive,
+            int preWeakRecoverySegmentId,
+            decimal preWeakRecoveryLocalTroughDrawdown,
+            decimal preWeakRecoveryAmount,
+            int preWeakRecoveryConfirmationWeeks,
+            string preWeakRecoveryResetReason,
             decimal drawdownFromHigh,
             QuantConnect.Algorithm.CSharp.SleeveTargets baseSleeveTargets,
             QuantConnect.Algorithm.CSharp.SleeveTargets finalSleeveTargets,
@@ -1494,6 +1794,12 @@ namespace QuantConnect.Tests.Algorithm
                     severeCrashOverrideActive,
                     sleeveOverride,
                     overrideReason,
+                    preWeakRecoveryActive,
+                    preWeakRecoverySegmentId,
+                    preWeakRecoveryLocalTroughDrawdown,
+                    preWeakRecoveryAmount,
+                    preWeakRecoveryConfirmationWeeks,
+                    preWeakRecoveryResetReason,
                     drawdownFromHigh,
                     baseSleeveTargets,
                     finalSleeveTargets,
@@ -1509,6 +1815,7 @@ namespace QuantConnect.Tests.Algorithm
             decimal equity,
             QuantConnect.Algorithm.CSharp.RiskRegime activeRegime,
             bool preWeakGuardActive,
+            bool preWeakRecoveryActive,
             bool severeCrashOverrideActive,
             decimal drawdownFromHigh,
             QuantConnect.Algorithm.CSharp.SleeveTargets finalSleeveTargets)
@@ -1525,6 +1832,7 @@ namespace QuantConnect.Tests.Algorithm
                     equity,
                     activeRegime,
                     preWeakGuardActive,
+                    preWeakRecoveryActive,
                     severeCrashOverrideActive,
                     drawdownFromHigh,
                     finalSleeveTargets
