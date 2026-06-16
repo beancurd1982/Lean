@@ -34,12 +34,12 @@ namespace QuantConnect.Algorithm.CSharp
         public const string PreWeakGrowthTargetParameter = "pre-weak-growth-target";
         public const string PreWeakDefensiveTargetParameter = "pre-weak-def-target";
         public const string WeakGrowthTargetParameter = "weak-growth-target";
-        public const string PreWeakRecoveryParameter = "pre-weak-recovery-enabled";
-        public const string PreWeakRecoveryGrowthTargetParameter = "pre-weak-recovery-growth-target";
-        public const string PreWeakRecoveryDefensiveTargetParameter = "pre-weak-recovery-def-target";
-        public const string PreWeakRecoveryDrawdownImprovementParameter = "pre-weak-recovery-dd-improvement";
-        public const string PreWeakRecoveryMaxDrawdownParameter = "pre-weak-recovery-max-dd";
-        public const string PreWeakRecoveryConfirmationWeeksParameter = "pre-weak-recovery-confirmation-weeks";
+        public const string PreWeakRecoveryParameter = "preweak-recovery-enabled";
+        public const string PreWeakRecoveryGrowthTargetParameter = "preweak-rec-growth-target";
+        public const string PreWeakRecoveryDefensiveTargetParameter = "preweak-rec-def-target";
+        public const string PreWeakRecoveryDrawdownImprovementParameter = "preweak-rec-dd-improve";
+        public const string PreWeakRecoveryMaxDrawdownParameter = "preweak-rec-max-dd";
+        public const string PreWeakRecoveryConfirmationWeeksParameter = "preweak-rec-confirm-weeks";
         public const string LiveStateKey = "AegisGrowthAllocation_LiveState_V2";
         public const int LiveStateSchemaVersion = 2;
         public const decimal LiveStateQuantityTolerance = 0.0001m;
@@ -371,7 +371,7 @@ namespace QuantConnect.Algorithm.CSharp
                 debug(
                     string.Format(
                         CultureInfo.InvariantCulture,
-                        "[AEGIS] Invalid sleeve target parameters pre-weak-growth-target={0} pre-weak-def-target={1} pre-weak-recovery-growth-target={2} pre-weak-recovery-def-target={3} weak-growth-target={4}. Using defaults preWeakGrowth={5} preWeakDef={6} preWeakRecoveryGrowth={7} preWeakRecoveryDef={8} weakGrowth={9}.",
+                        "[AEGIS] Invalid sleeve target parameters pre-weak-growth-target={0} pre-weak-def-target={1} preweak-rec-growth-target={2} preweak-rec-def-target={3} weak-growth-target={4}. Using defaults preWeakGrowth={5} preWeakDef={6} preWeakRecoveryGrowth={7} preWeakRecoveryDef={8} weakGrowth={9}.",
                         preWeakGrowthTarget,
                         preWeakDefensiveTarget,
                         preWeakRecoveryGrowthTarget,

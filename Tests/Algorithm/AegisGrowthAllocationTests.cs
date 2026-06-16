@@ -209,8 +209,8 @@ namespace QuantConnect.Tests.Algorithm
             {
                 ["pre-weak-growth-target"] = "0.18",
                 ["pre-weak-def-target"] = "0.35",
-                ["pre-weak-recovery-growth-target"] = "0.16",
-                ["pre-weak-recovery-def-target"] = "0.30",
+                ["preweak-rec-growth-target"] = "0.16",
+                ["preweak-rec-def-target"] = "0.30",
                 ["weak-growth-target"] = "0.05"
             });
 
@@ -237,8 +237,8 @@ namespace QuantConnect.Tests.Algorithm
             {
                 ["pre-weak-growth-target"] = "0.80",
                 ["pre-weak-def-target"] = "0.40",
-                ["pre-weak-recovery-growth-target"] = "0.60",
-                ["pre-weak-recovery-def-target"] = "0.50",
+                ["preweak-rec-growth-target"] = "0.60",
+                ["preweak-rec-def-target"] = "0.50",
                 ["weak-growth-target"] = "0.70"
             });
 
@@ -262,7 +262,7 @@ namespace QuantConnect.Tests.Algorithm
         {
             var algorithm = CreateAlgorithm(new Dictionary<string, string>
             {
-                ["pre-weak-recovery-enabled"] = "true"
+                ["preweak-recovery-enabled"] = "true"
             });
 
             Assert.That(IsPreWeakRecoveryEnabled(algorithm), Is.True);
@@ -397,7 +397,7 @@ namespace QuantConnect.Tests.Algorithm
         {
             var algorithm = CreateAlgorithm(new Dictionary<string, string>
             {
-                ["pre-weak-recovery-enabled"] = "true"
+                ["preweak-recovery-enabled"] = "true"
             });
 
             Assert.That(
@@ -411,7 +411,7 @@ namespace QuantConnect.Tests.Algorithm
         {
             var algorithm = CreateAlgorithm(new Dictionary<string, string>
             {
-                ["pre-weak-recovery-enabled"] = "true"
+                ["preweak-recovery-enabled"] = "true"
             });
 
             Assert.That(
@@ -425,7 +425,7 @@ namespace QuantConnect.Tests.Algorithm
         {
             var algorithm = CreateAlgorithm(new Dictionary<string, string>
             {
-                ["pre-weak-recovery-enabled"] = "true"
+                ["preweak-recovery-enabled"] = "true"
             });
 
             Assert.That(
@@ -449,7 +449,7 @@ namespace QuantConnect.Tests.Algorithm
         {
             var algorithm = CreateAlgorithm(new Dictionary<string, string>
             {
-                ["pre-weak-recovery-enabled"] = "true"
+                ["preweak-recovery-enabled"] = "true"
             });
 
             Assert.That(
@@ -467,7 +467,7 @@ namespace QuantConnect.Tests.Algorithm
         {
             var algorithm = CreateAlgorithm(new Dictionary<string, string>
             {
-                ["pre-weak-recovery-enabled"] = "true"
+                ["preweak-recovery-enabled"] = "true"
             });
 
             Assert.That(

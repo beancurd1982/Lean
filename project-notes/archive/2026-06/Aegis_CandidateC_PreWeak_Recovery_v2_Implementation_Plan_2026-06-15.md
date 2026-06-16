@@ -43,12 +43,12 @@ Recovery is allowed only after PreWeak has already formed a local drawdown troug
 
 Add default-off parameters in `StrategyConfig.cs`:
 
-- `pre-weak-recovery-enabled`, default `false`
-- `pre-weak-recovery-growth-target`, default `0.16`
-- `pre-weak-recovery-def-target`, default `0.30`
-- `pre-weak-recovery-dd-improvement`, default `0.02`
-- `pre-weak-recovery-max-dd`, default `0.08`
-- `pre-weak-recovery-confirmation-weeks`, default `2`
+- `preweak-recovery-enabled`, default `false`
+- `preweak-rec-growth-target`, default `0.16`
+- `preweak-rec-def-target`, default `0.30`
+- `preweak-rec-dd-improve`, default `0.02`
+- `preweak-rec-max-dd`, default `0.08`
+- `preweak-rec-confirm-weeks`, default `2`
 
 Add PreWeak recovery state in `AegisGrowthAllocation.cs`:
 

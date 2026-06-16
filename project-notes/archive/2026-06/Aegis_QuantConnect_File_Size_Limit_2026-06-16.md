@@ -102,3 +102,15 @@ Local verification after implementation:
 
 - QuantConnect may have other editor-side limits besides character count; keep new partial files comfortably below 64,000 characters rather than just under the threshold.
 - A partial upload can leave the cloud project in a mixed-source state. If cloud compile errors look inconsistent with local compile, first verify every production Aegis file saved successfully in cloud.
+- QuantConnect parameter names are limited to 30 characters. Candidate C recovery cloud parameter keys were shortened to:
+  - `preweak-recovery-enabled`
+  - `preweak-rec-growth-target`
+  - `preweak-rec-def-target`
+  - `preweak-rec-dd-improve`
+  - `preweak-rec-max-dd`
+  - `preweak-rec-confirm-weeks`
+- QuantConnect Cloud backtest parameter UI allows at most 20 parameters. Do not enter every default-valued Aegis parameter. For Candidate C v2 default-value validation, rely on source defaults and only enter parameters that differ from defaults or define the test window. Minimal Candidate C stress-window parameters:
+  - `backtest-start = 2021-01-01`
+  - `backtest-end = 2022-12-31`
+  - `crisis-diagnostics = true`
+  - `preweak-recovery-enabled = true`
