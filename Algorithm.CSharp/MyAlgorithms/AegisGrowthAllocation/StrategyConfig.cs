@@ -16,6 +16,8 @@ namespace QuantConnect.Algorithm.CSharp
         public const string BacktestStartParameter = "backtest-start";
         public const string BacktestEndParameter = "backtest-end";
         public const string CrisisDiagnosticsParameter = "crisis-diagnostics";
+        public const string DiagnosticStartParameter = "diagnostic-start";
+        public const string DiagnosticEndParameter = "diagnostic-end";
         public const string WeakStressOverlayParameter = "weak-stress-overlay-enabled";
         public const string PreWeakGuardParameter = "pre-weak-guard-enabled";
         public const string PreWeakGuardDrawdownThresholdParameter = "pre-weak-dd-threshold";

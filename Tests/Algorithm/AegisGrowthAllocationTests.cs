@@ -119,6 +119,36 @@ namespace QuantConnect.Tests.Algorithm
         }
 
         [Test]
+        public void FiltersCrisisDiagnosticsToConfiguredDateWindow()
+        {
+            var algorithm = CreateAlgorithm(new Dictionary<string, string>
+            {
+                ["crisis-diagnostics"] = "true",
+                ["diagnostic-start"] = "2024-01-01",
+                ["diagnostic-end"] = "2025-12-31"
+            });
+
+            Assert.That(ShouldEmitCrisisDiagnostic(algorithm, new DateTime(2023, 12, 31)), Is.False);
+            Assert.That(ShouldEmitCrisisDiagnostic(algorithm, new DateTime(2024, 1, 1)), Is.True);
+            Assert.That(ShouldEmitCrisisDiagnostic(algorithm, new DateTime(2025, 12, 31)), Is.True);
+            Assert.That(ShouldEmitCrisisDiagnostic(algorithm, new DateTime(2026, 1, 1)), Is.False);
+        }
+
+        [Test]
+        public void KeepsCrisisDiagnosticsUnfilteredWhenDateWindowIsInvalid()
+        {
+            var algorithm = CreateAlgorithm(new Dictionary<string, string>
+            {
+                ["crisis-diagnostics"] = "true",
+                ["diagnostic-start"] = "2025-12-31",
+                ["diagnostic-end"] = "2024-01-01"
+            });
+
+            Assert.That(ShouldEmitCrisisDiagnostic(algorithm, new DateTime(2023, 12, 31)), Is.True);
+            Assert.That(ShouldEmitCrisisDiagnostic(algorithm, new DateTime(2026, 1, 1)), Is.True);
+        }
+
+        [Test]
         public void DisablesWeakStressOverlayByDefault()
         {
             var algorithm = CreateAlgorithm();
@@ -1373,6 +1403,17 @@ namespace QuantConnect.Tests.Algorithm
 
             Assert.That(field, Is.Not.Null);
             return (bool)field.GetValue(algorithm);
+        }
+
+        private static bool ShouldEmitCrisisDiagnostic(
+            QuantConnect.Algorithm.CSharp.AegisGrowthAllocation algorithm,
+            DateTime date)
+        {
+            var method = typeof(QuantConnect.Algorithm.CSharp.AegisGrowthAllocation)
+                .GetMethod("ShouldEmitCrisisDiagnostic", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+
+            Assert.That(method, Is.Not.Null);
+            return (bool)method.Invoke(algorithm, new object[] { date });
         }
 
         private static bool IsWeakStressOverlayEnabled(QuantConnect.Algorithm.CSharp.AegisGrowthAllocation algorithm)

@@ -89,6 +89,34 @@ namespace QuantConnect.Algorithm.CSharp
                 sleeveTargets.WeakGrowthTarget);
         }
 
+        private void ConfigureDiagnosticWindow()
+        {
+            _diagnosticStartDate = ParseOptionalBacktestDate(StrategyConfig.DiagnosticStartParameter);
+            _diagnosticEndDate = ParseOptionalBacktestDate(StrategyConfig.DiagnosticEndParameter);
+
+            if (_diagnosticStartDate.HasValue &&
+                _diagnosticEndDate.HasValue &&
+                _diagnosticEndDate.Value.Date < _diagnosticStartDate.Value.Date)
+            {
+                Debug(
+                    $"[AEGIS] Diagnostic end date {_diagnosticEndDate.Value:yyyy-MM-dd} is before start date {_diagnosticStartDate.Value:yyyy-MM-dd}. Ignoring diagnostic date window.");
+                _diagnosticStartDate = null;
+                _diagnosticEndDate = null;
+            }
+        }
+
+        private bool ShouldEmitCrisisDiagnostic(DateTime date)
+        {
+            if (!_crisisDiagnosticsEnabled)
+            {
+                return false;
+            }
+
+            var diagnosticDate = date.Date;
+            return (!_diagnosticStartDate.HasValue || diagnosticDate >= _diagnosticStartDate.Value.Date) &&
+                (!_diagnosticEndDate.HasValue || diagnosticDate <= _diagnosticEndDate.Value.Date);
+        }
+
         private DateTime ParseBacktestStartDate()
         {
             var defaultValue = StrategyConfig.DefaultBacktestStartDate;

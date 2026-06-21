@@ -34,6 +34,8 @@ namespace QuantConnect.Algorithm.CSharp
         private Dictionary<int, AegisOpenOrderState> _trackedOpenOrders = new Dictionary<int, AegisOpenOrderState>();
         private AegisLiveState _loadedLiveState;
         private bool _crisisDiagnosticsEnabled;
+        private DateTime? _diagnosticStartDate;
+        private DateTime? _diagnosticEndDate;
         private bool _weakStressOverlayEnabled;
         private bool _preWeakGuardEnabled = StrategyConfig.DefaultPreWeakGuardEnabled;
         private bool _preWeakRecoveryEnabled = StrategyConfig.DefaultPreWeakRecoveryEnabled;
@@ -68,6 +70,10 @@ namespace QuantConnect.Algorithm.CSharp
                 ConfigureBacktestDates();
                 SetCash(30000);
                 _crisisDiagnosticsEnabled = ParseBooleanParameter(StrategyConfig.CrisisDiagnosticsParameter, false);
+                if (_crisisDiagnosticsEnabled)
+                {
+                    ConfigureDiagnosticWindow();
+                }
                 _weakStressOverlayEnabled = ParseBooleanParameter(StrategyConfig.WeakStressOverlayParameter, false);
                 _preWeakGuardEnabled = ParseBooleanParameter(
                     StrategyConfig.PreWeakGuardParameter,
@@ -377,40 +383,43 @@ namespace QuantConnect.Algorithm.CSharp
 
             if (_crisisDiagnosticsEnabled)
             {
-                Debug(FormatCrisisDiagnostics(
-                    plan,
-                    regimeSnapshot,
-                    growthSelection,
-                    defensiveSelection,
-                    currentWeights,
-                    breadth,
-                    vixAverage5,
-                    reserveBeforeReview,
-                    preWeakGuardActive,
-                    severeCrashOverrideActive,
-                    sleeveOverride,
-                    overrideReason,
-                    preWeakRecoveryActive,
-                    _preWeakRecoverySegmentId,
-                    _preWeakRecoveryLocalTroughDrawdown,
-                    preWeakRecoveryAmount,
-                    _preWeakRecoveryConfirmationWeeks,
-                    _preWeakRecoveryLastResetReason,
-                    drawdownFromHigh,
-                    baseSleeveTargets,
-                    finalSleeveTargets,
-                    _severeCrashModeState,
-                    _severeCrashRecoveryWeeks,
-                    _severeCrashExitReason));
-                RecordCrisisDiagnosticObservation(
-                    Time.Date,
-                    totalPortfolioValue,
-                    regimeSnapshot.ActiveRegime,
-                    preWeakGuardActive,
-                    preWeakRecoveryActive,
-                    severeCrashOverrideActive,
-                    drawdownFromHigh,
-                    finalSleeveTargets);
+                if (ShouldEmitCrisisDiagnostic(Time.Date))
+                {
+                    Debug(FormatCrisisDiagnostics(
+                        plan,
+                        regimeSnapshot,
+                        growthSelection,
+                        defensiveSelection,
+                        currentWeights,
+                        breadth,
+                        vixAverage5,
+                        reserveBeforeReview,
+                        preWeakGuardActive,
+                        severeCrashOverrideActive,
+                        sleeveOverride,
+                        overrideReason,
+                        preWeakRecoveryActive,
+                        _preWeakRecoverySegmentId,
+                        _preWeakRecoveryLocalTroughDrawdown,
+                        preWeakRecoveryAmount,
+                        _preWeakRecoveryConfirmationWeeks,
+                        _preWeakRecoveryLastResetReason,
+                        drawdownFromHigh,
+                        baseSleeveTargets,
+                        finalSleeveTargets,
+                        _severeCrashModeState,
+                        _severeCrashRecoveryWeeks,
+                        _severeCrashExitReason));
+                    RecordCrisisDiagnosticObservation(
+                        Time.Date,
+                        totalPortfolioValue,
+                        regimeSnapshot.ActiveRegime,
+                        preWeakGuardActive,
+                        preWeakRecoveryActive,
+                        severeCrashOverrideActive,
+                        drawdownFromHigh,
+                        finalSleeveTargets);
+                }
             }
             else
             {
